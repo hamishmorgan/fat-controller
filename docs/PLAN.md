@@ -73,16 +73,32 @@ fat-controller service list     # List services in the project
 fat-controller logs tail        # Stream logs
 ```
 
-### Flags
+### Flags and environment variables
 
-- `--config <path>` — path to config file (default `fat-controller.toml`);
-  repeatable to merge multiple files
-- `--service <name>` — scope diff/apply to a single service
-- `--full` — show all fields including IDs and read-only (get only)
-- `--confirm` — force execution of mutations (overrides safe mode)
-- `--dry-run` — force preview of mutations (overrides dangerous mode)
-- `--skip-deploys` — don't trigger redeployments after variable changes
-- `--fail-fast` — stop on first error during apply (default: continue)
+Global flags (available on all commands):
+
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--token` | `RAILWAY_TOKEN` | — | Auth token (project or account-level). Overrides stored OAuth. |
+| `--project` | `FAT_CONTROLLER_PROJECT` | — | Project ID or name. Required with account-level tokens. |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | — | Environment name. Required with account-level tokens. |
+| `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `text` | Output format: `text`, `json`, `toml`. |
+| `--color` | `FAT_CONTROLLER_COLOR` | `auto` | Color output: `auto`, `always`, `never`. Respects `NO_COLOR`. |
+| `--verbose`, `-v` | — | `false` | Show debug info (HTTP requests, timing). |
+| `--quiet`, `-q` | — | `false` | Suppress informational output, show only results/errors. |
+| `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `30s` | API request timeout. |
+
+Command-specific flags:
+
+| Flag | Commands | Description |
+|------|----------|-------------|
+| `--config <path>` | `diff`, `apply` | Config file path (default `fat-controller.toml`). Repeatable. |
+| `--service <name>` | `get`, `diff`, `apply` | Scope to a single service. |
+| `--full` | `get` | Include IDs and read-only fields in output. |
+| `--confirm` | `set`, `delete`, `apply` | Force mutation execution (overrides safe mode). |
+| `--dry-run` | `set`, `delete`, `apply` | Force mutation preview (overrides dangerous mode). |
+| `--skip-deploys` | `set`, `delete`, `apply` | Don't trigger redeployments after variable changes. |
+| `--fail-fast` | `apply` | Stop on first error (default: continue, report summary). |
 
 ### Confirmation mode
 
@@ -106,7 +122,8 @@ confirm = true   # dangerous mode
 FAT_CONTROLLER_CONFIRM=true   # env var equivalent
 ```
 
-Flags always override the configured default.
+Flags always override the configured default. `NO_COLOR` (any value)
+disables color output regardless of `--color` setting.
 
 ## Architecture
 

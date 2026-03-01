@@ -41,6 +41,10 @@ services in the project+environment; `--service` narrows when needed.
 Commands are grouped by **domain**, not by scope:
 
 ```
+fat-controller auth login       # Browser-based OAuth login, stores account-level token
+fat-controller auth logout      # Clear stored credentials
+fat-controller auth status      # Show current auth state (who am I, what scope)
+
 fat-controller config pull      # Fetch live state -> railway-state.toml
 fat-controller config diff      # Compare railway-config.toml against live state
 fat-controller config apply     # Push differences (dry-run by default, --confirm to execute)
@@ -148,13 +152,45 @@ Endpoint: `https://backboard.railway.com/graphql/v2`
 
 ### Authentication
 
-Uses a **project access token** with the `Project-Access-Token` header (not
-`Authorization: Bearer`). This is a per-project token, not an account token.
+The tool supports two authentication methods, resolved in order:
 
-The token implicitly scopes all operations to one project + environment.
-The `projectToken` query returns the project and environment IDs.
+1. **Environment variable** — `RAILWAY_TOKEN` (or a `.env` file) can hold
+   either a project access token or an account-level token. Intended for CI
+   and non-interactive use.
+2. **Stored OAuth credentials** — `fat-controller auth login` performs a
+   browser-based OAuth 2.0 flow and persists the token locally.
 
-Token is read from `RAILWAY_TOKEN` env var or a `.env` file.
+**Project access tokens** use the `Project-Access-Token` header and
+implicitly scope to one project + environment. The `projectToken` query
+returns the project and environment IDs.
+
+**Account-level tokens** (from OAuth or manually created in the dashboard)
+use the `Authorization: Bearer` header and can access any resource the user
+is authorized for. Commands that need a project/environment will require
+`--project` and `--environment` flags (or a local context file, future).
+
+#### OAuth 2.0 flow (auth login)
+
+Railway exposes a full OAuth 2.0 + OIDC system:
+
+- Authorization endpoint: `https://backboard.railway.com/oauth/auth`
+- Token endpoint: `https://backboard.railway.com/oauth/token`
+- Dynamic client registration: `POST https://backboard.railway.com/oauth/register`
+- OIDC discovery: `https://backboard.railway.com/oauth/.well-known/openid-configuration`
+
+The login flow:
+
+1. Register as a native (public) client via dynamic registration if needed
+   (one-time, client ID stored locally).
+2. Start a local HTTP server on a random port for the callback.
+3. Open the browser to the authorization endpoint with PKCE (`S256`),
+   redirect URI `http://127.0.0.1:<port>/callback`.
+4. Exchange the authorization code for an access token + refresh token.
+5. Store tokens in `~/.config/fat-controller/auth.json` (XDG-compliant).
+6. Use the refresh token to renew the access token transparently (1hr TTL).
+
+`auth logout` clears the stored tokens. `auth status` calls the `me`
+query and displays the authenticated user + available scopes.
 
 ### Queries for pull
 
@@ -219,11 +255,12 @@ fat-controller/
 ├── main.go                       # Entry point, command dispatch
 ├── internal/
 │   ├── config/                   # TOML config/state types + parsing
+│   ├── auth/                     # OAuth flow, token storage, refresh
 │   ├── railway/                  # GQL client
 │   │   ├── schema.graphql        # Introspected schema (checked in)
 │   │   ├── operations.graphql    # Queries + mutations
 │   │   ├── generated.go          # genqlient output (checked in)
-│   │   └── client.go             # Client setup, auth
+│   │   └── client.go             # Client setup, auth header resolution
 │   └── diff/                     # Diffing logic + display
 ├── genqlient.yaml
 ├── go.mod
@@ -233,27 +270,35 @@ fat-controller/
 
 ## Milestones
 
-### M1: Scaffold + schema
+### M1: Scaffold + auth
 
-- `go mod init`, genqlient setup
+- `go mod init`, CLI framework setup
+- `auth login` — OAuth 2.0 + PKCE browser flow, token storage
+- `auth logout` — clear stored credentials
+- `auth status` — display current user via `me` query
+- Support `RAILWAY_TOKEN` env var for project access tokens
+- Auth header resolution: env var takes precedence, then stored OAuth token
+
+### M2: Schema + GQL client
+
 - Fetch Railway schema via introspection
-- Wire up GQL client with project-access-token auth
+- genqlient setup, wire up GQL client
 - Verify basic query (`projectToken`) works
 
-### M2: Pull
+### M3: Pull
 
 - Implement all pull queries (services, variables, instances, limits, etc.)
 - Generate `railway-state.toml`
 - No Railway CLI dependency
 
-### M3: Diff
+### M4: Diff
 
 - Define config types (subset of state types)
 - Parse both files, compute differences
 - Display: coloured terminal output, grouped by service
 - Handle variable ownership semantics (section present = managed)
 
-### M4: Apply
+### M5: Apply
 
 - Dry-run by default, `--confirm` to execute
 - `variableCollectionUpsert` for variables (shared + per-service)

@@ -242,3 +242,79 @@ fat-controller/
 - GoReleaser for prebuilt binaries
 - Secrets file support (gitignored, merged at apply time)
 - `init` command to bootstrap `railway-config.toml` from current state
+
+## Open Questions
+
+### Secret handling gap
+
+The current options for managing secrets are limited. Option 1 (omit from
+config) means you can't manage *any* variables for a service if some are
+secrets — it's all-or-nothing at the section level. Option 3 (secrets file)
+is punted to Future.
+
+Consider supporting environment variable interpolation in config values
+(e.g. `SECRET_KEY = "${SECRET_KEY}"` or a `$env{}` syntax distinct from
+Railway's `${{}}` references). This would let you commit the config with
+placeholders and resolve from the local environment at apply time.
+
+### Deletion safety
+
+"Key in state, not in config, but section exists in config → Delete" is
+correct but dangerous. A typo or accidental removal of a line deletes a
+production variable. The dry-run default helps, but consider:
+
+- Printing deletions prominently with explicit "WILL DELETE" language
+- An `--allow-deletes` flag or confirmation prompt specifically for deletions
+- Requiring an explicit deletion marker rather than implicit deletion by
+  omission
+
+### Volumes, domains, and TCP proxies in apply
+
+The pull queries include volumes, domains, and TCP proxies, but the
+mutations section only covers variables, service instance settings, and
+resource limits. Are volumes/domains/TCP proxies read-only in this tool, or
+is that a gap? Should be explicitly stated either way.
+
+### Shared variable semantics
+
+The config example shows `[shared_variables]` but the diff semantics don't
+address:
+
+- Does `variableCollectionUpsert` work differently for shared variables
+  vs per-service?
+- If a shared variable and a per-service variable collide, what wins?
+- Does the "section presence = ownership" deletion rule apply to
+  `[shared_variables]` too?
+
+### Error handling and partial apply
+
+What happens when apply succeeds for service A but fails for service B?
+The plan says "mutations are applied one service at a time" but doesn't
+address rollback, whether to continue or stop on first error, or what to
+report. Suggested stance: "Apply is best-effort, non-transactional. On
+failure, report what was applied and what failed, then exit non-zero."
+
+### Apply logic needs a package
+
+The project structure has `internal/config/`, `internal/railway/`, and
+`internal/diff/`, but apply orchestration (read config, run diff, execute
+mutations) doesn't have a home. Neither `diff/` nor `railway/` is a clean
+fit. Consider `internal/apply/` or `internal/engine/`.
+
+### CLI framework
+
+No CLI framework is mentioned. For three subcommands with shared flags,
+something like `cobra` or `kong` would reduce boilerplate. Worth deciding
+up front.
+
+### Testing strategy
+
+No testing approach is described. Even a brief note would help — e.g.
+unit tests for diff logic, integration tests with recorded GQL responses.
+
+### Milestone scoping
+
+- `--service` flag is listed in Flags but punted to Future. It's simple
+  to implement and useful immediately — consider pulling into M3/M4.
+- Config validation (warn on unknown keys, typos like `varaibles`) is
+  listed as Future but is a meaningful footgun. Consider pulling into M3.

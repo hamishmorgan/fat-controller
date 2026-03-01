@@ -73,57 +73,78 @@ fat-controller service list     # List services in the project
 fat-controller logs tail        # Stream logs
 ```
 
-### Flags and environment variables
+### Settings
 
-Global flags (available on all commands):
+Every setting can be specified at up to five levels. Higher levels
+override lower ones:
 
-| Flag | Env var | Default | Description |
-|------|---------|---------|-------------|
-| `--token` | `RAILWAY_TOKEN` | — | Auth token (project or account-level). Overrides stored OAuth. |
-| `--project` | `FAT_CONTROLLER_PROJECT` | — | Project ID or name. Required with account-level tokens. |
-| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | — | Environment name. Required with account-level tokens. |
-| `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `text` | Output format: `text`, `json`, `toml`. |
-| `--color` | `FAT_CONTROLLER_COLOR` | `auto` | Color output: `auto`, `always`, `never`. Respects `NO_COLOR`. |
-| `--verbose`, `-v` | — | `false` | Show debug info (HTTP requests, timing). |
-| `--quiet`, `-q` | — | `false` | Suppress informational output, show only results/errors. |
-| `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `30s` | API request timeout. |
+1. **Compiled-in defaults** (lowest)
+2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`
+3. **Local config** — `.fat-controller.toml` in working dir or git root
+4. **Environment variable**
+5. **CLI flag** (highest)
 
-Command-specific flags:
+The full settings table:
 
-| Flag | Commands | Description |
-|------|----------|-------------|
-| `--config <path>` | `diff`, `apply` | Config file path (default `fat-controller.toml`). Repeatable. |
-| `--service <name>` | `get`, `diff`, `apply` | Scope to a single service. |
-| `--full` | `get` | Include IDs and read-only fields in output. |
-| `--confirm` | `set`, `delete`, `apply` | Force mutation execution (overrides safe mode). |
-| `--dry-run` | `set`, `delete`, `apply` | Force mutation preview (overrides dangerous mode). |
-| `--skip-deploys` | `set`, `delete`, `apply` | Don't trigger redeployments after variable changes. |
-| `--fail-fast` | `apply` | Stop on first error (default: continue, report summary). |
+| Setting | CLI flag | Env var | Config key | Default | Description |
+|---------|----------|---------|------------|---------|-------------|
+| Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token. `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
+| Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name. Required with account-level tokens. |
+| Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name. Required with account-level tokens. |
+| Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
+| Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR`. |
+| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout. |
+| Confirm | `--confirm` | `FAT_CONTROLLER_CONFIRM` | `confirm` | `false` | Auto-execute mutations (dangerous mode). |
+| Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Force preview of mutations. |
+| Config file | `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Railway config file path. Repeatable. |
+| Service | `--service` | `FAT_CONTROLLER_SERVICE` | `service` | — | Scope to a single service. |
+| Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments. |
+| Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error during apply. |
+| Full output | `--full` | — | — | `false` | Include IDs and read-only fields (get only). |
+| Verbose | `--verbose`, `-v` | — | — | `false` | Debug output (HTTP requests, timing). |
+| Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output. |
+
+**Token precedence:** `--token` flag > `RAILWAY_API_TOKEN` env var >
+`RAILWAY_TOKEN` env var > stored OAuth credentials (keyring/file).
+`RAILWAY_TOKEN` uses the `Project-Access-Token` header (project-scoped).
+`RAILWAY_API_TOKEN` uses `Authorization: Bearer` (account/workspace-scoped).
+
+#### Example: global config file
+
+```toml
+# ~/.config/fat-controller/config.toml
+# User-wide defaults
+
+output = "json"          # prefer JSON output everywhere
+color = "auto"
+timeout = "60s"
+```
+
+#### Example: local config file
+
+```toml
+# .fat-controller.toml (in project root, committed)
+# Project-specific settings
+
+project = "my-railway-project"
+environment = "production"
+config = "infra/fat-controller.toml"   # non-default config location
+skip_deploys = true                     # batch changes, deploy separately
+```
 
 ### Confirmation mode
 
-All mutations (`set`, `delete`, `apply`) respect a configurable
-confirmation mode:
+All mutations (`set`, `delete`, `apply`) respect the `confirm` setting:
 
-- **Safe mode (default):** mutations are dry-run. Pass `--confirm` to
-  execute.
-- **Dangerous mode (opt-in):** mutations execute immediately. Pass
-  `--dry-run` to preview.
+- **Safe mode (default, `confirm = false`):** mutations are dry-run.
+  Pass `--confirm` to execute.
+- **Dangerous mode (`confirm = true`):** mutations execute immediately.
+  Pass `--dry-run` to preview.
 
-Set via tool config or env var:
+This can be set at any level: global config, local config, env var
+(`FAT_CONTROLLER_CONFIRM=true`), or CLI flag. Flags always win.
 
-```toml
-# ~/.config/fat-controller/config.toml or .fat-controller.toml
-[defaults]
-confirm = true   # dangerous mode
-```
-
-```bash
-FAT_CONTROLLER_CONFIRM=true   # env var equivalent
-```
-
-Flags always override the configured default. `NO_COLOR` (any value)
-disables color output regardless of `--color` setting.
+`NO_COLOR` (any value) disables color output regardless of `--color`.
 
 ## Architecture
 
@@ -390,24 +411,25 @@ Credential Manager. Pure Go, no CGo.
 OAuth tokens are stored using a keyring-first strategy (same pattern as
 the `gh` CLI):
 
-1. **`RAILWAY_TOKEN` env var** — highest priority, for CI and non-interactive
-   use. Can be a project access token or account-level token.
+1. **`--token` flag or env vars** — highest priority. `RAILWAY_TOKEN`
+   (project-scoped) or `RAILWAY_API_TOKEN` (account/workspace-scoped).
 2. **OS keyring** — primary persistent storage. Encrypted at rest by the OS.
    Service name: `fat-controller`, key: hostname or user identifier.
 3. **Fallback file** — `$XDG_CONFIG_HOME/fat-controller/auth.json` with mode
    0600. Used when no keyring daemon is available (headless, SSH, containers).
    A warning is printed when falling back to plaintext storage.
 
-### Config precedence (lowest to highest)
+### Config loading
+
+All settings (see "Settings" table above) can be specified at five
+levels. Layering is handled by koanf — each level is loaded in order,
+later values override earlier ones:
 
 1. Compiled-in defaults
-2. User config — `$XDG_CONFIG_HOME/fat-controller/config.toml`
-3. Project config — `.fat-controller.toml` in working directory or git root
-4. Environment variables — `FAT_CONTROLLER_*`
+2. Global config — `$XDG_CONFIG_HOME/fat-controller/config.toml`
+3. Local config — `.fat-controller.toml` in working directory or git root
+4. Environment variables — `FAT_CONTROLLER_*` / `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN`
 5. CLI flags
-
-Layering is handled by koanf: each level is loaded in order, later values
-override earlier ones.
 
 ## Project structure
 

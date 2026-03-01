@@ -1,8 +1,9 @@
 # Fat Controller — Project Plan
 
-Declarative configuration management for [Railway](https://railway.com)
-projects. Pull live state from Railway's GraphQL API, diff against a local
-desired-state config, apply the difference back.
+A CLI for managing [Railway](https://railway.com) projects. The initial
+focus is declarative configuration management — pull live state, diff
+against a desired-state config, apply the difference — but the tool is
+designed to grow into a comprehensive Railway CLI over time.
 
 ## Motivation
 
@@ -20,12 +21,36 @@ multi-service projects this means:
 Fat Controller treats Railway project configuration as code: pull the live
 state, declare the desired state in a TOML file, diff, and apply.
 
-## Commands
+## Scope and command structure
+
+Railway has four scope levels: **workspace > project > environment >
+service**. Rather than encoding these as nested subcommands, scope is
+determined by context:
+
+1. **Auth token** — a project access token implicitly sets project +
+   environment.
+2. **Flags** — `--service <name>` narrows to a single service.
+3. **Future**: a local context file or workspace-level auth could broaden
+   scope.
+
+The default is as broad as the auth allows. `config pull` fetches all
+services in the project+environment; `--service` narrows when needed.
+
+Commands are grouped by **domain**, not by scope:
 
 ```
-fat-controller pull     # Fetch live state -> railway-state.toml
-fat-controller diff     # Compare railway-config.toml against live state
-fat-controller apply    # Push differences (dry-run by default, --confirm to execute)
+fat-controller config pull      # Fetch live state -> railway-state.toml
+fat-controller config diff      # Compare railway-config.toml against live state
+fat-controller config apply     # Push differences (dry-run by default, --confirm to execute)
+```
+
+Future command groups (not in scope for initial release):
+
+```
+fat-controller deploy list      # List deployments
+fat-controller deploy trigger   # Trigger a redeploy
+fat-controller service list     # List services in the project
+fat-controller logs tail        # Stream logs
 ```
 
 ### Flags

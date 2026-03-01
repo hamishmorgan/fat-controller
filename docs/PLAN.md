@@ -61,11 +61,13 @@ fat-controller logs tail        # Stream logs
 
 ### Flags
 
-- `--config <path>` — path to config file (default `railway-config.toml`)
+- `--config <path>` — path to config file (default `railway-config.toml`);
+  repeatable to merge multiple files
 - `--state <path>` — path to state file (default `railway-state.toml`)
 - `--service <name>` — scope to a single service
 - `--confirm` — actually execute mutations (apply only; without this, dry-run)
 - `--skip-deploys` — don't trigger redeployments after variable changes
+- `--fail-fast` — stop on first error during apply (default: continue)
 
 ## Architecture
 
@@ -92,7 +94,9 @@ SHARED_SECRET = "some-value"
 APP_ENV = "production"
 DATABASE_URL = "postgresql://${{postgres.PGUSER}}:${{postgres.PGPASSWORD}}@${{postgres.PGHOST}}:5432/${{postgres.PGDATABASE}}"
 REDIS_URL = "${{redis.REDIS_URL}}"
+STRIPE_KEY = "${STRIPE_KEY}"    # resolved from local environment at apply time
 PORT = "8080"
+OLD_VAR = ""                    # explicit delete
 
 [api.resources]
 vcpus = 2
@@ -105,37 +109,62 @@ QUEUE_NAME = "default"
 
 ### Diff semantics
 
-Comparing config (desired) against state (live):
+Variables are **additive-only** by default. Only variables explicitly
+mentioned in config are diffed — unmentioned variables are left alone.
 
 | Situation | Behaviour |
 |-----------|-----------|
-| Key in config, not in state | **Create** |
+| Key in config with value, not in state | **Create** |
 | Key in both, different value | **Update** |
-| Key in state, not in config, but section exists in config | **Delete** (variables only) |
-| Key in state, not in config, section absent from config | **Ignore** (unmanaged service) |
+| Key in both, same value | **No-op** |
+| Key in config with empty string `""` | **Delete** |
+| Key in state, not in config | **Ignore** |
 | Read-only field in config | **Ignore** |
 
-The "section presence = ownership" rule applies **only to variables**. For
-settings (resources, deploy config), only explicitly specified fields are
-diffed — omitted fields are never zeroed out.
+For settings (resources, deploy config), the same principle applies: only
+explicitly specified fields are diffed — omitted fields are never zeroed
+out.
 
-This means you can manage a subset of services. If a service has no section
-in `railway-config.toml`, it is entirely unmanaged.
+Shared variables (`[shared_variables]`) follow the same rules as
+per-service variables. Railway's own precedence applies: per-service
+overrides shared when both define the same key.
+
+### Multi-file config
+
+Multiple config files are merged in order (later values override earlier):
+
+- `railway-config.toml` — base config (committed)
+- `railway-config.local.toml` — auto-discovered if present (gitignored,
+  for local overrides and secrets)
+- Additional files via `--config` flags
+
+```bash
+fat-controller config diff
+fat-controller config diff --config base.toml --config overrides.toml
+```
+
+### Variable interpolation
+
+Two interpolation syntaxes in config values:
+
+- `${{service.VAR}}` — **Railway reference**. Passed through as-is.
+  Railway resolves at runtime. Safe to commit.
+- `${VAR}` — **Local environment variable**. Resolved at apply time from
+  the local shell environment. Missing env var = error. Useful for secrets
+  in CI.
 
 ### Secret handling
 
-Variables using Railway reference syntax (`${{service.VAR}}`) are safe to
-commit — Railway resolves them at runtime. Raw secrets can be handled three
-ways:
+With additive-only semantics, secrets that aren't in the config are simply
+ignored. Three patterns for managing secrets:
 
-1. **Omit from config** — if a `[service.variables]` section exists, omitted
-   keys are deletion candidates. To manage *some* vars while leaving secrets
-   untouched, don't include the `[service.variables]` section and manage that
-   service's variables entirely in the dashboard.
-2. **Include in config** — acceptable for non-sensitive values or if the config
-   file is gitignored.
-3. **Future: separate secrets file** — a gitignored overrides file merged at
-   apply time.
+1. **Don't mention them** — set in the dashboard, untouched by this tool.
+   Works because unmentioned = ignored.
+2. **Railway references** — `DATABASE_URL = "${{postgres.DATABASE_URL}}"`.
+   Safe to commit. Railway resolves at runtime.
+3. **Local env interpolation** — `STRIPE_KEY = "${STRIPE_KEY}"`. Resolved
+   from local environment at apply time. Config file is safe to commit;
+   actual value comes from CI env vars or a `.env` file.
 
 ### Apply ordering and redeployment
 
@@ -144,7 +173,12 @@ ways:
 - When applying both variables and settings, settings are applied first
   (via `serviceInstanceUpdate`), then variables. This way the triggered
   redeploy picks up both changes.
-- Mutations are applied one service at a time.
+- Shared variables are applied first, then services in alphabetical order.
+- Apply is **best-effort, non-transactional**. By default, a failure on
+  one service does not stop processing of remaining services. Use
+  `--fail-fast` to stop on first error. On completion, a summary reports
+  what was applied and what failed. Exit code is non-zero if any service
+  failed.
 
 ## Railway GraphQL API
 
@@ -236,6 +270,12 @@ contains per-resource `.graphql` files with exact queries, mutations, and
 - `go run github.com/hamishmorgan/fat-controller@latest` — zero-install
 - Static binary via GoReleaser if distribution is needed later
 
+### CLI framework: kong
+
+[kong](https://github.com/alecthomas/kong) — struct-based CLI parser.
+Commands and flags are defined as Go structs with tags. Cleaner than cobra
+for nested subcommand groups, less boilerplate.
+
 ### GraphQL: genqlient
 
 [genqlient](https://github.com/Khan/genqlient) generates typed Go functions
@@ -309,10 +349,13 @@ override earlier ones.
 
 ```
 fat-controller/
-├── main.go                       # Entry point, command dispatch
+├── main.go                       # Entry point, kong CLI dispatch
+├── cmd/                          # Command handlers (thick — orchestration lives here)
+│   ├── auth/                     # auth login/logout/status
+│   └── config/                   # config pull/diff/apply
 ├── internal/
 │   ├── auth/                     # OAuth flow, keyring, token resolution
-│   ├── config/                   # TOML config/state types + parsing
+│   ├── config/                   # TOML config/state types, parsing, interpolation
 │   ├── diff/                     # Diffing logic + display
 │   ├── platform/                 # XDG paths, layered config loading (koanf)
 │   └── railway/                  # GQL client
@@ -345,16 +388,22 @@ fat-controller/
 
 ### M3: Pull
 
-- Implement all pull queries (services, variables, instances, limits, etc.)
-- Generate `railway-state.toml`
+- Implement all pull queries (services, variables, instances, limits,
+  volumes, domains, TCP proxies)
+- Generate `railway-state.toml` (volumes/domains/TCP are pull-only —
+  visible in state but not manageable in config yet)
 - No Railway CLI dependency
 
 ### M4: Diff
 
 - Define config types (subset of state types)
-- Parse both files, compute differences
+- Multi-file config loading: auto-discover `railway-config.local.toml`,
+  support repeatable `--config` flag
+- `${VAR}` local env interpolation (resolve before diffing)
+- Parse config + state, compute differences (additive-only semantics)
 - Display: coloured terminal output, grouped by service
-- Handle variable ownership semantics (section present = managed)
+- `--service` flag to scope to a single service
+- Config validation: warn on unknown keys / typos
 
 ### M5: Apply
 
@@ -363,88 +412,80 @@ fat-controller/
 - `serviceInstanceUpdate` for deploy/build settings
 - `serviceInstanceLimitsUpdate` for resource limits
 - `--skip-deploys` flag
+- `--fail-fast` flag (default: continue on failure, report summary)
 - Apply settings before variables (so one redeploy catches both)
 
 ### Future
 
-- Config validation (warn on unknown keys, type mismatches)
-- `--service` flag to scope operations
+- Volume, domain, and TCP proxy management in config
 - GoReleaser for prebuilt binaries
-- Secrets file support (gitignored, merged at apply time)
 - `init` command to bootstrap `railway-config.toml` from current state
 
-## Open Questions
+## Decisions
 
-### Secret handling gap
+Resolved during planning. Rationale preserved for future reference.
 
-The current options for managing secrets are limited. Option 1 (omit from
-config) means you can't manage *any* variables for a service if some are
-secrets — it's all-or-nothing at the section level. Option 3 (secrets file)
-is punted to Future.
+### Variable ownership: additive-only
 
-Consider supporting environment variable interpolation in config values
-(e.g. `SECRET_KEY = "${SECRET_KEY}"` or a `$env{}` syntax distinct from
-Railway's `${{}}` references). This would let you commit the config with
-placeholders and resolve from the local environment at apply time.
+Variables are additive-only by default. Only variables explicitly listed in
+config are managed. Unmentioned variables are left alone — no implicit
+deletion by omission. To delete a variable, set it to empty string:
+`OLD_VAR = ""`. This eliminates the previous "section presence = ownership"
+model and avoids accidental deletions.
 
-### Deletion safety
+### Secret handling: local env interpolation + multi-file
 
-"Key in state, not in config, but section exists in config → Delete" is
-correct but dangerous. A typo or accidental removal of a line deletes a
-production variable. The dry-run default helps, but consider:
+Secrets are handled through three complementary mechanisms: don't mention
+them (unmanaged), use Railway references (`${{service.VAR}}`), or use
+local env interpolation (`${VAR}`). The `${VAR}` syntax (single braces) is
+deliberately distinct from Railway's `${{}}` (double braces) — Railway
+chose double braces specifically to avoid shell variable collision.
 
-- Printing deletions prominently with explicit "WILL DELETE" language
-- An `--allow-deletes` flag or confirmation prompt specifically for deletions
-- Requiring an explicit deletion marker rather than implicit deletion by
-  omission
+Multi-file merging provides additional flexibility: a gitignored
+`railway-config.local.toml` is auto-discovered, and `--config` can be
+repeated for explicit layering.
 
-### Volumes, domains, and TCP proxies in apply
+### Deletion safety: dry-run default is sufficient
 
-The pull queries include volumes, domains, and TCP proxies, but the
-mutations section only covers variables, service instance settings, and
-resource limits. Are volumes/domains/TCP proxies read-only in this tool, or
-is that a gap? Should be explicitly stated either way.
+With additive-only semantics, deletions are always explicit (`KEY = ""`).
+The dry-run default on apply plus prominent diff output (showing "DELETE"
+clearly) provides sufficient safety without extra flags.
 
-### Shared variable semantics
+### Volumes, domains, TCP proxies: pull-only for now
 
-The config example shows `[shared_variables]` but the diff semantics don't
-address:
+These are included in the state file for visibility but are not manageable
+via config in the initial release. The focus is on the variable/settings
+gap. Management can be added in a future milestone — the additive-only
+model makes it safe when we do.
 
-- Does `variableCollectionUpsert` work differently for shared variables
-  vs per-service?
-- If a shared variable and a per-service variable collide, what wins?
-- Does the "section presence = ownership" deletion rule apply to
-  `[shared_variables]` too?
+### Shared variables: same semantics as per-service
 
-### Error handling and partial apply
+Shared variables follow the same additive-only rules. The API call is the
+same mutation (`variableCollectionUpsert`) without a `serviceId`. Railway
+handles precedence: per-service overrides shared when both define the
+same key.
 
-What happens when apply succeeds for service A but fails for service B?
-The plan says "mutations are applied one service at a time" but doesn't
-address rollback, whether to continue or stop on first error, or what to
-report. Suggested stance: "Apply is best-effort, non-transactional. On
-failure, report what was applied and what failed, then exit non-zero."
+### Error handling: continue by default, --fail-fast option
 
-### Apply logic needs a package
+Apply is best-effort and non-transactional. By default, a failure on one
+service does not stop processing of remaining services. `--fail-fast` stops
+on first error. A summary reports what was applied and what failed. Exit
+code is non-zero if anything failed.
 
-The project structure has `internal/config/`, `internal/railway/`, and
-`internal/diff/`, but apply orchestration (read config, run diff, execute
-mutations) doesn't have a home. Neither `diff/` nor `railway/` is a clean
-fit. Consider `internal/apply/` or `internal/engine/`.
+### Orchestration: thick cmd/ layer
 
-### CLI framework
+Command handlers in `cmd/` directly call `internal/` packages. No separate
+engine or orchestration package. Extract if complexity warrants it later.
 
-No CLI framework is mentioned. For three subcommands with shared flags,
-something like `cobra` or `kong` would reduce boilerplate. Worth deciding
-up front.
+### CLI framework: kong
+
+[kong](https://github.com/alecthomas/kong) for struct-based CLI parsing.
+Less boilerplate than cobra for nested subcommand groups.
 
 ### Testing strategy
 
-No testing approach is described. Even a brief note would help — e.g.
-unit tests for diff logic, integration tests with recorded GQL responses.
-
-### Milestone scoping
-
-- `--service` flag is listed in Flags but punted to Future. It's simple
-  to implement and useful immediately — consider pulling into M3/M4.
-- Config validation (warn on unknown keys, typos like `varaibles`) is
-  listed as Future but is a meaningful footgun. Consider pulling into M3.
+- Unit tests for pure logic: diff, config parsing, interpolation, PKCE
+- HTTP mock tests (`httptest.NewServer`) for OAuth and GraphQL
+- Keyring mock tests (`go-keyring MockInit()`) for token storage
+- Golden file tests for diff output formatting
+- No live Railway integration tests in CI

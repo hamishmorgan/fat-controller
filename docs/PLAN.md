@@ -23,15 +23,17 @@ state, declare the desired state in a TOML file, diff, and apply.
 
 ## Scope and command structure
 
-Railway has four scope levels: **workspace > project > environment >
-service**. Rather than encoding these as nested subcommands, scope is
-determined by context:
+Railway has five scope levels: **user > workspace > project > environment >
+service**. A user account can access multiple workspaces, each containing
+multiple projects. Rather than encoding these as nested subcommands, scope
+is determined by context:
 
 1. **Auth token** — a project access token implicitly sets project +
-   environment.
+   environment (narrowest). An account-level token could access any
+   workspace/project the user belongs to (broadest).
 2. **Flags** — `--service <name>` narrows to a single service.
-3. **Future**: a local context file or workspace-level auth could broaden
-   scope.
+3. **Future**: a local context file, workspace-level auth, or account-level
+   auth could broaden scope.
 
 The default is as broad as the auth allows. `config pull` fetches all
 services in the project+environment; `--service` narrows when needed.

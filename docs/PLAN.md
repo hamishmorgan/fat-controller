@@ -38,18 +38,31 @@ is determined by context:
 The default is as broad as the auth allows. `config pull` fetches all
 services in the project+environment; `--service` narrows when needed.
 
-Commands are grouped by **domain**, not by scope:
+Commands are grouped by **domain**, not by scope. There are two
+interaction modes: **imperative** (one-off CRUD against live Railway)
+and **declarative** (config-file-driven diff and apply).
 
 ```
-fat-controller auth login       # Browser-based OAuth login, stores account-level token
+fat-controller auth login       # Browser-based OAuth login
 fat-controller auth logout      # Clear stored credentials
-fat-controller auth status      # Show current auth state (who am I, what scope)
+fat-controller auth status      # Show current auth state
 
-fat-controller config pull      # Show live config (pipe to file to bootstrap)
-fat-controller config pull --full  # Show everything including IDs and read-only fields
-fat-controller config diff      # Compare fat-controller.toml against live state
-fat-controller config apply     # Push differences (dry-run by default, --confirm to execute)
+# Imperative — read/write live Railway directly
+fat-controller config get                         # all config (pipe to file to bootstrap)
+fat-controller config get api.variables           # all variables for a service
+fat-controller config get api.variables.PORT      # one specific value
+fat-controller config get --full                  # everything including IDs and read-only fields
+fat-controller config set api.variables.PORT 8080 # set a value
+fat-controller config delete api.variables.OLD    # delete a value
+
+# Declarative — config file driven
+fat-controller config diff      # compare fat-controller.toml against live state
+fat-controller config apply     # push differences from config file
 ```
+
+Dot-path addressing (`service.section.key`) is used universally: in
+`get/set/delete` arguments, in `--service` scoping for diff/apply, and
+in config file section headers.
 
 Future command groups (not in scope for initial release):
 
@@ -64,11 +77,36 @@ fat-controller logs tail        # Stream logs
 
 - `--config <path>` — path to config file (default `fat-controller.toml`);
   repeatable to merge multiple files
-- `--service <name>` — scope to a single service
-- `--full` — show all fields including IDs and read-only (pull only)
-- `--confirm` — actually execute mutations (apply only; without this, dry-run)
+- `--service <name>` — scope diff/apply to a single service
+- `--full` — show all fields including IDs and read-only (get only)
+- `--confirm` — force execution of mutations (overrides safe mode)
+- `--dry-run` — force preview of mutations (overrides dangerous mode)
 - `--skip-deploys` — don't trigger redeployments after variable changes
 - `--fail-fast` — stop on first error during apply (default: continue)
+
+### Confirmation mode
+
+All mutations (`set`, `delete`, `apply`) respect a configurable
+confirmation mode:
+
+- **Safe mode (default):** mutations are dry-run. Pass `--confirm` to
+  execute.
+- **Dangerous mode (opt-in):** mutations execute immediately. Pass
+  `--dry-run` to preview.
+
+Set via tool config or env var:
+
+```toml
+# ~/.config/fat-controller/config.toml or .fat-controller.toml
+[defaults]
+confirm = true   # dangerous mode
+```
+
+```bash
+FAT_CONTROLLER_CONFIRM=true   # env var equivalent
+```
+
+Flags always override the configured default.
 
 ## Architecture
 
@@ -82,9 +120,9 @@ The only file the user manages is `fat-controller.toml` — the desired
 state. An optional `fat-controller.local.toml` (gitignored) provides
 overrides for secrets or local values.
 
-`pull` is an adoption/inspection tool: it outputs the current live config
-in the same format as `fat-controller.toml`, so you can pipe it to a file
-to bootstrap your config or inspect what's deployed.
+`config get` with no arguments outputs the full live config in
+`fat-controller.toml` format — pipe it to a file to bootstrap your
+config, or inspect what's deployed.
 
 Service names in the config are resolved to Railway IDs via the live API
 at diff/apply time.
@@ -395,13 +433,14 @@ fat-controller/
 - genqlient setup, wire up GQL client
 - Verify basic query (`projectToken`) works
 
-### M3: Pull
+### M3: Imperative CRUD (get/set/delete)
 
-- Implement all pull queries (services, variables, instances, limits,
-  volumes, domains, TCP proxies)
-- Output live config to stdout in `fat-controller.toml` format (default)
-- `--full` flag for verbose output including IDs and read-only fields
-- No Railway CLI dependency, no state file
+- `config get` — fetch live config (all, by service, by section, by key)
+- `config get --full` — verbose output with IDs and read-only fields
+- `config set` — set a single value by dot-path
+- `config delete` — delete a single value by dot-path
+- Confirmation mode for set/delete (safe mode default)
+- No state file — all operations query/mutate live Railway
 
 ### M4: Diff
 
@@ -416,7 +455,7 @@ fat-controller/
 
 ### M5: Apply
 
-- Dry-run by default, `--confirm` to execute
+- Confirmation mode (safe mode default, configurable)
 - `variableCollectionUpsert` for variables (shared + per-service)
 - `serviceInstanceUpdate` for deploy/build settings
 - `serviceInstanceLimitsUpdate` for resource limits

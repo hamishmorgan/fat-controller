@@ -186,11 +186,13 @@ The login flow:
 3. Open the browser to the authorization endpoint with PKCE (`S256`),
    redirect URI `http://127.0.0.1:<port>/callback`.
 4. Exchange the authorization code for an access token + refresh token.
-5. Store tokens in `~/.config/fat-controller/auth.json` (XDG-compliant).
+5. Store tokens in OS keychain (primary) or fallback file (see
+   "Configuration and storage" below).
 6. Use the refresh token to renew the access token transparently (1hr TTL).
 
-`auth logout` clears the stored tokens. `auth status` calls the `me`
-query and displays the authenticated user + available scopes.
+`auth logout` clears stored tokens from keychain and fallback file.
+`auth status` calls the `me` query and displays the authenticated user +
+available scopes.
 
 ### Queries for pull
 
@@ -248,20 +250,76 @@ from `.graphql` operation files against the schema. Workflow:
 [BurntSushi/toml](https://github.com/BurntSushi/toml) — the standard Go TOML
 library. Supports both encoding and decoding, preserves key order.
 
+### Configuration: koanf
+
+[koanf](https://github.com/knadh/koanf) — layered configuration library.
+Modular (zero deps in core), case-sensitive keys, explicit merge order.
+Replaces viper without the baggage (forced lowercase, global singleton,
+massive dep tree).
+
+### XDG directories: adrg/xdg
+
+[adrg/xdg](https://github.com/adrg/xdg) — full XDG Base Directory spec
+implementation. Cross-platform (Linux, macOS, Windows). Handles
+`CONFIG_HOME`, `DATA_HOME`, `STATE_HOME`, `CACHE_HOME`, `RUNTIME_DIR`.
+
+### Keyring: zalando/go-keyring
+
+[go-keyring](https://github.com/zalando/go-keyring) — OS keychain access.
+macOS Keychain, Linux Secret Service (GNOME Keyring / KWallet), Windows
+Credential Manager. Pure Go, no CGo.
+
+## Configuration and storage
+
+### File locations (XDG-compliant via adrg/xdg)
+
+| Path | Purpose | Example (Linux) |
+|------|---------|-----------------|
+| `$XDG_CONFIG_HOME/fat-controller/config.toml` | User preferences, defaults | `~/.config/fat-controller/config.toml` |
+| `$XDG_CONFIG_HOME/fat-controller/auth.json` | Token fallback (mode 0600, used when keyring unavailable) | `~/.config/fat-controller/auth.json` |
+| `$XDG_STATE_HOME/fat-controller/` | Logs, command history | `~/.local/state/fat-controller/` |
+| `$XDG_CACHE_HOME/fat-controller/` | Cached schema, etc. | `~/.cache/fat-controller/` |
+| `.fat-controller.toml` | Project-level config overrides (in working dir or git root) | `.fat-controller.toml` |
+
+### Token storage
+
+OAuth tokens are stored using a keyring-first strategy (same pattern as
+the `gh` CLI):
+
+1. **`RAILWAY_TOKEN` env var** — highest priority, for CI and non-interactive
+   use. Can be a project access token or account-level token.
+2. **OS keyring** — primary persistent storage. Encrypted at rest by the OS.
+   Service name: `fat-controller`, key: hostname or user identifier.
+3. **Fallback file** — `$XDG_CONFIG_HOME/fat-controller/auth.json` with mode
+   0600. Used when no keyring daemon is available (headless, SSH, containers).
+   A warning is printed when falling back to plaintext storage.
+
+### Config precedence (lowest to highest)
+
+1. Compiled-in defaults
+2. User config — `$XDG_CONFIG_HOME/fat-controller/config.toml`
+3. Project config — `.fat-controller.toml` in working directory or git root
+4. Environment variables — `FAT_CONTROLLER_*`
+5. CLI flags
+
+Layering is handled by koanf: each level is loaded in order, later values
+override earlier ones.
+
 ## Project structure
 
 ```
 fat-controller/
 ├── main.go                       # Entry point, command dispatch
 ├── internal/
+│   ├── auth/                     # OAuth flow, keyring, token resolution
 │   ├── config/                   # TOML config/state types + parsing
-│   ├── auth/                     # OAuth flow, token storage, refresh
-│   ├── railway/                  # GQL client
-│   │   ├── schema.graphql        # Introspected schema (checked in)
-│   │   ├── operations.graphql    # Queries + mutations
-│   │   ├── generated.go          # genqlient output (checked in)
-│   │   └── client.go             # Client setup, auth header resolution
-│   └── diff/                     # Diffing logic + display
+│   ├── diff/                     # Diffing logic + display
+│   ├── platform/                 # XDG paths, layered config loading (koanf)
+│   └── railway/                  # GQL client
+│       ├── schema.graphql        # Introspected schema (checked in)
+│       ├── operations.graphql    # Queries + mutations
+│       ├── generated.go          # genqlient output (checked in)
+│       └── client.go             # Client setup, auth header resolution
 ├── genqlient.yaml
 ├── go.mod
 ├── docs/PLAN.md

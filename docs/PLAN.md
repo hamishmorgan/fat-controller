@@ -45,8 +45,9 @@ fat-controller auth login       # Browser-based OAuth login, stores account-leve
 fat-controller auth logout      # Clear stored credentials
 fat-controller auth status      # Show current auth state (who am I, what scope)
 
-fat-controller config pull      # Fetch live state -> railway-state.toml
-fat-controller config diff      # Compare railway-config.toml against live state
+fat-controller config pull      # Show live config (pipe to file to bootstrap)
+fat-controller config pull --full  # Show everything including IDs and read-only fields
+fat-controller config diff      # Compare fat-controller.toml against live state
 fat-controller config apply     # Push differences (dry-run by default, --confirm to execute)
 ```
 
@@ -61,30 +62,38 @@ fat-controller logs tail        # Stream logs
 
 ### Flags
 
-- `--config <path>` — path to config file (default `railway-config.toml`);
+- `--config <path>` — path to config file (default `fat-controller.toml`);
   repeatable to merge multiple files
-- `--state <path>` — path to state file (default `railway-state.toml`)
 - `--service <name>` — scope to a single service
+- `--full` — show all fields including IDs and read-only (pull only)
 - `--confirm` — actually execute mutations (apply only; without this, dry-run)
 - `--skip-deploys` — don't trigger redeployments after variable changes
 - `--fail-fast` — stop on first error during apply (default: continue)
 
 ## Architecture
 
-### Two-file model
+### Live state, single config file
 
-| File | Purpose | Committed? |
-|------|---------|------------|
-| `railway-state.toml` | Full snapshot of live state (read-only, contains secrets + IDs) | No (gitignored) |
-| `railway-config.toml` | Declarative desired state (mutable fields only) | Yes (if using `${{references}}` for secrets) |
+There is no state file. `diff` and `apply` always query Railway's API for
+current live state. This means diffs are never stale, and secrets are
+never written to disk.
 
-The tool resolves service names to IDs via the pulled state at diff/apply time.
+The only file the user manages is `fat-controller.toml` — the desired
+state. An optional `fat-controller.local.toml` (gitignored) provides
+overrides for secrets or local values.
+
+`pull` is an adoption/inspection tool: it outputs the current live config
+in the same format as `fat-controller.toml`, so you can pipe it to a file
+to bootstrap your config or inspect what's deployed.
+
+Service names in the config are resolved to Railway IDs via the live API
+at diff/apply time.
 
 ### Config file format
 
-`railway-config.toml` is a **subset** of the state file format. It contains
-only mutable fields. Read-only fields (IDs, `current_size_mb`, deployment
-metadata) are silently ignored if present.
+`fat-controller.toml` contains only mutable fields. Read-only fields
+(IDs, `current_size_mb`, deployment metadata) are silently ignored if
+present.
 
 ```toml
 [shared_variables]
@@ -133,8 +142,8 @@ overrides shared when both define the same key.
 
 Multiple config files are merged in order (later values override earlier):
 
-- `railway-config.toml` — base config (committed)
-- `railway-config.local.toml` — auto-discovered if present (gitignored,
+- `fat-controller.toml` — base config (committed)
+- `fat-controller.local.toml` — auto-discovered if present (gitignored,
   for local overrides and secrets)
 - Additional files via `--config` flags
 
@@ -390,17 +399,17 @@ fat-controller/
 
 - Implement all pull queries (services, variables, instances, limits,
   volumes, domains, TCP proxies)
-- Generate `railway-state.toml` (volumes/domains/TCP are pull-only —
-  visible in state but not manageable in config yet)
-- No Railway CLI dependency
+- Output live config to stdout in `fat-controller.toml` format (default)
+- `--full` flag for verbose output including IDs and read-only fields
+- No Railway CLI dependency, no state file
 
 ### M4: Diff
 
 - Define config types (subset of state types)
-- Multi-file config loading: auto-discover `railway-config.local.toml`,
+- Multi-file config loading: auto-discover `fat-controller.local.toml`,
   support repeatable `--config` flag
 - `${VAR}` local env interpolation (resolve before diffing)
-- Parse config + state, compute differences (additive-only semantics)
+- Fetch live state from Railway API, diff against config (additive-only)
 - Display: coloured terminal output, grouped by service
 - `--service` flag to scope to a single service
 - Config validation: warn on unknown keys / typos
@@ -419,7 +428,7 @@ fat-controller/
 
 - Volume, domain, and TCP proxy management in config
 - GoReleaser for prebuilt binaries
-- `init` command to bootstrap `railway-config.toml` from current state
+- `init` command to interactively bootstrap `fat-controller.toml`
 
 ## Decisions
 
@@ -442,7 +451,7 @@ deliberately distinct from Railway's `${{}}` (double braces) — Railway
 chose double braces specifically to avoid shell variable collision.
 
 Multi-file merging provides additional flexibility: a gitignored
-`railway-config.local.toml` is auto-discovered, and `--config` can be
+`fat-controller.local.toml` is auto-discovered, and `--config` can be
 repeated for explicit layering.
 
 ### Deletion safety: dry-run default is sufficient

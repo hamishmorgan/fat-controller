@@ -15,3 +15,14 @@
 - [ ] Add volume, domain, and TCP proxy management to config (Future).
 - [ ] Add GoReleaser pipeline for prebuilt binaries (Future).
 - [ ] Make `config init` interactive bootstrap (Future).
+
+## Code Quality & Testing
+
+- [ ] Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (currently ~0-60%).
+- [ ] Add end-to-end integration tests using a staging Railway project or a mocked GraphQL API.
+- [ ] Automate CLI reference documentation generation (e.g., using `cobra/doc`).
+
+## Features
+
+- [ ] Add a `--dry-run` flag to `config apply` to simulate and validate mutations without making changes.
+- [ ] Support parsing, validating, and updating standard `railway.toml` native service configurations natively.

@@ -8,7 +8,9 @@ import (
 )
 
 func TestString_Defaults(t *testing.T) {
-	// With no ldflags, defaults should be used.
+	// In `go test`, BuildInfo.Main.Version is "(devel)", so version falls
+	// back to "dev". The commit and date may come from VCS settings if
+	// running in a git repo, or fall back to "unknown".
 	got := version.String()
 	if got == "" {
 		t.Fatal("String() should not be empty")
@@ -19,10 +21,22 @@ func TestString_Defaults(t *testing.T) {
 }
 
 func TestString_Format(t *testing.T) {
-	// The output should be a single line with version, commit, date.
 	got := version.String()
-	// Should not contain newlines.
 	if strings.Contains(got, "\n") {
 		t.Errorf("String() should be single line, got %q", got)
+	}
+	// Should always have the three-part format.
+	if !strings.Contains(got, "(commit ") {
+		t.Errorf("String() should contain '(commit ', got %q", got)
+	}
+	if !strings.Contains(got, ", built ") {
+		t.Errorf("String() should contain ', built ', got %q", got)
+	}
+}
+
+func TestVersion_Default(t *testing.T) {
+	got := version.Version()
+	if got != "dev" {
+		t.Errorf("Version() should be 'dev' in test, got %q", got)
 	}
 }

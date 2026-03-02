@@ -1,7 +1,7 @@
-schema: internal/railway/schema.graphql
+schema: ../internal/railway/schema.graphql
 operations:
-  - internal/railway/operations.graphql
-generated: internal/railway/generated.go
+  - ../internal/railway/operations.graphql
+generated: ../internal/railway/generated.go
 optional: pointer
 bindings:
   DateTime:

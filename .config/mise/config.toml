@@ -139,7 +139,7 @@ description = "Run Go code generation (genqlient)"
 run = """
 [ -f go.mod ] || exit 0
 go generate ./...
-go run github.com/Khan/genqlient -config .config/genqlient.yaml
+go run github.com/Khan/genqlient .config/genqlient.yaml
 """
 
 [tasks."lint:go"]

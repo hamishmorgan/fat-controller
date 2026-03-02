@@ -46,6 +46,8 @@ func NewOAuthClient() *OAuthClient {
 // RegistrationRequest is the body for dynamic client registration (RFC 7591).
 type RegistrationRequest struct {
 	ClientName              string   `json:"client_name"`
+	ClientURI               string   `json:"client_uri,omitempty"`
+	LogoURI                 string   `json:"logo_uri,omitempty"`
 	RedirectURIs            []string `json:"redirect_uris"`
 	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
 	GrantTypes              []string `json:"grant_types"`
@@ -75,6 +77,8 @@ type TokenResponse struct {
 func (c *OAuthClient) RegisterClient(redirectURI string) (*RegistrationResponse, error) {
 	reqBody := RegistrationRequest{
 		ClientName:              "Fat Controller CLI",
+		ClientURI:               "https://github.com/hamishmorgan/fat-controller",
+		LogoURI:                 "https://github.com/hamishmorgan/fat-controller/blob/main/docs/logo.png?raw=true",
 		RedirectURIs:            []string{redirectURI},
 		TokenEndpointAuthMethod: "none",
 		GrantTypes:              []string{"authorization_code", "refresh_token"},

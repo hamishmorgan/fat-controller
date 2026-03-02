@@ -10,9 +10,9 @@ hitting the API).
 
 | Code | Warning | When |
 |------|---------|------|
-| `W001` | Unknown top-level key | Key is not `shared`, `services`, or a known setting (catches typos like `servics`) |
-| `W002` | Unknown key in service block | Key inside `[services.X]` is not `variables` or a recognized service setting |
-| `W003` | Empty service block | `[services.X]` exists but defines no variables or settings |
+| `W001` | Unknown top-level key | Key is not `shared_variables`, a known service name, or a known setting (catches typos like `shaerd_variables`) |
+| `W002` | Unknown key in service block | Key inside `[X.variables]` or `[X.resources]` is not recognized |
+| `W003` | Empty service block | `[X.variables]` exists but defines no variables |
 
 ## Variable value warnings
 
@@ -26,7 +26,7 @@ hitting the API).
 
 | Code | Warning | When |
 |------|---------|------|
-| `W020` | Variable in both shared and service | Variable appears in `[shared]` and `[services.X]` — service value wins |
+| `W020` | Variable in both shared and service | Variable appears in `[shared_variables]` and `[X.variables]` — service value wins |
 | `W021` | Variable overridden by local file | Same variable defined in both `fat-controller.toml` and `fat-controller.local.toml` — local wins |
 
 ## Naming warnings

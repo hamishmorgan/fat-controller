@@ -30,7 +30,7 @@ clearly) provides sufficient safety without extra flags.
 
 ## Volumes, domains, TCP proxies: pull-only for now
 
-These are included in the state file for visibility but are not manageable
+These are included in `config get` output for visibility but are not manageable
 via config in the initial release. The focus is on the variable/settings
 gap. Management can be added in a future milestone — the additive-only
 model makes it safe when we do.

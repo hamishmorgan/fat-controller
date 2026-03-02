@@ -12,7 +12,7 @@ is determined by context:
 3. **Future**: a local context file, workspace-level auth, or account-level
    auth could broaden scope.
 
-The default is as broad as the auth allows. `config pull` fetches all
+The default is as broad as the auth allows. `config get` fetches all
 services in the project+environment; `--service` narrows when needed.
 
 Commands are grouped by **domain**, not by scope. There are two
@@ -79,7 +79,7 @@ The full settings table:
 | Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments. |
 | Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error during apply. |
 | Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking them. |
-| Sensitive keywords | — | — | `sensitive_keywords` | *(see below)* | Keywords for detecting sensitive variable names (substring match). |
+| Sensitive keywords | — | — | `sensitive_keywords` | *(see below)* | Keywords for detecting sensitive variable names (boundary match). |
 | Sensitive allowlist | — | — | `sensitive_allowlist` | *(see below)* | Keywords that suppress false-positive secret matches. |
 | Suppress warnings | — | — | `suppress_warnings` | `[]` | List of warning codes to suppress (e.g. `["W012", "W030"]`). |
 | Full output | `--full` | — | — | `false` | Include IDs and read-only fields (get only). |

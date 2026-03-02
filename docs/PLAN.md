@@ -44,7 +44,7 @@ fat-controller/
 ├── main.go                       # Entry point, kong CLI dispatch
 ├── cmd/                          # Command handlers (thick — orchestration lives here)
 │   ├── auth/                     # auth login/logout/status
-│   └── config/                   # config pull/diff/apply
+│   └── config/                   # config get/set/delete/diff/apply/validate
 ├── internal/
 │   ├── auth/                     # OAuth flow, keyring, token resolution
 │   ├── config/                   # TOML config/state types, parsing, interpolation

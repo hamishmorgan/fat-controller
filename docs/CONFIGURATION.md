@@ -25,7 +25,7 @@ the `gh` CLI):
 
 ## Config loading
 
-All settings (see the settings table in [PLAN.md](PLAN.md)) can be
+All settings (see the settings table in [COMMANDS.md](COMMANDS.md)) can be
 specified at five levels. Layering is handled by koanf — each level is
 loaded in order, later values override earlier ones:
 

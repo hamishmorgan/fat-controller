@@ -4,12 +4,14 @@ Endpoint: `https://backboard.railway.com/graphql/v2`
 
 ## Authentication
 
-The tool supports two authentication methods, resolved in order:
+The tool resolves authentication in order of precedence:
 
-1. **Environment variable** — `RAILWAY_TOKEN` (or a `.env` file) can hold
-   either a project access token or an account-level token. Intended for CI
-   and non-interactive use.
-2. **Stored OAuth credentials** — `fat-controller auth login` performs a
+1. **`--token` flag** — highest priority, for one-off commands.
+2. **`RAILWAY_API_TOKEN` env var** — account/workspace-scoped. Uses
+   `Authorization: Bearer` header.
+3. **`RAILWAY_TOKEN` env var** — project-scoped. Uses
+   `Project-Access-Token` header. Implicitly sets project + environment.
+4. **Stored OAuth credentials** — `fat-controller auth login` performs a
    browser-based OAuth 2.0 flow and persists the token locally.
 
 **Project access tokens** use the `Project-Access-Token` header and
@@ -39,16 +41,16 @@ The login flow:
    redirect URI `http://127.0.0.1:<port>/callback`.
 4. Exchange the authorization code for an access token + refresh token.
 5. Store tokens in OS keychain (primary) or fallback file (see
-   "Configuration and storage" in [PLAN.md](PLAN.md)).
+   [CONFIGURATION.md](CONFIGURATION.md)).
 6. Use the refresh token to renew the access token transparently (1hr TTL).
 
 `auth logout` clears stored tokens from keychain and fallback file.
 `auth status` calls the `me` query and displays the authenticated user +
 available scopes.
 
-## Queries for pull
+## Queries for get (live state)
 
-All data needed for `pull` is available via GQL — no Railway CLI dependency.
+All data needed for fetching live state is available via GQL — no Railway CLI dependency.
 
 | Query | Returns |
 |-------|---------|

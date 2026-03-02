@@ -1,3 +1,16 @@
+[tasks.setup]
+description = "Set up local development environment"
+depends = ["setup:hooks"]
+
+[tasks."setup:hooks"]
+description = "Install git hooks"
+sources = [".config/mise/config.toml"]
+outputs = [".git/hooks/pre-commit", ".git/hooks/pre-push"]
+run = """
+mise generate git-pre-commit --write --task=pre-commit
+mise generate git-pre-commit --write --task=pre-push --hook=pre-push
+"""
+
 [tasks.pre-commit]
 description = "Git pre-commit: format and abort if files changed"
 depends = ["format"]

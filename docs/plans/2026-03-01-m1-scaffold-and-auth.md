@@ -130,7 +130,7 @@ type Globals struct {
 // Global flags are defined here; subcommand groups are nested structs.
 type CLI struct {
 	// Global flags
-	Token       string   `help:"Auth token (overrides all other auth)." env:"RAILWAY_TOKEN"`
+	Token       string   `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
 	Project     string   `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
 	Environment string   `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
 	Output      string   `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
@@ -383,12 +383,23 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/adrg/xdg"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 )
 
+// setXDGConfigHome overrides XDG_CONFIG_HOME for the duration of a test.
+// adrg/xdg caches env vars at init time, so we must call xdg.Reload()
+// after changing the env and again on cleanup to restore the original.
+func setXDGConfigHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	xdg.Reload()
+	t.Cleanup(func() { xdg.Reload() })
+}
+
 func TestConfigDir(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tmp)
+	setXDGConfigHome(t, tmp)
 
 	dir := platform.ConfigDir()
 	want := filepath.Join(tmp, "fat-controller")
@@ -399,7 +410,7 @@ func TestConfigDir(t *testing.T) {
 
 func TestAuthFilePath(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tmp)
+	setXDGConfigHome(t, tmp)
 
 	path := platform.AuthFilePath()
 	want := filepath.Join(tmp, "fat-controller", "auth.json")
@@ -410,7 +421,7 @@ func TestAuthFilePath(t *testing.T) {
 
 func TestConfigFilePath(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tmp)
+	setXDGConfigHome(t, tmp)
 
 	path := platform.ConfigFilePath()
 	want := filepath.Join(tmp, "fat-controller", "config.toml")
@@ -421,7 +432,7 @@ func TestConfigFilePath(t *testing.T) {
 
 func TestEnsureConfigDir(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tmp)
+	setXDGConfigHome(t, tmp)
 
 	dir, err := platform.EnsureConfigDir()
 	if err != nil {
@@ -503,13 +514,12 @@ go test ./internal/platform/ -v
 
 Expected: All 4 tests pass.
 
-**Note:** `adrg/xdg` reads `XDG_CONFIG_HOME` at init time and caches it
-in `xdg.ConfigHome`. The `t.Setenv` call sets the env var before the test
-function runs, but xdg may have already cached the value from process
-start. If tests fail for this reason, change the implementation to read
-`os.Getenv("XDG_CONFIG_HOME")` directly with a fallback to
-`~/.config` instead of using the xdg library variable. Verify and adjust
-if needed.
+**Note:** `adrg/xdg` caches `XDG_CONFIG_HOME` at package init time.
+`t.Setenv` alone is not enough — the `setXDGConfigHome` test helper
+calls `xdg.Reload()` after changing the env so the cached values update,
+and calls `xdg.Reload()` again on cleanup so subsequent tests see the
+original values. These tests cannot use `t.Parallel()` because they
+mutate process-wide state.
 
 **Step 5: Commit**
 
@@ -2015,16 +2025,160 @@ git commit -m "Add userinfo fetcher for auth status display"
 **Files:**
 
 - Create: `internal/auth/login.go`
+- Create: `internal/auth/login_test.go`
 
 This function orchestrates the full login flow: start callback server →
 register client (if needed) → generate PKCE → open browser → wait for
 callback → exchange code → store tokens.
 
-No test for this — it's pure orchestration of already-tested components,
-and it opens a browser + waits for user interaction. Integration testing
-happens manually.
+The browser-opening function is injectable so the full flow can be tested
+without a real browser. In tests, we replace it with a function that
+simulates the browser redirect to the callback server.
 
-**Step 1: Write the implementation**
+**Step 1: Write the test**
+
+`internal/auth/login_test.go`:
+
+```go
+package auth_test
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"path/filepath"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/zalando/go-keyring"
+)
+
+func TestLogin_FullFlow(t *testing.T) {
+	keyring.MockInit()
+
+	// Mock registration endpoint.
+	regServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(auth.RegistrationResponse{
+			ClientID: "test-client-id",
+		})
+	}))
+	defer regServer.Close()
+
+	// Mock token endpoint.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(auth.TokenResponse{
+			AccessToken:  "test-access-token",
+			RefreshToken: "test-refresh-token",
+			ExpiresIn:    3600,
+		})
+	}))
+	defer tokenServer.Close()
+
+	oauth := &auth.OAuthClient{
+		AuthEndpoint:    "https://example.com/oauth/auth",
+		TokenEndpoint:   tokenServer.URL,
+		RegistrationURL: regServer.URL,
+	}
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+
+	// Simulate the browser: parse the auth URL, extract state, hit the
+	// callback server with a fake auth code and the correct state.
+	fakeBrowser := func(authURL string) error {
+		parsed, err := url.Parse(authURL)
+		if err != nil {
+			return err
+		}
+		state := parsed.Query().Get("state")
+		redirectURI := parsed.Query().Get("redirect_uri")
+
+		callbackURL := fmt.Sprintf("%s?code=fake-auth-code&state=%s", redirectURI, state)
+		resp, err := http.Get(callbackURL) //nolint:errcheck
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		return nil
+	}
+
+	err := auth.Login(oauth, store, fakeBrowser)
+	if err != nil {
+		t.Fatalf("Login() error: %v", err)
+	}
+
+	// Verify tokens were stored.
+	tokens, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if tokens.AccessToken != "test-access-token" {
+		t.Errorf("AccessToken = %q, want %q", tokens.AccessToken, "test-access-token")
+	}
+	if tokens.RefreshToken != "test-refresh-token" {
+		t.Errorf("RefreshToken = %q, want %q", tokens.RefreshToken, "test-refresh-token")
+	}
+	if tokens.ClientID != "test-client-id" {
+		t.Errorf("ClientID = %q, want %q", tokens.ClientID, "test-client-id")
+	}
+}
+
+func TestLogin_AuthorizationDenied(t *testing.T) {
+	keyring.MockInit()
+
+	regServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(auth.RegistrationResponse{
+			ClientID: "test-client-id",
+		})
+	}))
+	defer regServer.Close()
+
+	oauth := &auth.OAuthClient{
+		AuthEndpoint:    "https://example.com/oauth/auth",
+		TokenEndpoint:   "https://example.com/token",
+		RegistrationURL: regServer.URL,
+	}
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+
+	// Simulate the browser returning an error.
+	fakeBrowser := func(authURL string) error {
+		parsed, _ := url.Parse(authURL)
+		redirectURI := parsed.Query().Get("redirect_uri")
+		callbackURL := fmt.Sprintf("%s?error=access_denied&error_description=User+denied", redirectURI)
+		resp, err := http.Get(callbackURL)
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		return nil
+	}
+
+	err := auth.Login(oauth, store, fakeBrowser)
+	if err == nil {
+		t.Fatal("Login() should have returned an error")
+	}
+}
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run:
+
+```bash
+go test ./internal/auth/ -v -run TestLogin
+```
+
+Expected: Compilation error — `Login` signature doesn't match.
+
+**Step 3: Write the implementation**
 
 `internal/auth/login.go`:
 
@@ -2037,6 +2191,25 @@ import (
 	"runtime"
 )
 
+// BrowserOpener is a function that opens a URL in the user's browser.
+// Injected so tests can simulate the browser redirect without a real browser.
+type BrowserOpener func(url string) error
+
+// OpenBrowser opens the given URL in the user's default browser.
+// This is the production BrowserOpener.
+func OpenBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
+}
+
 // Login performs the full OAuth login flow:
 //  1. Start callback server
 //  2. Register client if no client ID stored
@@ -2045,7 +2218,24 @@ import (
 //  5. Wait for callback
 //  6. Exchange code for tokens
 //  7. Store tokens
-func Login(oauth *OAuthClient, store *TokenStore) error {
+//
+// If the token exchange fails and we were using a stored client ID, Login
+// retries once with a freshly registered client (handles revoked client IDs).
+//
+// The openBrowser parameter controls how the authorization URL is opened.
+// Pass OpenBrowser for production use, or a fake for testing.
+func Login(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) error {
+	err := loginAttempt(oauth, store, openBrowser, false)
+	if err != nil {
+		// If the first attempt failed, retry with a fresh client registration.
+		// This handles the case where a stored client ID was revoked.
+		fmt.Println("Retrying with fresh client registration...")
+		return loginAttempt(oauth, store, openBrowser, true)
+	}
+	return nil
+}
+
+func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
 	// Start callback server.
 	srv, err := StartCallbackServer()
 	if err != nil {
@@ -2056,7 +2246,7 @@ func Login(oauth *OAuthClient, store *TokenStore) error {
 	redirectURI := srv.RedirectURI()
 
 	// Check for existing client registration.
-	clientID, err := loadOrRegisterClient(oauth, store, redirectURI)
+	clientID, err := loadOrRegisterClient(oauth, store, redirectURI, forceNewClient)
 	if err != nil {
 		return fmt.Errorf("client registration: %w", err)
 	}
@@ -2115,11 +2305,14 @@ func Login(oauth *OAuthClient, store *TokenStore) error {
 }
 
 // loadOrRegisterClient returns a client ID, registering a new client if needed.
-func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI string) (string, error) {
-	// Check if we already have a client ID from a previous login.
-	existing, err := store.Load()
-	if err == nil && existing.ClientID != "" {
-		return existing.ClientID, nil
+// If forceNew is true, always registers a fresh client (used for retry after
+// a stale client ID causes an auth failure).
+func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI string, forceNew bool) (string, error) {
+	if !forceNew {
+		existing, err := store.Load()
+		if err == nil && existing.ClientID != "" {
+			return existing.ClientID, nil
+		}
 	}
 
 	// Register a new client.
@@ -2129,37 +2322,23 @@ func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI str
 	}
 	return reg.ClientID, nil
 }
-
-// openBrowser opens the given URL in the user's default browser.
-func openBrowser(url string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", url)
-	}
-	return cmd.Start()
-}
 ```
 
-**Step 2: Verify it compiles**
+**Step 4: Run tests**
 
 Run:
 
 ```bash
-go build ./internal/auth/
+go test ./internal/auth/ -v -run TestLogin
 ```
 
-Expected: Compiles without errors.
+Expected: Both tests pass.
 
-**Step 3: Commit**
+**Step 5: Commit**
 
 ```bash
-git add internal/auth/login.go
-git commit -m "Add login orchestrator for full OAuth + PKCE flow"
+git add internal/auth/login.go internal/auth/login_test.go
+git commit -m "Add login orchestrator with injectable browser opener for testing"
 ```
 
 ---
@@ -2184,7 +2363,7 @@ func (c *AuthLoginCmd) Run(globals *Globals) error {
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
-	return auth.Login(oauth, store)
+	return auth.Login(oauth, store, auth.OpenBrowser)
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {
@@ -2226,10 +2405,15 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	}
 
 	// For stored OAuth tokens, fetch user info.
+	// Note: if the access token is expired (>1hr), this will fail with a 401.
+	// M2 will add a refresh-aware HTTP client that handles this transparently.
+	// For now, we show a helpful message.
 	oauth := auth.NewOAuthClient()
 	info, err := oauth.FetchUserInfo(resolved.Token)
 	if err != nil {
-		fmt.Printf("Authenticated (could not fetch user info: %v)\n", err)
+		fmt.Println("Authenticated (stored OAuth token).")
+		fmt.Printf("Could not fetch user info: %v\n", err)
+		fmt.Println("If your session expired, run 'fat-controller auth login' to re-authenticate.")
 		return nil
 	}
 
@@ -2372,7 +2556,8 @@ After completing all tasks, the project will have:
 - Unit tests with `go-keyring` `MockInit()` / `MockInitWithError()` for token store
 - `httptest.NewServer` for OAuth endpoint mocking
 - `t.TempDir()` + `t.Setenv("XDG_CONFIG_HOME", ...)` for file path tests
-- Login orchestrator tested manually (browser interaction)
+- Login orchestrator tested via injectable browser opener (fake browser
+  simulates the redirect to the callback server)
 
 **Key differences from old plan (cobra → kong):**
 

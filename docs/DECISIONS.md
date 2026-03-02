@@ -59,6 +59,30 @@ engine or orchestration package. Extract if complexity warrants it later.
 [kong](https://github.com/alecthomas/kong) for struct-based CLI parsing.
 Less boilerplate than cobra for nested subcommand groups.
 
+## --token flag has no env var binding in kong
+
+The `--token` CLI flag is not bound to any env var via kong's `env:""` tag.
+`RAILWAY_TOKEN` and `RAILWAY_API_TOKEN` are handled by the token resolver
+(`internal/auth/resolver.go`) which reads them via `os.Getenv` and applies
+the correct HTTP header for each:
+
+- `--token` flag → `Authorization: Bearer` (explicit override, any token type)
+- `RAILWAY_API_TOKEN` → `Authorization: Bearer` (account/workspace-scoped)
+- `RAILWAY_TOKEN` → `Project-Access-Token` (project-scoped)
+
+If kong bound `--token` to `RAILWAY_TOKEN`, it would route project-scoped
+tokens through the Bearer header path, which is incorrect. Keeping the
+resolver separate preserves the header distinction.
+
+## Token refresh: deferred to M2
+
+M1's `auth status` does not refresh expired access tokens (1hr TTL). If
+the stored token is expired, the userinfo call fails and the user sees a
+message suggesting `auth login`. M2 will introduce a refresh-aware HTTP
+client that transparently refreshes tokens before any API call (including
+userinfo). Building it once in M2 avoids duplicating the refresh logic
+across commands.
+
 ## Testing strategy
 
 - Unit tests for pure logic: diff, config parsing, interpolation, PKCE

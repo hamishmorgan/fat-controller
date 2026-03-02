@@ -67,7 +67,9 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
 	}
-	fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(live.Services))
+	if _, err := fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(live.Services)); err != nil {
+		return err
+	}
 
 	// 6. Create .local.toml stub if it doesn't exist.
 	localPath := filepath.Join(dir, config.LocalConfigFile)
@@ -75,7 +77,9 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 		if err := os.WriteFile(localPath, []byte(localConfigStub), 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", config.LocalConfigFile, err)
 		}
-		fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile)
+		if _, err := fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile); err != nil {
+			return err
+		}
 	}
 
 	return nil

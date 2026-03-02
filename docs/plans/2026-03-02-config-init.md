@@ -61,6 +61,8 @@ After this plan, resolution becomes:
 - `config init` must refuse to overwrite an existing `fat-controller.toml`. This is a safety invariant.
 - `renderTOML` operates on `LiveConfig` and masks secrets. For `init`, we want secrets masked (the user can fill them in via `.local.toml` / `${VAR}` interpolation). This is the right default.
 - The config file should store project/environment **names**, not UUIDs. Names are human-readable and portable across Railway accounts. The resolve chain already handles name→ID mapping.
+- `config apply`'s `Run()` method resolves project/environment early (before loading configs) to construct the `RailwayApplier`. The testable `RunConfigApply()` resolves again with the config-file fallback. This means two resolve API calls in the `Run()` path. This is a pre-existing double-resolve issue — fixing it would require restructuring `Run()` to load configs first, which is out of scope for this plan.
+- The existing `fakeFetcher` in `config_get_test.go` discards the project/environment args passed to `Resolve()`. Task 3 introduces a `capturingFetcher` to verify the config-file fallback works. Existing diff/apply tests continue to use `fakeFetcher` (they don't need to verify resolution args).
 
 ---
 
@@ -577,6 +579,7 @@ package cli_test
 import (
     "bytes"
     "context"
+    "errors"
     "os"
     "path/filepath"
     "strings"
@@ -586,34 +589,11 @@ import (
     "github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// initFetcher provides controlled responses for init tests.
-type initFetcher struct {
-    cfg         *config.LiveConfig
-    resolveErr  error
-    fetchErr    error
-    project     string
-    environment string
-}
-
-func (f *initFetcher) Resolve(_ context.Context, _, project, environment string) (string, string, error) {
-    f.project = project
-    f.environment = environment
-    if f.resolveErr != nil {
-        return "", "", f.resolveErr
-    }
-    return "proj-1", "env-1", nil
-}
-
-func (f *initFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
-    if f.fetchErr != nil {
-        return nil, f.fetchErr
-    }
-    return f.cfg, nil
-}
+// NOTE: These tests reuse fakeFetcher from config_get_test.go (same package).
 
 func TestRunConfigInit_WritesConfigFile(t *testing.T) {
     dir := t.TempDir()
-    fetcher := &initFetcher{
+    fetcher := &fakeFetcher{
         cfg: &config.LiveConfig{
             ProjectID:     "proj-1",
             EnvironmentID: "env-1",
@@ -659,7 +639,7 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
         t.Fatalf("write existing: %v", err)
     }
 
-    fetcher := &initFetcher{
+    fetcher := &fakeFetcher{
         cfg: &config.LiveConfig{Services: map[string]*config.ServiceConfig{}},
     }
     var buf bytes.Buffer
@@ -674,7 +654,7 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 
 func TestRunConfigInit_CreatesLocalTOMLStub(t *testing.T) {
     dir := t.TempDir()
-    fetcher := &initFetcher{
+    fetcher := &fakeFetcher{
         cfg: &config.LiveConfig{
             Services: map[string]*config.ServiceConfig{
                 "api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
@@ -700,7 +680,7 @@ func TestRunConfigInit_CreatesLocalTOMLStub(t *testing.T) {
 
 func TestRunConfigInit_PrintsSummary(t *testing.T) {
     dir := t.TempDir()
-    fetcher := &initFetcher{
+    fetcher := &fakeFetcher{
         cfg: &config.LiveConfig{
             Services: map[string]*config.ServiceConfig{
                 "api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
@@ -720,34 +700,13 @@ func TestRunConfigInit_PrintsSummary(t *testing.T) {
 
 func TestRunConfigInit_ResolveError(t *testing.T) {
     dir := t.TempDir()
-    fetcher := &initFetcher{resolveErr: errForTest("no project")}
+    fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
     var buf bytes.Buffer
     err := cli.RunConfigInit(context.Background(), dir, "proj", "env", fetcher, &buf)
     if err == nil {
         t.Fatal("expected error from resolve failure")
     }
 }
-
-func errForTest(msg string) error {
-    return errors.New(msg)
-}
-```
-
-Add the missing `errors` import at the top of the test file:
-
-```go
-import (
-    "bytes"
-    "context"
-    "errors"
-    "os"
-    "path/filepath"
-    "strings"
-    "testing"
-
-    "github.com/hamishmorgan/fat-controller/internal/cli"
-    "github.com/hamishmorgan/fat-controller/internal/config"
-)
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -823,15 +782,9 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
         return err
     }
 
-    // 4. Resolve human-readable names for the header.
-    // If the user provided names, use them. If they provided IDs or
-    // were prompted, we still have the names in the fetched data or
-    // from the original args. For simplicity, use what was provided.
-    projName := project
-    envName := environment
-
-    // 5. Render and write the config file.
-    content := config.RenderInitTOML(projName, envName, *live)
+    // 4. Render and write the config file.
+    // project/environment args are names (not IDs) — used as the header values.
+    content := config.RenderInitTOML(project, environment, *live)
     if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
         return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
     }
@@ -881,6 +834,19 @@ Update the Run methods comment:
 // ...
 ```
 
+In `internal/cli/cli_test.go`, add `{"config", "init"}` to the `TestColorHelpPrinter_AllLeafCommands` commands list (after the `{"config", "get"}` entry):
+
+```go
+    commands := [][]string{
+        {"auth", "login"},
+        {"auth", "logout"},
+        {"auth", "status"},
+        {"config", "init"},
+        {"config", "get"},
+        // ... rest unchanged
+    }
+```
+
 **Step 5: Run tests to verify they pass**
 
 Run:
@@ -895,7 +861,7 @@ Expected: all PASS.
 **Step 6: Commit**
 
 ```bash
-git add internal/cli/config_init.go internal/cli/config_init_test.go internal/cli/cli.go
+git add internal/cli/config_init.go internal/cli/config_init_test.go internal/cli/cli.go internal/cli/cli_test.go
 git commit -m "feat(cli): add config init command to bootstrap fat-controller.toml"
 ```
 

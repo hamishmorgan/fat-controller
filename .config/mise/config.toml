@@ -133,6 +133,14 @@ rover graph introspect https://backboard.railway.com/graphql/v2 \
 # Go
 # ---------------------------------------------------------------------------
 
+[tasks.generate]
+alias = ["gen"]
+description = "Run Go code generation (genqlient)"
+run = """
+[ -f go.mod ] || exit 0
+go generate ./...
+"""
+
 [tasks."lint:go"]
 description = "Lint Go code"
 run = """

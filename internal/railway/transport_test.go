@@ -46,7 +46,7 @@ func TestAuthTransport_InjectsHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if gotHeader != "Bearer test-token" {
 		t.Errorf("Authorization header = %q, want %q", gotHeader, "Bearer test-token")
@@ -74,7 +74,7 @@ func TestAuthTransport_ProjectAccessTokenHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if gotHeader != "proj-token" {
 		t.Errorf("Project-Access-Token header = %q, want %q", gotHeader, "proj-token")
@@ -102,7 +102,7 @@ func TestAuthTransport_NoRefreshForNonStoredTokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Should return 401 directly — no refresh attempted.
 	if resp.StatusCode != http.StatusUnauthorized {
@@ -163,7 +163,7 @@ func TestAuthTransport_RefreshesOnUnauthorized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("StatusCode = %d, want 200", resp.StatusCode)
@@ -226,7 +226,7 @@ func TestAuthTransport_RefreshFailsReturnsOriginal401(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Should return original 401 since refresh failed.
 	if resp.StatusCode != http.StatusUnauthorized {

@@ -42,7 +42,7 @@ Commands are grouped by **domain**, not by scope. There are two
 interaction modes: **imperative** (one-off CRUD against live Railway)
 and **declarative** (config-file-driven diff and apply).
 
-```
+```sh
 fat-controller auth login       # Browser-based OAuth login
 fat-controller auth logout      # Clear stored credentials
 fat-controller auth status      # Show current auth state
@@ -67,7 +67,7 @@ in config file section headers.
 
 Future command groups (not in scope for initial release):
 
-```
+```sh
 fat-controller deploy list      # List deployments
 fat-controller deploy trigger   # Trigger a redeploy
 fat-controller service list     # List services in the project
@@ -273,7 +273,7 @@ Yelp's detect-secrets.
 
 **Default sensitive keywords** (case-insensitive substring match):
 
-```
+```text
 # Passwords & passphrases
 PASSWORD, PASSWD, PASS, PWD
 
@@ -308,7 +308,7 @@ JWT_SECRET
 
 **Default false-positive allowlist** (suppress matches on these):
 
-```
+```text
 # KEY false positives
 KEYBOARD, KEYSTROKE, KEYFRAME, KEYSTONE, KEYPRESS, KEYWORD,
 MONKEY, DONKEY, TURKEY, PRIMARY_KEY, FOREIGN_KEY, SORT_KEY,
@@ -370,7 +370,7 @@ This catches secrets with non-obvious names like
 
 **Examples:**
 
-```
+```text
 DATABASE_PASSWORD = "********"              # masked (name matches PASSWORD)
 DATABASE_URL = "${{postgres.DATABASE_URL}}" # shown (reference template)
 APP_ENV = "production"                      # shown (no name match, low entropy)
@@ -578,7 +578,7 @@ later values override earlier ones:
 
 ## Project structure
 
-```
+```text
 fat-controller/
 ├── main.go                       # Entry point, kong CLI dispatch
 ├── cmd/                          # Command handlers (thick — orchestration lives here)

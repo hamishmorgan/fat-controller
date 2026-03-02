@@ -1,0 +1,7 @@
+[tasks."lint:md"]
+description = "Lint markdown files"
+run = "npx --yes markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc '**/*.md' '#node_modules'"
+
+[tasks."lint:md:fix"]
+description = "Lint and fix markdown files"
+run = "npx --yes markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc --fix '**/*.md' '#node_modules'"

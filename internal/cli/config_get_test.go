@@ -166,3 +166,48 @@ func TestRunConfigGet_NilConfig(t *testing.T) {
 		t.Fatal("expected error for nil config")
 	}
 }
+
+func TestRunConfigGet_MasksSecretsByDefault(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID:     "proj-1",
+			EnvironmentID: "env-1",
+			Shared:        map[string]string{"DATABASE_PASSWORD": "hunter2"},
+			Services:      map[string]*config.ServiceConfig{},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigGet() error: %v", err)
+	}
+	got := buf.String()
+	if strings.Contains(got, "hunter2") {
+		t.Errorf("password should be masked by default, got:\n%s", got)
+	}
+	if !strings.Contains(got, "********") {
+		t.Errorf("expected masked placeholder, got:\n%s", got)
+	}
+}
+
+func TestRunConfigGet_ShowSecretsRevealsValues(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID:     "proj-1",
+			EnvironmentID: "env-1",
+			Shared:        map[string]string{"DATABASE_PASSWORD": "hunter2"},
+			Services:      map[string]*config.ServiceConfig{},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text", ShowSecrets: true}
+	err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigGet() error: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "hunter2") {
+		t.Errorf("--show-secrets should reveal password, got:\n%s", got)
+	}
+}

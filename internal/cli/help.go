@@ -6,14 +6,12 @@ import (
 	"go/doc"
 	"io"
 	"os"
-	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 
 	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/term"
 )
 
 // Styles for help output. These are package-level so they can be
@@ -51,7 +49,7 @@ func ColorHelpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 	} else {
 		printColorCommand(w, ctx.Model, selected, options)
 	}
-	return w.WriteTo(ctx.Stdout)
+	return w.Flush(ctx.Stdout)
 }
 
 func printColorApp(w *helpBuf, app *kong.Application, opts kong.HelpOptions) {
@@ -393,7 +391,7 @@ func (h *helpBuf) Wrap(text string, indent string) {
 	}
 }
 
-func (h *helpBuf) WriteTo(w io.Writer) error {
+func (h *helpBuf) Flush(w io.Writer) error {
 	for _, line := range h.lines {
 		if _, err := io.WriteString(w, line+"\n"); err != nil {
 			return err
@@ -406,27 +404,9 @@ func (h *helpBuf) WriteTo(w io.Writer) error {
 // Falls back to 80 columns.
 func guessWidth(w io.Writer) int {
 	if f, ok := w.(*os.File); ok {
-		return termWidth(f.Fd())
-	}
-	return 80
-}
-
-func termWidth(fd uintptr) int {
-	colsStr := os.Getenv("COLUMNS")
-	if colsStr != "" {
-		if cols, err := strconv.Atoi(colsStr); err == nil {
-			return cols
+		if width, _, err := term.GetSize(f.Fd()); err == nil && width > 0 {
+			return width
 		}
-	}
-	var dimensions [4]uint16
-	if _, _, err := syscall.Syscall6(
-		syscall.SYS_IOCTL,
-		fd,
-		uintptr(syscall.TIOCGWINSZ),
-		uintptr(unsafe.Pointer(&dimensions)),
-		0, 0, 0,
-	); err == 0 && dimensions[1] != 0 {
-		return int(dimensions[1])
 	}
 	return 80
 }

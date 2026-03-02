@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/lipgloss"
@@ -29,19 +30,29 @@ func main() {
 	}
 }
 
-// applyColorMode checks the --color flag and FAT_CONTROLLER_COLOR env var
-// to configure color output before parsing begins.
+// applyColorMode configures color output before kong.Parse runs.
+//
+// Precedence (highest to lowest):
+//  1. --color=<mode> CLI flag
+//  2. FAT_CONTROLLER_COLOR env var
+//  3. NO_COLOR env var (any non-empty value disables color; see https://no-color.org)
+//  4. Auto-detect terminal capabilities
 func applyColorMode() {
-	mode := os.Getenv("FAT_CONTROLLER_COLOR")
+	mode := ""
 
 	// Check CLI args for --color=<value> or --color <value>.
-	for i, arg := range os.Args[1:] {
-		if arg == "--color" && i+1 < len(os.Args[1:])-1 {
-			mode = os.Args[i+2]
+	args := os.Args[1:]
+	for i, arg := range args {
+		if v, ok := strings.CutPrefix(arg, "--color="); ok {
+			mode = v
+		} else if arg == "--color" && i+1 < len(args) {
+			mode = args[i+1]
 		}
-		if len(arg) > 8 && arg[:8] == "--color=" {
-			mode = arg[8:]
-		}
+	}
+
+	// Fall back to env vars if no CLI flag.
+	if mode == "" {
+		mode = os.Getenv("FAT_CONTROLLER_COLOR")
 	}
 
 	switch mode {
@@ -49,6 +60,11 @@ func applyColorMode() {
 		lipgloss.SetColorProfile(termenv.Ascii)
 	case "always":
 		lipgloss.SetColorProfile(termenv.ANSI)
-	default: // "auto" — let lipgloss/termenv detect capabilities
+	default: // "auto" or unset
+		// Respect NO_COLOR convention (https://no-color.org).
+		if _, ok := os.LookupEnv("NO_COLOR"); ok {
+			lipgloss.SetColorProfile(termenv.Ascii)
+		}
+		// Otherwise let lipgloss/termenv auto-detect.
 	}
 }

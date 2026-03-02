@@ -276,7 +276,8 @@ echo "HTML report: .build/coverage/coverage.html"
 description = "Build Go binary"
 run = """
 [ -f go.mod ] || exit 0
-go build ./...
+mkdir -p .build
+go build -o .build/fat-controller ./cmd/fat-controller
 """
 
 [tasks."deps:update"]

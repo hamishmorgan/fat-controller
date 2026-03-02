@@ -32,13 +32,14 @@ func DeleteVariable(ctx context.Context, client *Client, projectID, environmentI
 	return err
 }
 
-// UpdateServiceLimits updates vCPU and memory limits.
-func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, serviceID string, vcpus, memoryGB float64) error {
+// UpdateServiceLimits updates vCPU and/or memory limits.
+// Nil pointers mean "don't change".
+func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, serviceID string, vcpus, memoryGB *float64) error {
 	input := ServiceInstanceLimitsUpdateInput{
 		EnvironmentId: environmentID,
 		ServiceId:     serviceID,
-		VCPUs:         &vcpus,
-		MemoryGB:      &memoryGB,
+		VCPUs:         vcpus,
+		MemoryGB:      memoryGB,
 	}
 	_, err := ServiceInstanceLimitsUpdate(ctx, client.GQL(), input)
 	return err

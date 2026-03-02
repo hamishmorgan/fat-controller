@@ -71,7 +71,25 @@ func TestUpdateServiceLimits_Succeeds(t *testing.T) {
 	defer server.Close()
 
 	client := railway.NewClient(server.URL, testAuth(), nil, nil)
-	err := railway.UpdateServiceLimits(context.Background(), client, "env", "svc", 0.5, 1.0)
+	vcpus := 0.5
+	mem := 1.0
+	err := railway.UpdateServiceLimits(context.Background(), client, "env", "svc", &vcpus, &mem)
+	if err != nil {
+		t.Fatalf("UpdateServiceLimits() error: %v", err)
+	}
+}
+
+func TestUpdateServiceLimits_PartialUpdate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"serviceInstanceLimitsUpdate": true}})
+	}))
+	defer server.Close()
+
+	client := railway.NewClient(server.URL, testAuth(), nil, nil)
+	vcpus := 2.0
+	// memoryGB is nil — only update vCPUs.
+	err := railway.UpdateServiceLimits(context.Background(), client, "env", "svc", &vcpus, nil)
 	if err != nil {
 		t.Fatalf("UpdateServiceLimits() error: %v", err)
 	}

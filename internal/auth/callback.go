@@ -43,7 +43,8 @@ func StartCallbackServer() (*CallbackServer, error) {
 				Error:            e,
 				ErrorDescription: q.Get("error_description"),
 			}
-			_, _ = fmt.Fprint(w, "Authorization failed. You can close this tab.")
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = fmt.Fprint(w, "<html><body>Authorization failed. You can close this tab.</body></html>")
 			return
 		}
 
@@ -51,7 +52,8 @@ func StartCallbackServer() (*CallbackServer, error) {
 			Code:  q.Get("code"),
 			State: q.Get("state"),
 		}
-		_, _ = fmt.Fprint(w, "Authorization successful! You can close this tab.")
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = fmt.Fprint(w, "<html><body>Authorization successful! You can close this tab.<script>window.close()</script></body></html>")
 	})
 
 	srv := &http.Server{Handler: mux}

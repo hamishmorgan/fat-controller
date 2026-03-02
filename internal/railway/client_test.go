@@ -1,6 +1,7 @@
 package railway_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -50,5 +51,63 @@ func TestNewClient_WithFlagToken(t *testing.T) {
 
 	if client == nil {
 		t.Fatal("NewClient returned nil")
+	}
+}
+
+func TestClient_ProjectToken_EndToEnd(t *testing.T) {
+	keyring.MockInit()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify auth header is present.
+		if r.Header.Get("Authorization") == "" {
+			t.Error("missing Authorization header")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		// Verify it's a POST to the GraphQL endpoint.
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want POST", r.Method)
+		}
+
+		// Return a valid projectToken response.
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{
+				"projectToken": map[string]interface{}{
+					"projectId":     "proj-abc-123",
+					"environmentId": "env-def-456",
+				},
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	resolved := &auth.ResolvedAuth{
+		Token:       "test-token",
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer test-token",
+		Source:      "flag",
+	}
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("test-e2e"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	oauth := &auth.OAuthClient{TokenEndpoint: "http://unused"}
+
+	client := railway.NewClient(server.URL, resolved, store, oauth)
+
+	resp, err := railway.ProjectToken(context.Background(), client.GQL())
+	if err != nil {
+		t.Fatalf("ProjectToken() error: %v", err)
+	}
+
+	if resp.ProjectToken.ProjectId != "proj-abc-123" {
+		t.Errorf("ProjectId = %q, want %q", resp.ProjectToken.ProjectId, "proj-abc-123")
+	}
+	if resp.ProjectToken.EnvironmentId != "env-def-456" {
+		t.Errorf("EnvironmentId = %q, want %q", resp.ProjectToken.EnvironmentId, "env-def-456")
 	}
 }

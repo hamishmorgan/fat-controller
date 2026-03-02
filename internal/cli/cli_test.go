@@ -17,13 +17,6 @@ import (
 // Note: ConfigGetCmd, ConfigSetCmd, ConfigDeleteCmd tests moved to
 // config_get_test.go, config_set_test.go, config_delete_test.go respectively.
 
-func TestConfigApplyCmd_Run(t *testing.T) {
-	cmd := &cli.ConfigApplyCmd{}
-	if err := cmd.Run(&cli.Globals{}); err != nil {
-		t.Fatalf("ConfigApplyCmd.Run() returned error: %v", err)
-	}
-}
-
 func TestConfigValidateCmd_Run(t *testing.T) {
 	cmd := &cli.ConfigValidateCmd{}
 	if err := cmd.Run(&cli.Globals{}); err != nil {
@@ -39,7 +32,6 @@ func TestConfigStubs_OutputMessages(t *testing.T) {
 		run  func(*cli.Globals) error
 		want string
 	}{
-		{"Apply", (&cli.ConfigApplyCmd{}).Run, "config apply: not yet implemented"},
 		{"Validate", (&cli.ConfigValidateCmd{}).Run, "config validate: not yet implemented"},
 	}
 

@@ -13,7 +13,7 @@ type fakeProjectLister struct {
 	projects []cli.ProjectInfo
 }
 
-func (f *fakeProjectLister) ListProjects(ctx context.Context) ([]cli.ProjectInfo, error) {
+func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]cli.ProjectInfo, error) {
 	return f.projects, nil
 }
 

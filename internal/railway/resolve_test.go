@@ -32,7 +32,7 @@ func TestResolveProjectEnvironment_ProjectToken(t *testing.T) {
 		HeaderValue: "project-token",
 		Source:      auth.SourceEnvToken,
 	}, nil, nil)
-	proj, env, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "")
+	proj, env, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "", "")
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
@@ -48,6 +48,17 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 		var body struct{ Query string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		switch {
+		case strings.Contains(body.Query, "apiToken"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"apiToken": map[string]any{
+						"workspaces": []map[string]any{{
+							"id":   "ws-1",
+							"name": "workspace",
+						}},
+					},
+				},
+			})
 		case strings.Contains(body.Query, "projects("):
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
@@ -68,6 +79,10 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 					},
 				},
 			})
+		default:
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{},
+			})
 		}
 	}))
 	defer server.Close()
@@ -78,7 +93,7 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, "", "")
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "")
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
@@ -94,16 +109,36 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 	ctx := context.Background()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"data": map[string]any{
-				"projects": map[string]any{
-					"edges": []map[string]any{
-						{"node": map[string]any{"id": "proj-1", "name": "app-1"}},
-						{"node": map[string]any{"id": "proj-2", "name": "app-2"}},
+		var body struct{ Query string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		switch {
+		case strings.Contains(body.Query, "apiToken"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"apiToken": map[string]any{
+						"workspaces": []map[string]any{{
+							"id":   "ws-1",
+							"name": "workspace",
+						}},
 					},
 				},
-			},
-		})
+			})
+		case strings.Contains(body.Query, "projects("):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"projects": map[string]any{
+						"edges": []map[string]any{
+							{"node": map[string]any{"id": "proj-1", "name": "app-1"}},
+							{"node": map[string]any{"id": "proj-2", "name": "app-2"}},
+						},
+					},
+				},
+			})
+		default:
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{},
+			})
+		}
 	}))
 	defer server.Close()
 
@@ -113,7 +148,7 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	_, _, err := railway.ResolveProjectEnvironment(ctx, client, "", "")
+	_, _, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "")
 	if err == nil {
 		t.Fatal("expected error for ambiguous project")
 	}

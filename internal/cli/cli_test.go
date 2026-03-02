@@ -393,6 +393,9 @@ func TestColorHelpPrinter_AllLeafCommands(t *testing.T) {
 		{"config", "diff"},
 		{"config", "apply"},
 		{"config", "validate"},
+		{"workspace", "list"},
+		{"project", "list"},
+		{"environment", "list"},
 	}
 
 	for _, args := range commands {

@@ -32,7 +32,7 @@ func TestProjectsQuery_ParsesResponse(t *testing.T) {
 		HeaderValue: "Bearer test-token",
 		Source:      auth.SourceFlag,
 	}, nil, nil)
-	resp, err := railway.Projects(context.Background(), client.GQL())
+	resp, err := railway.Projects(context.Background(), client.GQL(), nil)
 	if err != nil {
 		t.Fatalf("Projects() error: %v", err)
 	}

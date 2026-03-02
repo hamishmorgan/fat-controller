@@ -1,0 +1,83 @@
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
+)
+
+// WorkspaceInfo is a simplified workspace record for display.
+type WorkspaceInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// workspaceLister abstracts workspace listing for tests.
+type workspaceLister interface {
+	ListWorkspaces(ctx context.Context) ([]WorkspaceInfo, error)
+}
+
+type defaultWorkspaceLister struct {
+	client *railway.Client
+}
+
+func (d *defaultWorkspaceLister) ListWorkspaces(ctx context.Context) ([]WorkspaceInfo, error) {
+	resp, err := railway.ApiToken(ctx, d.client.GQL())
+	if err != nil {
+		return nil, err
+	}
+	workspaces := make([]WorkspaceInfo, 0, len(resp.ApiToken.Workspaces))
+	for _, ws := range resp.ApiToken.Workspaces {
+		workspaces = append(workspaces, WorkspaceInfo{
+			ID:   ws.Id,
+			Name: ws.Name,
+		})
+	}
+	return workspaces, nil
+}
+
+// RunWorkspaceList is the testable core of `workspace list`.
+func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLister, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
+	workspaces, err := lister.ListWorkspaces(ctx)
+	if err != nil {
+		return err
+	}
+	if len(workspaces) == 0 {
+		_, err := fmt.Fprintln(out, "No workspaces found.")
+		return err
+	}
+	switch globals.Output {
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		return enc.Encode(workspaces)
+	default:
+		for _, ws := range workspaces {
+			if _, err := fmt.Fprintf(out, "%s  %s\n", ws.Name, ws.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// Run implements `workspace list`.
+func (c *WorkspaceListCmd) Run(globals *Globals) error {
+	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
+	resolved, err := auth.ResolveAuth(globals.Token, store)
+	if err != nil {
+		return err
+	}
+	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
+	lister := &defaultWorkspaceLister{client: client}
+	return RunWorkspaceList(context.Background(), globals, lister, os.Stdout)
+}

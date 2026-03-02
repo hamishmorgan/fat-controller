@@ -87,7 +87,7 @@ func (c *EnvironmentListCmd) Run(globals *Globals) error {
 	projID := globals.Project
 	if !isUUID(projID) {
 		projLister := &defaultProjectLister{client: client}
-		projects, err := projLister.ListProjects(context.Background())
+		projects, err := projLister.ListProjects(context.Background(), globals.Workspace)
 		if err != nil {
 			return err
 		}

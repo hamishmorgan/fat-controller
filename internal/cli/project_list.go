@@ -20,15 +20,19 @@ type ProjectInfo struct {
 
 // projectLister abstracts project listing for tests.
 type projectLister interface {
-	ListProjects(ctx context.Context) ([]ProjectInfo, error)
+	ListProjects(ctx context.Context, workspace string) ([]ProjectInfo, error)
 }
 
 type defaultProjectLister struct {
 	client *railway.Client
 }
 
-func (d *defaultProjectLister) ListProjects(ctx context.Context) ([]ProjectInfo, error) {
-	resp, err := railway.Projects(ctx, d.client.GQL())
+func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace string) ([]ProjectInfo, error) {
+	workspaceID, err := railway.ResolveWorkspaceID(ctx, d.client, workspace)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := railway.Projects(ctx, d.client.GQL(), &workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +51,7 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 	if out == nil {
 		out = os.Stdout
 	}
-	projects, err := lister.ListProjects(ctx)
+	projects, err := lister.ListProjects(ctx, globals.Workspace)
 	if err != nil {
 		return err
 	}

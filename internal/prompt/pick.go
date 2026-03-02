@@ -66,6 +66,11 @@ func PickEnvironment(items []Item, interactive bool) (string, error) {
 	return pickItem("environment", items, interactive)
 }
 
+// PickWorkspace selects a workspace from the list.
+func PickWorkspace(items []Item, interactive bool) (string, error) {
+	return pickItem("workspace", items, interactive)
+}
+
 // StdinIsInteractive checks if os.Stdin is a TTY.
 func StdinIsInteractive() bool {
 	return IsInteractive(os.Stdin)

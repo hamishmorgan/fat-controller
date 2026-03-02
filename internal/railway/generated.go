@@ -8,6 +8,41 @@ import (
 	"github.com/Khan/genqlient/graphql"
 )
 
+// ApiTokenApiTokenApiTokenContext includes the requested fields of the GraphQL type ApiTokenContext.
+// The GraphQL type's documentation follows.
+//
+// Information about the current API token and its accessible workspaces.
+type ApiTokenApiTokenApiTokenContext struct {
+	// Workspaces this subject can operate on via this token or session.
+	Workspaces []ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace `json:"workspaces"`
+}
+
+// GetWorkspaces returns ApiTokenApiTokenApiTokenContext.Workspaces, and is useful for accessing the field via an interface.
+func (v *ApiTokenApiTokenApiTokenContext) GetWorkspaces() []ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace {
+	return v.Workspaces
+}
+
+// ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace includes the requested fields of the GraphQL type ApiTokenWorkspace.
+type ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetId returns ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace.Id, and is useful for accessing the field via an interface.
+func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) GetId() string { return v.Id }
+
+// GetName returns ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace.Name, and is useful for accessing the field via an interface.
+func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) GetName() string { return v.Name }
+
+// ApiTokenResponse is returned by ApiToken on success.
+type ApiTokenResponse struct {
+	// Introspect the current API token and its accessible workspaces.
+	ApiToken ApiTokenApiTokenApiTokenContext `json:"apiToken"`
+}
+
+// GetApiToken returns ApiTokenResponse.ApiToken, and is useful for accessing the field via an interface.
+func (v *ApiTokenResponse) GetApiToken() ApiTokenApiTokenApiTokenContext { return v.ApiToken }
+
 type Builder string
 
 const (
@@ -500,6 +535,14 @@ type __ProjectServicesInput struct {
 // GetProjectId returns __ProjectServicesInput.ProjectId, and is useful for accessing the field via an interface.
 func (v *__ProjectServicesInput) GetProjectId() string { return v.ProjectId }
 
+// __ProjectsInput is used internally by genqlient
+type __ProjectsInput struct {
+	WorkspaceId *string `json:"workspaceId"`
+}
+
+// GetWorkspaceId returns __ProjectsInput.WorkspaceId, and is useful for accessing the field via an interface.
+func (v *__ProjectsInput) GetWorkspaceId() *string { return v.WorkspaceId }
+
 // __ServiceInstanceInput is used internally by genqlient
 type __ServiceInstanceInput struct {
 	EnvironmentId string `json:"environmentId"`
@@ -565,6 +608,40 @@ func (v *__VariablesInput) GetEnvironmentId() string { return v.EnvironmentId }
 
 // GetServiceId returns __VariablesInput.ServiceId, and is useful for accessing the field via an interface.
 func (v *__VariablesInput) GetServiceId() *string { return v.ServiceId }
+
+// The query executed by ApiToken.
+const ApiToken_Operation = `
+query ApiToken {
+	apiToken {
+		workspaces {
+			id
+			name
+		}
+	}
+}
+`
+
+// Project and environment resolution
+func ApiToken(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *ApiTokenResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ApiToken",
+		Query:  ApiToken_Operation,
+	}
+
+	data_ = &ApiTokenResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
 
 // The query executed by Environments.
 const Environments_Operation = `
@@ -682,8 +759,8 @@ func ProjectToken(
 
 // The query executed by Projects.
 const Projects_Operation = `
-query Projects {
-	projects(first: 100) {
+query Projects ($workspaceId: String) {
+	projects(first: 100, workspaceId: $workspaceId) {
 		edges {
 			node {
 				id
@@ -694,14 +771,17 @@ query Projects {
 }
 `
 
-// Project and environment resolution
 func Projects(
 	ctx_ context.Context,
 	client_ graphql.Client,
+	workspaceId *string,
 ) (data_ *ProjectsResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "Projects",
 		Query:  Projects_Operation,
+		Variables: &__ProjectsInput{
+			WorkspaceId: workspaceId,
+		},
 	}
 
 	data_ = &ProjectsResponse{}

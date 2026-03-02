@@ -8,8 +8,17 @@ query ProjectToken {
 }
 
 # Project and environment resolution
-query Projects {
-  projects(first: 100) {
+query ApiToken {
+  apiToken {
+    workspaces {
+      id
+      name
+    }
+  }
+}
+
+query Projects($workspaceId: String) {
+  projects(first: 100, workspaceId: $workspaceId) {
     edges {
       node {
         id

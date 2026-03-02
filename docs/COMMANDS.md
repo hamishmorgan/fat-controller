@@ -25,7 +25,8 @@ fat-controller auth logout      # Clear stored credentials
 fat-controller auth status      # Show current auth state
 
 # Project / environment discovery
-fat-controller project list                       # list available projects
+fat-controller workspace list                     # list available workspaces
+fat-controller project list                       # list available projects (within workspace)
 fat-controller environment list --project my-app  # list environments for a project
 
 # Imperative — read/write live Railway directly
@@ -73,6 +74,7 @@ The full settings table:
 | Setting | CLI flag | Env var | Config key | Default | Description |
 |---------|----------|---------|------------|---------|-------------|
 | Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token. `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
+| Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | — | Workspace ID or name. Required with account-level tokens. |
 | Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name. Required with account-level tokens. |
 | Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name. Required with account-level tokens. |
 | Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
@@ -97,17 +99,17 @@ The full settings table:
 `RAILWAY_TOKEN` uses the `Project-Access-Token` header (project-scoped).
 `RAILWAY_API_TOKEN` uses `Authorization: Bearer` (account/workspace-scoped).
 
-## Project and environment resolution
+## Workspace, project, and environment resolution
 
 When using an account-level token (`RAILWAY_API_TOKEN` or stored OAuth),
-`config get/set/delete` need a project and environment. Resolution works as:
+`config get/set/delete` need a workspace, project, and environment. Resolution works as:
 
-1. If `--project`/`--environment` flags (or env vars) are set, use them.
-2. If only one project/environment exists, auto-select it.
+1. If `--workspace`/`--project`/`--environment` flags (or env vars) are set, use them.
+2. If only one workspace/project/environment exists, auto-select it.
 3. If a TTY is attached, show an interactive picker.
 4. Otherwise, error with a listing of available options.
 
-Use `project list` and `environment list` to discover available options.
+Use `workspace list`, `project list`, and `environment list` to discover available options.
 
 ### Example: global config file
 

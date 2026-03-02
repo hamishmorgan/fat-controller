@@ -53,7 +53,7 @@ func (c *ConfigSetCmd) Run(globals *Globals) error {
 	}
 	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 	fetcher := &defaultConfigFetcher{client: client}
-	projID, envID, err := fetcher.Resolve(context.Background(), globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(context.Background(), globals.Workspace, globals.Project, globals.Environment)
 	if err != nil {
 		return err
 	}

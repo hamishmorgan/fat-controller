@@ -18,7 +18,7 @@ type fakeFetcher struct {
 	fetchErr   error
 }
 
-func (f *fakeFetcher) Resolve(_ context.Context, _, _ string) (string, string, error) {
+func (f *fakeFetcher) Resolve(_ context.Context, _, _, _ string) (string, string, error) {
 	if f.resolveErr != nil {
 		return "", "", f.resolveErr
 	}
@@ -128,8 +128,8 @@ type serviceCaptureFetcher struct {
 	captured *string
 }
 
-func (s *serviceCaptureFetcher) Resolve(ctx context.Context, project, environment string) (string, string, error) {
-	return s.inner.Resolve(ctx, project, environment)
+func (s *serviceCaptureFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
+	return s.inner.Resolve(ctx, workspace, project, environment)
 }
 
 func (s *serviceCaptureFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {

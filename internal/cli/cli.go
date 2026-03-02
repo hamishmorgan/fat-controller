@@ -10,6 +10,7 @@ import (
 // Kong tags are here so CLI can embed Globals directly.
 type Globals struct {
 	Token       string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
+	Workspace   string        `help:"Workspace ID or name." env:"FAT_CONTROLLER_WORKSPACE"`
 	Project     string        `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
 	Environment string        `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
 	Output      string        `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
@@ -37,6 +38,7 @@ type CLI struct {
 	Config      ConfigCmd      `cmd:"" name:"config" help:"Declarative configuration management."`
 	Project     ProjectCmd     `cmd:"" help:"Manage projects."`
 	Environment EnvironmentCmd `cmd:"" help:"Manage environments."`
+	Workspace   WorkspaceCmd   `cmd:"" help:"Manage workspaces."`
 }
 
 // AuthCmd is the `auth` command group.
@@ -95,6 +97,12 @@ type EnvironmentCmd struct {
 }
 
 type EnvironmentListCmd struct{}
+
+type WorkspaceCmd struct {
+	List WorkspaceListCmd `cmd:"" help:"List available workspaces."`
+}
+
+type WorkspaceListCmd struct{}
 
 // Run methods:
 // - ConfigGetCmd.Run    → config_get.go

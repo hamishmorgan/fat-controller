@@ -15,7 +15,7 @@ import (
 
 // configFetcher allows injection for tests.
 type configFetcher interface {
-	Resolve(ctx context.Context, project, environment string) (string, string, error)
+	Resolve(ctx context.Context, workspace, project, environment string) (string, string, error)
 	Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error)
 }
 
@@ -23,8 +23,8 @@ type defaultConfigFetcher struct {
 	client *railway.Client
 }
 
-func (d *defaultConfigFetcher) Resolve(ctx context.Context, project, environment string) (string, string, error) {
-	return railway.ResolveProjectEnvironment(ctx, d.client, project, environment)
+func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
+	return railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment)
 }
 
 func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {
@@ -53,7 +53,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 	if out == nil {
 		out = os.Stdout
 	}
-	projID, envID, err := fetcher.Resolve(ctx, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
 	if err != nil {
 		return err
 	}

@@ -74,14 +74,23 @@ If kong bound `--token` to `RAILWAY_TOKEN`, it would route project-scoped
 tokens through the Bearer header path, which is incorrect. Keeping the
 resolver separate preserves the header distinction.
 
-## Token refresh: deferred to M2
+## Token refresh: transparent via HTTP transport
 
-M1's `auth status` does not refresh expired access tokens (1hr TTL). If
-the stored token is expired, the userinfo call fails and the user sees a
-message suggesting `auth login`. M2 will introduce a refresh-aware HTTP
-client that transparently refreshes tokens before any API call (including
-userinfo). Building it once in M2 avoids duplicating the refresh logic
-across commands.
+The authenticated HTTP transport (`internal/railway/transport.go`)
+transparently refreshes expired OAuth tokens. On a 401 response, it:
+
+1. Loads stored tokens (client ID + refresh token) from the token store
+2. Calls the OAuth token endpoint to refresh
+3. Saves the new token pair (Railway rotates refresh tokens)
+4. Retries the original request with the new access token
+
+This only applies to stored OAuth tokens (source = "stored"). Tokens
+from `--token` flag or environment variables are never refreshed — a 401
+is returned directly.
+
+The transport is used by both the Railway GraphQL client and the
+`auth status` userinfo call, so all commands benefit from transparent
+refresh.
 
 ## Testing strategy
 

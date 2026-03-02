@@ -240,18 +240,19 @@ func TestOpenBrowser(t *testing.T) {
 		t.Fatalf("OpenBrowser() error: %v", err)
 	}
 
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		if gotName != "open" {
 			t.Fatalf("command = %q, want open", gotName)
 		}
-	} else if runtime.GOOS == "windows" {
+	case "windows":
 		if gotName != "rundll32" {
 			t.Fatalf("command = %q, want rundll32", gotName)
 		}
 		if len(gotArgs) < 2 || gotArgs[0] != "url.dll,FileProtocolHandler" {
 			t.Fatalf("rundll32 args = %q, want url.dll,FileProtocolHandler", gotArgs)
 		}
-	} else {
+	default:
 		if gotName != "xdg-open" {
 			t.Fatalf("command = %q, want xdg-open", gotName)
 		}

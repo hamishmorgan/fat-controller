@@ -53,8 +53,8 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 		return err
 	}
 	if len(envs) == 0 {
-		fmt.Fprintln(out, "No environments found.")
-		return nil
+		_, err := fmt.Fprintln(out, "No environments found.")
+		return err
 	}
 	switch globals.Output {
 	case "json":
@@ -63,7 +63,9 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 		return enc.Encode(envs)
 	default:
 		for _, e := range envs {
-			fmt.Fprintf(out, "%s  %s\n", e.Name, e.ID)
+			if _, err := fmt.Fprintf(out, "%s  %s\n", e.Name, e.ID); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

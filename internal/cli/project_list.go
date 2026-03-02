@@ -52,8 +52,8 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 		return err
 	}
 	if len(projects) == 0 {
-		fmt.Fprintln(out, "No projects found.")
-		return nil
+		_, err := fmt.Fprintln(out, "No projects found.")
+		return err
 	}
 	switch globals.Output {
 	case "json":
@@ -62,7 +62,9 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 		return enc.Encode(projects)
 	default:
 		for _, p := range projects {
-			fmt.Fprintf(out, "%s  %s\n", p.Name, p.ID)
+			if _, err := fmt.Fprintf(out, "%s  %s\n", p.Name, p.ID); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

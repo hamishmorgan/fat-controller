@@ -3,9 +3,11 @@ package railway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
 // uuidPattern matches Railway-style UUIDs (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
@@ -25,9 +27,6 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, project, env
 		}
 		return resp.ProjectToken.ProjectId, resp.ProjectToken.EnvironmentId, nil
 	}
-	if project == "" || environment == "" {
-		return "", "", errors.New("project and environment required for account tokens")
-	}
 	projID, err := resolveProjectID(ctx, client, project)
 	if err != nil {
 		return "", "", err
@@ -40,33 +39,49 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, project, env
 }
 
 func resolveProjectID(ctx context.Context, client *Client, project string) (string, error) {
-	if uuidPattern.MatchString(project) {
+	if project != "" && uuidPattern.MatchString(project) {
 		return project, nil
 	}
 	resp, err := Projects(ctx, client.GQL())
 	if err != nil {
 		return "", err
 	}
-	for _, edge := range resp.Projects.Edges {
-		if edge.Node.Name == project {
-			return edge.Node.Id, nil
+	if project != "" {
+		for _, edge := range resp.Projects.Edges {
+			if edge.Node.Name == project {
+				return edge.Node.Id, nil
+			}
 		}
+		return "", fmt.Errorf("project not found: %s", project)
 	}
-	return "", errors.New("project not found: " + project)
+
+	items := make([]prompt.Item, len(resp.Projects.Edges))
+	for i, edge := range resp.Projects.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return prompt.PickProject(items, prompt.StdinIsInteractive())
 }
 
 func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string) (string, error) {
-	if uuidPattern.MatchString(env) {
+	if env != "" && uuidPattern.MatchString(env) {
 		return env, nil
 	}
 	resp, err := Environments(ctx, client.GQL(), projectID)
 	if err != nil {
 		return "", err
 	}
-	for _, edge := range resp.Environments.Edges {
-		if edge.Node.Name == env {
-			return edge.Node.Id, nil
+	if env != "" {
+		for _, edge := range resp.Environments.Edges {
+			if edge.Node.Name == env {
+				return edge.Node.Id, nil
+			}
 		}
+		return "", fmt.Errorf("environment not found: %s", env)
 	}
-	return "", errors.New("environment not found: " + env)
+
+	items := make([]prompt.Item, len(resp.Environments.Edges))
+	for i, edge := range resp.Environments.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return prompt.PickEnvironment(items, prompt.StdinIsInteractive())
 }

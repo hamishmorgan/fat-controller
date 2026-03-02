@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/huh"
 )
@@ -63,4 +64,9 @@ func PickProject(items []Item, interactive bool) (string, error) {
 // PickEnvironment selects an environment from the list.
 func PickEnvironment(items []Item, interactive bool) (string, error) {
 	return pickItem("environment", items, interactive)
+}
+
+// StdinIsInteractive checks if os.Stdin is a TTY.
+func StdinIsInteractive() bool {
+	return IsInteractive(os.Stdin)
 }

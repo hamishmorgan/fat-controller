@@ -1,3 +1,6 @@
+[hooks]
+postinstall = "mise run setup"
+
 [tasks.setup]
 description = "Set up local development environment"
 depends = ["setup:hooks"]

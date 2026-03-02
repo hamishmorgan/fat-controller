@@ -1,3 +1,17 @@
+[tasks.pre-commit]
+description = "Git pre-commit: format and abort if files changed"
+depends = ["format"]
+run = """
+if ! git diff --quiet; then
+  echo "Pre-commit formatters modified files. Stage the changes and commit again."
+  exit 1
+fi
+"""
+
+[tasks.pre-push]
+description = "Git pre-push: run all checks"
+depends = ["check"]
+
 [tasks.lint]
 description = "Run all linters"
 depends = ["lint:md"]

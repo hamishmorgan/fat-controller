@@ -258,9 +258,13 @@ ignored. Three patterns for managing secrets:
 
 ### Secret masking
 
-Variables with sensitive names are automatically masked in output. The
-tool detects them by matching variable name segments (case-insensitive,
-regex word boundaries) against a configurable pattern list.
+Variables are automatically masked in output when they appear to contain
+secrets. Detection uses two layers: **name-based** and **entropy-based**.
+
+#### Layer 1: Name-based detection
+
+Variable names are matched (case-insensitive, regex word boundaries)
+against a configurable pattern list.
 
 **Default patterns:**
 
@@ -269,25 +273,48 @@ SECRET, TOKEN, PASSWORD, PASSWD, KEY, CREDENTIAL, AUTH,
 PRIVATE, CERT, DSN, CONNECTION_STRING
 ```
 
-**Masking logic:**
+#### Layer 2: Entropy-based detection
+
+Values that pass name-based checks are tested for high Shannon entropy,
+which indicates random/generated strings typical of API keys and tokens.
+Uses the same thresholds as truffleHog and Yelp's detect-secrets:
+
+| Charset | Characters | Threshold | Min length |
+|---------|-----------|-----------|------------|
+| Base64 | `A-Za-z0-9+/=` | > 4.5 bits/char | 20 chars |
+| Hex | `0-9a-fA-F` | > 3.0 bits/char | 20 chars |
+
+The Shannon entropy formula: `H = -Σ p(x) * log₂(p(x))` where `p(x)` is
+the frequency of character `x` in the string. Random strings approach the
+theoretical maximum for their charset; structured strings (English words,
+URLs, paths) score much lower.
+
+This catches secrets with non-obvious names like
+`SETTING_X = "sk_live_4eC39HqL..."` that name-based detection would miss.
+
+#### Combined masking logic
 
 1. The tool always fetches the unrendered value from Railway (needed to
    detect `${{}}` references and compute diffs correctly).
 2. If the value contains `${{` — it's a Railway reference template.
-   **Show as-is** regardless of name, since the template is not a secret.
-3. If the name matches a sensitive pattern AND the value is a literal —
-   **display as `********`**.
-4. `--show-secrets` overrides masking and shows all values.
+   **Show as-is** regardless of name or entropy.
+3. If the name matches a sensitive pattern — **mask as `********`**.
+4. If the value has high entropy (base64 > 4.5 or hex > 3.0, min 20
+   chars) — **mask as `********`**.
+5. Otherwise — **show**.
+6. `--show-secrets` overrides all masking.
 
 **Examples:**
 
 ```
-DATABASE_PASSWORD = "********"              # masked (literal + matches PASSWORD)
-DATABASE_URL = "${{postgres.DATABASE_URL}}" # shown (it's a reference, not a secret)
-APP_ENV = "production"                      # shown (name doesn't match any pattern)
+DATABASE_PASSWORD = "********"              # masked (name matches PASSWORD)
+DATABASE_URL = "${{postgres.DATABASE_URL}}" # shown (reference template)
+APP_ENV = "production"                      # shown (no name match, low entropy)
+SETTING_X = "********"                      # masked (high entropy value)
+BUILD_HASH = "abc123"                       # shown (too short for entropy check)
 ```
 
-**Custom patterns** (replaces defaults entirely):
+**Custom name patterns** (replaces defaults entirely):
 
 ```toml
 # .fat-controller.toml

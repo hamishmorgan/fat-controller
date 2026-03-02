@@ -4,9 +4,7 @@
 
 **Goal:** Automatically mask secret values in `config get` output using name-based keyword matching and Shannon entropy detection, with `--show-secrets` to override.
 
-**Architecture:** Create `internal/config/mask.go` with a `Masker` struct that holds compiled regexes for sensitive keywords and allowlist patterns. The masker exposes a single `MaskValue(name, value string) string` method implementing the combined logic from `docs/SECRET-MASKING.md`.
-
-Wire it into `Render()` via a new `RenderOptions` struct that replaces the current `full bool` parameter. All stdlib — no new dependencies.
+**Architecture:** Create `internal/config/mask.go` with a `Masker` struct that holds compiled regexes for sensitive keywords and allowlist patterns. The masker exposes a single `MaskValue(name, value string) string` method implementing the combined logic from `docs/SECRET-MASKING.md`. Wire it into `Render()` via a new `RenderOptions` struct that replaces the current `format string, full bool` parameters. All stdlib — no new dependencies.
 
 **Tech Stack:** Go stdlib (`regexp`, `math`, `strings`, `unicode`)
 
@@ -16,14 +14,14 @@ Wire it into `Render()` via a new `RenderOptions` struct that replaces the curre
 
 ### How the codebase works today
 
-- `internal/config/render.go` has `Render(cfg LiveConfig, format string, full bool) (string, error)` which outputs config in text/json/toml formats. The shared variables section is rendered under the key `shared` (JSON) / `[shared]` (TOML/text). **No masking exists.** Values are written verbatim.
+- `internal/config/render.go` has `Render(cfg LiveConfig, format string, full bool) (string, error)` which outputs config in text/json/toml formats. Shared variables render under `[shared.variables]` (TOML/text) and `{"shared": {"variables": ...}}` (JSON). **No masking exists.** Values are written verbatim.
 - `internal/cli/config_get.go:77` calls `config.Render(*cfg, globals.Output, globals.Full)` — this is the single integration point.
 - `internal/cli/cli.go` has a `Globals` struct with `ShowSecrets bool` already defined but unused.
 - `sensitive_keywords` and `sensitive_allowlist` are config-file-only settings (no CLI flag, no env var). Config file loading doesn't exist yet, so for now the masker uses hardcoded defaults. The API accepts custom lists so config loading can wire in later.
-- **Known trade-off:** The keyword `PASS` with `(\b|_)` boundaries won't match mid-word (`COMPASS`), but will match segment boundaries like `BOARDING_PASS`. This is intentional — erring on the side of masking is safer than leaking secrets. Users can suppress false positives via the allowlist.
 - All test files use **external test packages** (`package config_test`, `package cli_test`).
 - Tests use **plain `testing.T`** — no testify.
-- Run tests with `go test ./internal/config -v` or `mise run check` for full suite.
+- Run tests with `go test ./internal/config/... -v` or `mise run check` for full suite.
+- **Known trade-off:** The keyword `PASS` with `(\b|_)` boundaries won't match mid-word (`COMPASS`), but will match segment boundaries like `BOARDING_PASS`. This is intentional — erring on the side of masking is safer than leaking secrets. Users can suppress false positives via the allowlist.
 
 ### The masking spec (`docs/SECRET-MASKING.md`)
 
@@ -42,10 +40,16 @@ Keyword matching uses `(\b|_)` boundary regex: `(?i)(\b|_)(PASSWORD|TOKEN|...)(\
 |------|--------|
 | `internal/config/mask.go` | **Create** — `Masker` struct, `MaskValue`, entropy, defaults |
 | `internal/config/mask_test.go` | **Create** — comprehensive masking tests |
-| `internal/config/render.go` | **Modify** — replace `full bool` param with `RenderOptions`, apply masking |
+| `internal/config/render.go` | **Modify** — replace `format string, full bool` params with `RenderOptions`, apply masking |
 | `internal/config/render_test.go` | **Modify** — update calls to use `RenderOptions` |
 | `internal/cli/config_get.go` | **Modify** — pass `ShowSecrets` via `RenderOptions` |
 | `internal/cli/config_get_test.go` | **Modify** — update calls, add masking integration tests |
+
+### Hazards
+
+- **`DSN` is a sensitive keyword.** The existing `TestRender_TOMLQuotesValues` test uses `"DSN"` as a variable name. After masking is wired in, this will break because the value gets masked. You must update that test to use `ShowSecrets: true` (or rename the variable to something non-sensitive).
+- **Changing the `Render` signature breaks all callers.** Both `internal/cli/config_get.go` and all `render_test.go` tests call `Render`. Update them in the same task or tests won't compile.
+- **The `base64Pattern` includes `-` and `_` (URL-safe base64).** This means slug-like strings like `my-app-prod-abc123def456` match the character set — but they score low on entropy (< 4.5) so they won't be falsely masked. Still, add a test for this.
 
 ---
 
@@ -56,7 +60,7 @@ Build the core `Masker` type with keyword and allowlist regex compilation. No en
 **Files:**
 
 - Create: `internal/config/mask.go`
-- Test: `internal/config/mask_test.go`
+- Create: `internal/config/mask_test.go`
 
 **Step 1: Write the failing test**
 
@@ -82,6 +86,14 @@ func TestMaskValue_MasksPasswordByName(t *testing.T) {
 func TestMaskValue_MasksTokenByName(t *testing.T) {
 	m := config.NewMasker(nil, nil)
 	got := m.MaskValue("AUTH_TOKEN", "abc123")
+	if got != "********" {
+		t.Errorf("expected masked, got %q", got)
+	}
+}
+
+func TestMaskValue_MasksDSNByName(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	got := m.MaskValue("DSN", "postgres://user:pass@host/db")
 	if got != "********" {
 		t.Errorf("expected masked, got %q", got)
 	}
@@ -122,11 +134,18 @@ func TestMaskValue_RailwayReferenceShownAsIs(t *testing.T) {
 	}
 }
 
-func TestMaskValue_CustomKeywords(t *testing.T) {
+func TestMaskValue_CustomKeywordsReplaceDefaults(t *testing.T) {
+	// Passing custom keywords replaces all defaults.
+	// Passing nil allowlist keeps the default allowlist.
 	m := config.NewMasker([]string{"CUSTOM_FIELD"}, nil)
 	got := m.MaskValue("MY_CUSTOM_FIELD", "value")
 	if got != "********" {
 		t.Errorf("custom keyword should mask, got %q", got)
+	}
+	// Default keywords should no longer match.
+	got = m.MaskValue("DATABASE_PASSWORD", "hunter2")
+	if got != "hunter2" {
+		t.Errorf("default keyword should not mask with custom keywords, got %q", got)
 	}
 }
 
@@ -141,7 +160,7 @@ func TestMaskValue_CustomAllowlist(t *testing.T) {
 
 **Step 2: Run the test to verify it fails**
 
-Run: `go test ./internal/config -run TestMaskValue -v`
+Run: `go test ./internal/config/... -run TestMaskValue -v`
 
 Expected: FAIL — `undefined: config.NewMasker`.
 
@@ -210,7 +229,8 @@ type Masker struct {
 }
 
 // NewMasker creates a Masker with the given keyword and allowlist patterns.
-// Pass nil for either to use the defaults.
+// Pass nil for either to use the defaults. Passing a non-nil slice
+// (even empty) replaces the defaults entirely.
 func NewMasker(keywords, allowlist []string) *Masker {
 	if keywords == nil {
 		keywords = DefaultSensitiveKeywords
@@ -261,7 +281,7 @@ func (m *Masker) MaskValue(name, value string) string {
 
 **Step 4: Run the test to verify it passes**
 
-Run: `go test ./internal/config -run TestMaskValue -v`
+Run: `go test ./internal/config/... -run TestMaskValue -v`
 
 Expected: PASS.
 
@@ -281,7 +301,7 @@ Add Layer 2: entropy-based detection for values that pass name-based checks.
 **Files:**
 
 - Modify: `internal/config/mask.go`
-- Test: `internal/config/mask_test.go`
+- Modify: `internal/config/mask_test.go`
 
 **Step 1: Write the failing tests**
 
@@ -326,10 +346,19 @@ func TestMaskValue_LowEntropyLongStringNotMasked(t *testing.T) {
 
 func TestMaskValue_URLNotMasked(t *testing.T) {
 	m := config.NewMasker(nil, nil)
-	// URLs have structure, not random entropy.
+	// URLs contain :// and / which fail the base64/hex charset check.
 	got := m.MaskValue("APP_URL", "https://my-app.railway.app/api/v1/health")
 	if got != "https://my-app.railway.app/api/v1/health" {
 		t.Errorf("URL should not trigger entropy mask, got %q", got)
+	}
+}
+
+func TestMaskValue_SlugNotMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// Slug-like strings match base64 charset but have low entropy.
+	got := m.MaskValue("APP_SLUG", "my-app-production-deploy-v2")
+	if got != "my-app-production-deploy-v2" {
+		t.Errorf("slug should not trigger entropy mask, got %q", got)
 	}
 }
 
@@ -358,13 +387,13 @@ func TestShannonEntropy_EmptyString(t *testing.T) {
 
 **Step 2: Run the tests to verify they fail**
 
-Run: `go test ./internal/config -run "TestMaskValue_HighEntropy|TestShannonEntropy" -v`
+Run: `go test ./internal/config/... -run "TestMaskValue_HighEntropy|TestMaskValue_Slug|TestShannonEntropy" -v`
 
 Expected: FAIL — `undefined: config.ShannonEntropy`, and high-entropy values not masked.
 
 **Step 3: Write minimal implementation**
 
-Add to `internal/config/mask.go`:
+Add to `internal/config/mask.go` (update the import block and add after the existing code):
 
 ```go
 import (
@@ -382,9 +411,9 @@ const (
 )
 
 // Character set patterns for entropy classification.
-// Note: base64Pattern includes URL-safe chars (_-). This means slugs like
-// "my-app-name-here-12345" are candidates, but the entropy threshold (4.5)
-// filters them out — structured/repetitive strings score well below that.
+// base64Pattern includes URL-safe chars (_-). Slug-like strings
+// ("my-app-prod-12345") match the charset but score well below the
+// 4.5 entropy threshold, so they won't be falsely masked.
 var (
 	hexPattern    = regexp.MustCompile(`^[0-9a-fA-F]+$`)
 	base64Pattern = regexp.MustCompile(`^[A-Za-z0-9+/=_\-]+$`)
@@ -412,12 +441,11 @@ func ShannonEntropy(s string) float64 {
 // hasHighEntropy returns true if value looks like a random secret based
 // on Shannon entropy thresholds for base64 and hex character sets.
 func hasHighEntropy(value string) bool {
-	// Strip whitespace for analysis.
 	v := strings.TrimSpace(value)
 	if len(v) < entropyMinLength {
 		return false
 	}
-	// Skip values with spaces or control chars — likely human text, not secrets.
+	// Skip values with spaces — likely human text, not secrets.
 	for _, r := range v {
 		if unicode.IsSpace(r) {
 			return false
@@ -434,9 +462,12 @@ func hasHighEntropy(value string) bool {
 }
 ```
 
-Update `MaskValue` to add entropy check after name-based checks:
+Update `MaskValue` to add entropy check after name-based checks. Replace the existing method:
 
 ```go
+// MaskValue returns MaskedValue if the variable should be masked, or the
+// original value if it should be shown. Implements the combined logic from
+// docs/SECRET-MASKING.md.
 func (m *Masker) MaskValue(name, value string) string {
 	// Railway reference templates are always shown.
 	if strings.Contains(value, "${{") {
@@ -460,7 +491,7 @@ func (m *Masker) MaskValue(name, value string) string {
 
 **Step 4: Run the tests to verify they pass**
 
-Run: `go test ./internal/config -run "TestMaskValue|TestShannonEntropy" -v`
+Run: `go test ./internal/config/... -run "TestMaskValue|TestShannonEntropy" -v`
 
 Expected: PASS.
 
@@ -473,16 +504,123 @@ git commit -m "Add Shannon entropy detection for secret values"
 
 ---
 
-## Task 3: Wire masking into Render via RenderOptions
+## Task 3: Introduce RenderOptions and update existing tests
 
-Replace `Render(cfg, format, full)` with `Render(cfg, opts)` using a new `RenderOptions` struct. Apply masking to all variable values during rendering.
+Replace `Render(cfg, format, full)` with `Render(cfg, opts)` using a new `RenderOptions` struct. No masking wiring yet — just the signature change.
+
+**Important:** This task changes the `Render` function signature, which breaks both `render_test.go` and `config_get.go`. Update both in this task so the codebase compiles.
+
+**Files:**
+
+- Modify: `internal/config/render.go`
+- Modify: `internal/config/render_test.go`
+- Modify: `internal/cli/config_get.go`
+
+**Step 1: Update `render.go`**
+
+Add `RenderOptions` and change the `Render` signature. Replace the current `Render` function:
+
+```go
+// RenderOptions controls how config is rendered.
+type RenderOptions struct {
+	Format      string   // "text", "json", "toml"
+	Full        bool     // Include IDs and deploy settings
+	ShowSecrets bool     // Show all values unmasked
+	Keywords    []string // Custom sensitive keywords (nil = defaults)
+	Allowlist   []string // Custom allowlist (nil = defaults)
+}
+
+// Render renders the live config in the requested output format.
+// Variable values are masked by default unless ShowSecrets is true.
+func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
+	switch opts.Format {
+	case "json":
+		buf, err := json.MarshalIndent(toJSONMap(cfg, opts.Full), "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(buf), nil
+	case "toml":
+		return renderTOML(cfg, opts.Full), nil
+	case "text", "":
+		return renderText(cfg, opts.Full), nil
+	default:
+		return "", errors.New("unsupported output format")
+	}
+}
+```
+
+Note: masking is NOT wired in yet. That's Task 4. This task only changes the signature.
+
+**Step 2: Update all `render_test.go` calls**
+
+Replace every `config.Render(...)` call in `internal/config/render_test.go`. The pattern:
+
+```go
+// Old:
+config.Render(cfg, "text", false)
+config.Render(cfg, "text", true)
+config.Render(cfg, "json", false)
+config.Render(cfg, "json", true)
+config.Render(cfg, "toml", false)
+config.Render(cfg, "toml", true)
+config.Render(cfg, "xml", false)
+
+// New:
+config.Render(cfg, config.RenderOptions{Format: "text"})
+config.Render(cfg, config.RenderOptions{Format: "text", Full: true})
+config.Render(cfg, config.RenderOptions{Format: "json"})
+config.Render(cfg, config.RenderOptions{Format: "json", Full: true})
+config.Render(cfg, config.RenderOptions{Format: "toml"})
+config.Render(cfg, config.RenderOptions{Format: "toml", Full: true})
+config.Render(cfg, config.RenderOptions{Format: "xml"})
+```
+
+Note: do NOT add `ShowSecrets: true` yet. Masking isn't wired in, so existing tests pass as-is.
+
+**Step 3: Update `config_get.go`**
+
+Change `internal/cli/config_get.go:77` from:
+
+```go
+output, err := config.Render(*cfg, globals.Output, globals.Full)
+```
+
+to:
+
+```go
+output, err := config.Render(*cfg, config.RenderOptions{
+	Format:      globals.Output,
+	Full:        globals.Full,
+	ShowSecrets: globals.ShowSecrets,
+})
+```
+
+**Step 4: Verify everything compiles and tests pass**
+
+Run: `go test ./internal/config/... ./internal/cli/... -v`
+
+Expected: PASS. No behavior change — just a signature change.
+
+**Step 5: Commit**
+
+```bash
+git add internal/config/render.go internal/config/render_test.go internal/cli/config_get.go
+git commit -m "Replace Render(format, full) with Render(RenderOptions)"
+```
+
+---
+
+## Task 4: Wire masking into Render and add masking tests
+
+Now wire the `Masker` into `Render` via `maskConfig`, and add tests for masking behavior across all output formats.
 
 **Files:**
 
 - Modify: `internal/config/render.go`
 - Modify: `internal/config/render_test.go`
 
-**Step 1: Write the failing test**
+**Step 1: Write the failing masking tests**
 
 Add to `internal/config/render_test.go`:
 
@@ -573,28 +711,17 @@ func TestRender_ReferenceTemplateNotMasked(t *testing.T) {
 }
 ```
 
-**Step 2: Run the tests to verify they fail**
+**Step 2: Run the new tests to verify they fail**
 
-Run: `go test ./internal/config -run "TestRender_Masks|TestRender_ShowSecrets|TestRender_Reference" -v`
+Run: `go test ./internal/config/... -run "TestRender_Masks|TestRender_ShowSecrets|TestRender_Reference" -v`
 
-Expected: FAIL — `undefined: config.RenderOptions`, wrong `Render` signature.
+Expected: FAIL — masking not yet wired in, so `hunter2` appears unmasked.
 
-**Step 3: Write minimal implementation**
+**Step 3: Wire masking into Render**
 
-Update `internal/config/render.go`. Add `RenderOptions` and update `Render`:
+Update `Render` in `internal/config/render.go`:
 
 ```go
-// RenderOptions controls how config is rendered.
-type RenderOptions struct {
-	Format      string   // "text", "json", "toml"
-	Full        bool     // Include IDs and deploy settings
-	ShowSecrets bool     // Show all values unmasked
-	Keywords    []string // Custom sensitive keywords (nil = defaults)
-	Allowlist   []string // Custom allowlist (nil = defaults)
-}
-
-// Render renders the live config in the requested output format.
-// Variable values are masked by default unless ShowSecrets is true.
 func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
 	var masker *Masker
 	if !opts.ShowSecrets {
@@ -617,7 +744,11 @@ func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
 		return "", errors.New("unsupported output format")
 	}
 }
+```
 
+Add `maskConfig` and `maskVars` helper functions (add these after the `Render` function):
+
+```go
 // maskConfig returns a copy of cfg with variable values masked.
 // If masker is nil (ShowSecrets mode), returns cfg unchanged.
 func maskConfig(cfg LiveConfig, masker *Masker) LiveConfig {
@@ -654,36 +785,34 @@ func maskVars(vars map[string]string, masker *Masker) map[string]string {
 }
 ```
 
-**Step 4: Update existing tests to use RenderOptions**
+**Step 4: Fix broken existing tests**
 
-In `internal/config/render_test.go`, update all existing `config.Render(...)` calls.
-Replace the pattern:
+Now that masking is active by default, existing tests that use sensitive variable names will break. Specifically, `TestRender_TOMLQuotesValues` uses `"DSN"` which is a sensitive keyword.
+
+Update that test to use `ShowSecrets: true`:
 
 ```go
-// Old:
-config.Render(cfg, "text", false)
-config.Render(cfg, "text", true)
-config.Render(cfg, "json", false)
-config.Render(cfg, "json", true)
-config.Render(cfg, "toml", false)
-config.Render(cfg, "toml", true)
-config.Render(cfg, "xml", false)
-
-// New:
-config.Render(cfg, config.RenderOptions{Format: "text", ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "text", Full: true, ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "json", ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "json", Full: true, ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "toml", ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "toml", Full: true, ShowSecrets: true})
-config.Render(cfg, config.RenderOptions{Format: "xml"})
+func TestRender_TOMLQuotesValues(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml", ShowSecrets: true})
+	// ...
+}
 ```
 
-Note: the existing non-masking tests should use `ShowSecrets: true` to preserve their current behavior of verifying unmasked output. The new masking tests test with `ShowSecrets: false` (the default zero value).
+Or rename the variable from `DSN` to `CONNECTION_INFO` (not a keyword). Either works — renaming is cleaner because it tests TOML quoting independently of masking.
 
-**Step 5: Run all render tests**
+Also audit all other existing `render_test.go` tests for sensitive names:
 
-Run: `go test ./internal/config -v`
+- `sampleConfig()` uses `SHARED` and `PORT` — not sensitive. Safe.
+- `TestRender_JSONIncludesVariables` uses `PORT` — safe.
+- `TestRender_EmptyConfig` uses no variables — safe.
+- `TestRender_TextFullOmitsDeployWhenEmpty` uses `X` — safe.
+
+**Step 5: Run all tests**
+
+Run: `go test ./internal/config/... -v`
 
 Expected: PASS.
 
@@ -691,21 +820,20 @@ Expected: PASS.
 
 ```bash
 git add internal/config/render.go internal/config/render_test.go
-git commit -m "Wire secret masking into Render via RenderOptions"
+git commit -m "Wire secret masking into Render — mask by default, ShowSecrets to override"
 ```
 
 ---
 
-## Task 4: Update CLI call site and integration tests
+## Task 5: CLI integration tests
 
-Update `RunConfigGet` to pass `ShowSecrets` through `RenderOptions`, and update all CLI tests.
+Add integration tests that verify masking flows through from `RunConfigGet` via `Globals.ShowSecrets`.
 
 **Files:**
 
-- Modify: `internal/cli/config_get.go`
 - Modify: `internal/cli/config_get_test.go`
 
-**Step 1: Write the failing integration test**
+**Step 1: Write the integration tests**
 
 Add to `internal/cli/config_get_test.go`:
 
@@ -756,58 +884,40 @@ func TestRunConfigGet_ShowSecretsRevealsValues(t *testing.T) {
 }
 ```
 
-**Step 2: Run the tests to verify they fail**
+**Step 2: Run the tests**
 
-Run: `go test ./internal/cli -run "TestRunConfigGet_Masks|TestRunConfigGet_ShowSecrets" -v`
+Run: `go test ./internal/cli/... -run "TestRunConfigGet_Masks|TestRunConfigGet_ShowSecrets" -v`
 
-Expected: FAIL — `Render` signature mismatch.
+Expected: PASS (since `config_get.go` already passes `ShowSecrets` via `RenderOptions` from Task 3).
 
-**Step 3: Update config_get.go**
+**Step 3: Verify existing CLI tests still pass**
 
-Change line 77 of `internal/cli/config_get.go` from:
+The existing tests use variable names `FOO`, `PORT`, `DB` — none are sensitive keywords. Confirm:
 
-```go
-output, err := config.Render(*cfg, globals.Output, globals.Full)
-```
-
-to:
-
-```go
-output, err := config.Render(*cfg, config.RenderOptions{
-    Format:      globals.Output,
-    Full:        globals.Full,
-    ShowSecrets: globals.ShowSecrets,
-})
-```
-
-**Step 4: Update existing config_get tests**
-
-The existing tests in `config_get_test.go` construct `cli.Globals{Output: "text"}` etc. Since `ShowSecrets` defaults to `false`, existing tests that check for specific values would break if their variable names match sensitive keywords. The current fixtures use `FOO`, `PORT`, `DB`, and `SHARED` — none match, so **no changes are needed** to existing tests.
-
-**Step 5: Run all CLI tests**
-
-Run: `go test ./internal/cli -v`
+Run: `go test ./internal/cli/... -v`
 
 Expected: PASS.
 
-**Step 6: Commit**
+**Step 4: Commit**
 
 ```bash
-git add internal/cli/config_get.go internal/cli/config_get_test.go
-git commit -m "Wire --show-secrets through to config get output"
+git add internal/cli/config_get_test.go
+git commit -m "Add CLI integration tests for secret masking"
 ```
 
 ---
 
-## Task 5: Final verification
+## Task 6: Final verification
 
 Run the full suite to confirm nothing is broken.
 
-```bash
-mise run check
-```
+**Step 1: Full check**
 
-Expected: All linters pass, all tests pass, build succeeds. If there are uncommitted changes, commit them:
+Run: `mise run check`
+
+Expected: All linters pass, all tests pass, build succeeds.
+
+**Step 2: If any remaining uncommitted changes**
 
 ```bash
 git add -A

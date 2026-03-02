@@ -126,6 +126,11 @@ run = """
 golangci-lint run
 """
 
+[tasks.dev]
+alias = ["d"]
+description = "Run the CLI in dev mode"
+run = "go run ./cmd/fat-controller"
+
 [tasks.test]
 description = "Run Go tests"
 run = """

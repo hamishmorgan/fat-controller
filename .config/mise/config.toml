@@ -6,6 +6,7 @@ golangci-lint = "latest"
 "npm:markdownlint-cli2" = "latest"
 taplo = "latest"
 actionlint = "latest"
+gitleaks = "latest"
 
 [settings]
 experimental = true
@@ -36,9 +37,9 @@ mise generate git-pre-commit --write --task=pre-push --hook=pre-push
 # ---------------------------------------------------------------------------
 
 [tasks.pre-commit]
-description = "Git pre-commit: format and abort if files changed"
+description = "Git pre-commit: format, scan for secrets, and abort if files changed"
 hide = true
-depends = ["format"]
+depends = ["format", "lint:secrets:staged"]
 run = """
 if ! git diff --quiet; then
   echo "Pre-commit formatters modified files. Stage the changes and commit again."
@@ -57,7 +58,7 @@ depends = ["check"]
 
 [tasks.lint]
 description = "Run all linters"
-depends = ["lint:md", "lint:toml", "lint:go", "lint:actions"]
+depends = ["lint:md", "lint:toml", "lint:go", "lint:actions", "lint:secrets"]
 
 [tasks.check]
 alias = ["chk", "c"]
@@ -100,6 +101,19 @@ run = "taplo format"
 [tasks."lint:actions"]
 description = "Lint GitHub Actions workflows"
 run = "actionlint"
+
+# ---------------------------------------------------------------------------
+# Secrets
+# ---------------------------------------------------------------------------
+
+[tasks."lint:secrets"]
+description = "Scan for secrets in the repo"
+run = "gitleaks detect --verbose"
+
+[tasks."lint:secrets:staged"]
+description = "Scan staged changes for secrets"
+hide = true
+run = "gitleaks protect --verbose --staged"
 
 # ---------------------------------------------------------------------------
 # Go

@@ -6,7 +6,7 @@
 
 **Architecture:** Apollo Rover introspects the Railway schema into `internal/railway/schema.graphql` (checked in). genqlient generates typed Go functions from `.graphql` operation files. An authenticated `http.RoundTripper` wraps requests with the correct auth header (Bearer vs Project-Access-Token) based on `ResolvedAuth`, and transparently refreshes expired OAuth tokens. A `Client` struct in `internal/railway/client.go` ties it all together.
 
-**Tech Stack:** Go, Khan/genqlient, suessflorian/gqlfetch (indirect via genqlient), apollo-rover (mise tool, introspection only), existing internal/auth package
+**Tech Stack:** Go, Khan/genqlient, apollo-rover (mise tool, introspection only), existing internal/auth package
 
 ---
 
@@ -73,9 +73,10 @@ The transport uses `HeaderName` and `HeaderValue` directly — no need to know w
 ```text
 fat-controller/
 ├── genqlient.yaml                    # genqlient config (points to internal/railway/)
+├── tools.go                          # //go:build tools — blank import keeps genqlient in go.mod
 ├── main.go
-├── cmd/cli.go
 ├── internal/
+│   ├── cli/cli.go                    # CLI struct, kong wiring, command Run() methods
 │   ├── auth/                         # Existing — OAuth, keyring, token resolution
 │   │   ├── resolver.go               # ResolvedAuth (used by transport)
 │   │   ├── oauth.go                  # OAuthClient.RefreshToken (used by transport)
@@ -84,11 +85,15 @@ fat-controller/
 │   ├── platform/                     # Existing — XDG paths
 │   └── railway/                      # NEW — GQL client
 │       ├── schema.graphql            # Introspected Railway schema (checked in)
-│       ├── operations.graphql        # Queries + mutations (starts with projectToken)
+│       ├── operations.graphql        # Queries + mutations (starts with ProjectToken)
 │       ├── generated.go              # genqlient output (checked in)
-│       ├── client.go                 # Client struct, NewClient(), authed transport
-│       ├── client_test.go            # Tests for client + transport
-│       └── generate.go              # //go:generate directive
+│       ├── generate.go               # //go:generate directive
+│       ├── client.go                 # Client struct, NewClient()
+│       ├── client_test.go            # Tests for client + end-to-end
+│       ├── transport.go              # AuthTransport — injects auth header, refreshes on 401
+│       ├── transport_test.go         # Tests for transport (header injection, refresh, failure)
+│       ├── refresher.go              # OAuthRefresher — adapts auth.OAuthClient to Refresher interface
+│       └── refresher_test.go         # Tests for refresher
 ```
 
 ---
@@ -230,6 +235,7 @@ git commit -m "Add Railway GraphQL schema via introspection"
 - Modify: `go.mod`, `go.sum`
 - Create: `genqlient.yaml`
 - Create: `internal/railway/generate.go`
+- Create: `tools.go`
 
 **Step 1: Add genqlient dependency**
 
@@ -239,7 +245,7 @@ Run:
 go get github.com/Khan/genqlient@latest
 ```
 
-**Step 2: Create the tools file to prevent go mod tidy from pruning genqlient**
+**Step 2: Create the generate directive file**
 
 Create `internal/railway/generate.go`:
 
@@ -249,7 +255,23 @@ package railway
 //go:generate go run github.com/Khan/genqlient
 ```
 
-This file serves two purposes: (1) prevents `go mod tidy` from removing genqlient (since it's imported via `go run`), and (2) wires up `go generate`.
+This wires up `go generate` so that running `go generate ./internal/railway/` invokes genqlient.
+
+**Note:** `//go:generate go run` does NOT count as a Go import. Without a real import somewhere, `go mod tidy` will prune genqlient from `go.mod`. That's what `tools.go` (next step) is for.
+
+**Step 2b: Create the tools file to prevent `go mod tidy` from pruning genqlient**
+
+Create `tools.go` at the repo root:
+
+```go
+//go:build tools
+
+package tools
+
+import _ "github.com/Khan/genqlient"
+```
+
+The `//go:build tools` tag ensures this file is never compiled into the binary, but the blank import keeps genqlient in the module graph so `go mod tidy` won't remove it.
 
 **Step 3: Create genqlient.yaml at repo root**
 
@@ -292,7 +314,7 @@ Expected: `go.mod` and `go.sum` updated with genqlient and its dependencies.
 **Step 5: Commit**
 
 ```bash
-git add genqlient.yaml internal/railway/generate.go go.mod go.sum
+git add genqlient.yaml internal/railway/generate.go tools.go go.mod go.sum
 git commit -m "Add genqlient config and code generation setup"
 ```
 
@@ -310,9 +332,9 @@ git commit -m "Add genqlient config and code generation setup"
 Create `internal/railway/operations.graphql`:
 
 ```graphql
-# projectToken resolves a project-scoped token to its project and environment IDs.
+# ProjectToken resolves a project-scoped token to its project and environment IDs.
 # Used by auth status and as a basic connectivity check.
-query projectToken {
+query ProjectToken {
   projectToken {
     projectId
     environmentId
@@ -321,6 +343,8 @@ query projectToken {
 ```
 
 This is the simplest useful query — it takes no arguments (the token is in the header) and returns the project + environment IDs that the token is scoped to. Only works with `RAILWAY_TOKEN` (project-scoped tokens), not account-level tokens.
+
+**Important:** The query name is capitalized (`ProjectToken`) so genqlient generates an exported Go function `func ProjectToken(...)`. This lets tests in the `railway_test` package call it directly.
 
 **Step 2: Run genqlient code generation**
 
@@ -344,27 +368,29 @@ Expected: Build succeeds with no errors.
 
 **Step 4: Inspect the generated function**
 
-Open `internal/railway/generated.go` and look for the `projectToken` function. It should look approximately like:
+Open `internal/railway/generated.go` and look for the `ProjectToken` function. It should look approximately like:
 
 ```go
-func projectToken(
+func ProjectToken(
     ctx_ context.Context,
     client_ graphql.Client,
-) (*projectTokenResponse, error)
+) (*ProjectTokenResponse, error)
 ```
 
 And the response type:
 
 ```go
-type projectTokenResponse struct {
-    ProjectToken projectTokenProjectToken `json:"projectToken"`
+type ProjectTokenResponse struct {
+    ProjectToken ProjectTokenProjectToken `json:"projectToken"`
 }
 
-type projectTokenProjectToken struct {
+type ProjectTokenProjectToken struct {
     ProjectId     string `json:"projectId"`
     EnvironmentId string `json:"environmentId"`
 }
 ```
+
+Because the query name is capitalized, all generated types and functions are exported.
 
 **Step 5: Commit**
 
@@ -387,7 +413,7 @@ This is the core of M2 — an `http.RoundTripper` that:
 - Create: `internal/railway/transport.go`
 - Create: `internal/railway/transport_test.go`
 
-**Step 1: Write the failing tests**
+**Step 1: Write all the failing tests**
 
 Create `internal/railway/transport_test.go`:
 
@@ -395,14 +421,29 @@ Create `internal/railway/transport_test.go`:
 package railway_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
+	"github.com/zalando/go-keyring"
 )
+
+// fakeRefresher implements railway.Refresher for testing.
+type fakeRefresher struct {
+	called    atomic.Bool
+	returnTok *auth.TokenResponse
+	returnErr error
+}
+
+func (f *fakeRefresher) Refresh(clientID, refreshToken string) (*auth.TokenResponse, error) {
+	f.called.Store(true)
+	return f.returnTok, f.returnErr
+}
 
 func TestAuthTransport_InjectsHeader(t *testing.T) {
 	var gotHeader string
@@ -487,268 +528,6 @@ func TestAuthTransport_NoRefreshForNonStoredTokens(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("StatusCode = %d, want 401", resp.StatusCode)
 	}
-}
-```
-
-**Step 2: Run the tests to verify they fail**
-
-Run:
-
-```bash
-go test ./internal/railway/ -run TestAuthTransport -v
-```
-
-Expected: FAIL — `railway.NewAuthTransport` does not exist yet.
-
-**Step 3: Write the transport implementation**
-
-Create `internal/railway/transport.go`:
-
-```go
-package railway
-
-import (
-	"net/http"
-	"sync"
-
-	"github.com/hamishmorgan/fat-controller/internal/auth"
-)
-
-// Refresher abstracts token refresh so transport doesn't depend on OAuthClient directly.
-// In production, this wraps OAuthClient.RefreshToken. In tests, it can be a fake.
-type Refresher interface {
-	Refresh(clientID, refreshToken string) (*auth.TokenResponse, error)
-}
-
-// TokenSaver abstracts saving refreshed tokens. In production, this is a TokenStore.
-type TokenSaver interface {
-	Save(tokens *auth.StoredTokens) error
-}
-
-// AuthTransport is an http.RoundTripper that injects auth headers and
-// transparently refreshes expired OAuth tokens.
-type AuthTransport struct {
-	mu       sync.Mutex
-	resolved *auth.ResolvedAuth
-	store    TokenSaver
-	refresh  Refresher
-	base     http.RoundTripper
-}
-
-// NewAuthTransport creates a transport that injects auth headers from resolved.
-// If store and refresh are non-nil AND the token source is "stored", the
-// transport will attempt a token refresh on 401 responses.
-func NewAuthTransport(resolved *auth.ResolvedAuth, store TokenSaver, refresh Refresher) *AuthTransport {
-	return &AuthTransport{
-		resolved: resolved,
-		store:    store,
-		refresh:  refresh,
-		base:     http.DefaultTransport,
-	}
-}
-
-// RoundTrip implements http.RoundTripper.
-func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.mu.Lock()
-	headerName := t.resolved.HeaderName
-	headerValue := t.resolved.HeaderValue
-	t.mu.Unlock()
-
-	// Clone the request to avoid mutating the original.
-	clone := req.Clone(req.Context())
-	clone.Header.Set(headerName, headerValue)
-
-	resp, err := t.base.RoundTrip(clone)
-	if err != nil {
-		return nil, err
-	}
-
-	// Only attempt refresh for stored OAuth tokens on 401.
-	if resp.StatusCode == http.StatusUnauthorized && t.canRefresh() {
-		refreshed, refreshErr := t.tryRefresh()
-		if refreshErr != nil {
-			// Refresh failed — return the original 401 response.
-			return resp, nil
-		}
-
-		// Close the old response body before retrying.
-		resp.Body.Close() //nolint:errcheck
-
-		// Update resolved auth with new token.
-		t.mu.Lock()
-		t.resolved.Token = refreshed.AccessToken
-		t.resolved.HeaderValue = "Bearer " + refreshed.AccessToken
-		headerValue = t.resolved.HeaderValue
-		t.mu.Unlock()
-
-		// Retry the request with the new token.
-		retry := req.Clone(req.Context())
-		retry.Header.Set(headerName, headerValue)
-		return t.base.RoundTrip(retry)
-	}
-
-	return resp, nil
-}
-
-// canRefresh returns true if this transport has the components needed
-// for a token refresh (stored OAuth token + refresh capability).
-func (t *AuthTransport) canRefresh() bool {
-	return t.resolved.Source == "stored" && t.refresh != nil && t.store != nil
-}
-
-// tryRefresh attempts to refresh the stored OAuth token.
-// On success, saves the new tokens and returns the response.
-func (t *AuthTransport) tryRefresh() (*auth.TokenResponse, error) {
-	t.mu.Lock()
-	// We need the client ID and refresh token from the store.
-	// The resolved auth only has the access token — we need the full stored tokens.
-	t.mu.Unlock()
-
-	// Load stored tokens to get client ID and refresh token.
-	// Note: we pass through to the Refresher which has the client ID context.
-	// For now, we'll need the stored tokens.
-	return nil, nil // placeholder — completed in step 4
-}
-```
-
-Wait — the `tryRefresh` function needs the stored tokens (client ID + refresh token). The transport needs access to the `TokenStore` for loading, not just saving. Let me revise.
-
-Actually, let me restructure. The transport needs:
-
-- The current `ResolvedAuth` (for the header)
-- On 401: the stored `clientID` + `refreshToken` to call the refresh endpoint
-
-The cleanest approach: the transport holds a reference to the `TokenStore` (which can both Load and Save) and the `Refresher`. On 401, it loads stored tokens, calls refresh, saves new tokens, updates the resolved auth.
-
-Replace the `transport.go` content with:
-
-```go
-package railway
-
-import (
-	"net/http"
-	"sync"
-
-	"github.com/hamishmorgan/fat-controller/internal/auth"
-)
-
-// Refresher abstracts token refresh so transport doesn't depend on OAuthClient directly.
-type Refresher interface {
-	Refresh(clientID, refreshToken string) (*auth.TokenResponse, error)
-}
-
-// AuthTransport is an http.RoundTripper that injects auth headers and
-// transparently refreshes expired OAuth tokens.
-type AuthTransport struct {
-	mu       sync.Mutex
-	resolved *auth.ResolvedAuth
-	store    *auth.TokenStore
-	refresh  Refresher
-	base     http.RoundTripper
-}
-
-// NewAuthTransport creates a transport that injects auth headers from resolved.
-// If store and refresh are non-nil AND the token source is "stored", the
-// transport will attempt a token refresh on 401 responses.
-func NewAuthTransport(resolved *auth.ResolvedAuth, store *auth.TokenStore, refresh Refresher) *AuthTransport {
-	return &AuthTransport{
-		resolved: resolved,
-		store:    store,
-		refresh:  refresh,
-		base:     http.DefaultTransport,
-	}
-}
-
-// RoundTrip implements http.RoundTripper.
-func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.mu.Lock()
-	headerName := t.resolved.HeaderName
-	headerValue := t.resolved.HeaderValue
-	t.mu.Unlock()
-
-	clone := req.Clone(req.Context())
-	clone.Header.Set(headerName, headerValue)
-
-	resp, err := t.base.RoundTrip(clone)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode == http.StatusUnauthorized && t.canRefresh() {
-		newTokens, refreshErr := t.tryRefresh()
-		if refreshErr != nil {
-			return resp, nil
-		}
-
-		resp.Body.Close() //nolint:errcheck
-
-		t.mu.Lock()
-		t.resolved.Token = newTokens.AccessToken
-		t.resolved.HeaderValue = "Bearer " + newTokens.AccessToken
-		headerValue = t.resolved.HeaderValue
-		t.mu.Unlock()
-
-		retry := req.Clone(req.Context())
-		retry.Header.Set(headerName, headerValue)
-		return t.base.RoundTrip(retry)
-	}
-
-	return resp, nil
-}
-
-func (t *AuthTransport) canRefresh() bool {
-	return t.resolved.Source == "stored" && t.refresh != nil && t.store != nil
-}
-
-func (t *AuthTransport) tryRefresh() (*auth.TokenResponse, error) {
-	stored, err := t.store.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	newTokens, err := t.refresh.Refresh(stored.ClientID, stored.RefreshToken)
-	if err != nil {
-		return nil, err
-	}
-
-	// Railway rotates refresh tokens — save the new pair.
-	if err := t.store.Save(&auth.StoredTokens{
-		AccessToken:  newTokens.AccessToken,
-		RefreshToken: newTokens.RefreshToken,
-		ClientID:     stored.ClientID,
-	}); err != nil {
-		return nil, err
-	}
-
-	return newTokens, nil
-}
-```
-
-**Step 4: Run the tests**
-
-Run:
-
-```bash
-go test ./internal/railway/ -run TestAuthTransport -v
-```
-
-Expected: All 3 tests pass.
-
-**Step 5: Add the refresh test**
-
-Add to `internal/railway/transport_test.go`:
-
-```go
-// fakeRefresher implements railway.Refresher for testing.
-type fakeRefresher struct {
-	called    atomic.Bool
-	returnTok *auth.TokenResponse
-	returnErr error
-}
-
-func (f *fakeRefresher) Refresh(clientID, refreshToken string) (*auth.TokenResponse, error) {
-	f.called.Store(true)
-	return f.returnTok, f.returnErr
 }
 
 func TestAuthTransport_RefreshesOnUnauthorized(t *testing.T) {
@@ -876,24 +655,123 @@ func TestAuthTransport_RefreshFailsReturnsOriginal401(t *testing.T) {
 }
 ```
 
-Also add the necessary imports at the top of `transport_test.go`:
+**Step 2: Run the tests to verify they fail**
 
-```go
-import (
-	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"sync/atomic"
-	"testing"
+Run:
 
-	"github.com/hamishmorgan/fat-controller/internal/auth"
-	"github.com/hamishmorgan/fat-controller/internal/railway"
-	"github.com/zalando/go-keyring"
-)
+```bash
+go test ./internal/railway/ -run TestAuthTransport -v
 ```
 
-**Step 6: Run all transport tests**
+Expected: FAIL — `railway.NewAuthTransport` does not exist yet.
+
+**Step 3: Write the transport implementation**
+
+Create `internal/railway/transport.go`:
+
+```go
+package railway
+
+import (
+	"net/http"
+	"sync"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+)
+
+// Refresher abstracts token refresh so transport doesn't depend on OAuthClient directly.
+type Refresher interface {
+	Refresh(clientID, refreshToken string) (*auth.TokenResponse, error)
+}
+
+// AuthTransport is an http.RoundTripper that injects auth headers and
+// transparently refreshes expired OAuth tokens.
+type AuthTransport struct {
+	mu       sync.Mutex
+	resolved *auth.ResolvedAuth
+	store    *auth.TokenStore
+	refresh  Refresher
+	base     http.RoundTripper
+}
+
+// NewAuthTransport creates a transport that injects auth headers from resolved.
+// If store and refresh are non-nil AND the token source is "stored", the
+// transport will attempt a token refresh on 401 responses.
+func NewAuthTransport(resolved *auth.ResolvedAuth, store *auth.TokenStore, refresh Refresher) *AuthTransport {
+	return &AuthTransport{
+		resolved: resolved,
+		store:    store,
+		refresh:  refresh,
+		base:     http.DefaultTransport,
+	}
+}
+
+// RoundTrip implements http.RoundTripper.
+func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.mu.Lock()
+	headerName := t.resolved.HeaderName
+	headerValue := t.resolved.HeaderValue
+	t.mu.Unlock()
+
+	clone := req.Clone(req.Context())
+	clone.Header.Set(headerName, headerValue)
+
+	resp, err := t.base.RoundTrip(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized && t.canRefresh() {
+		newTokens, refreshErr := t.tryRefresh()
+		if refreshErr != nil {
+			return resp, nil
+		}
+
+		resp.Body.Close() //nolint:errcheck
+
+		t.mu.Lock()
+		t.resolved.Token = newTokens.AccessToken
+		t.resolved.HeaderValue = "Bearer " + newTokens.AccessToken
+		headerValue = t.resolved.HeaderValue
+		t.mu.Unlock()
+
+		retry := req.Clone(req.Context())
+		retry.Header.Set(headerName, headerValue)
+		return t.base.RoundTrip(retry)
+	}
+
+	return resp, nil
+}
+
+func (t *AuthTransport) canRefresh() bool {
+	return t.resolved.Source == "stored" && t.refresh != nil && t.store != nil
+}
+
+func (t *AuthTransport) tryRefresh() (*auth.TokenResponse, error) {
+	stored, err := t.store.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	newTokens, err := t.refresh.Refresh(stored.ClientID, stored.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Railway rotates refresh tokens — save the new pair.
+	if err := t.store.Save(&auth.StoredTokens{
+		AccessToken:  newTokens.AccessToken,
+		RefreshToken: newTokens.RefreshToken,
+		ClientID:     stored.ClientID,
+	}); err != nil {
+		return nil, err
+	}
+
+	return newTokens, nil
+}
+```
+
+**Step 4: Run the tests**
 
 Run:
 
@@ -903,7 +781,7 @@ go test ./internal/railway/ -run TestAuthTransport -v
 
 Expected: All 5 tests pass.
 
-**Step 7: Commit**
+**Step 5: Commit**
 
 ```bash
 git add internal/railway/transport.go internal/railway/transport_test.go
@@ -1230,11 +1108,9 @@ This test proves the entire pipeline works end-to-end: genqlient-generated code 
 
 **Step 1: Write the integration test**
 
-Add to `internal/railway/client_test.go`:
+Add `"context"` to the import block of `internal/railway/client_test.go`, then add the test function:
 
 ```go
-import "context"
-
 func TestClient_ProjectToken_EndToEnd(t *testing.T) {
 	keyring.MockInit()
 
@@ -1294,30 +1170,6 @@ func TestClient_ProjectToken_EndToEnd(t *testing.T) {
 }
 ```
 
-**Important note about the generated function:** genqlient generates `projectToken` (lowercase) as the function name, which is unexported. To call it from `_test.go` in `railway_test` package, you need to either:
-
-(a) Export it by capitalizing the query name in the `.graphql` file: `query ProjectToken { ... }` → generates `func ProjectToken(...)`, OR
-(b) Write the test in `package railway` (not `railway_test`)
-
-**Choose option (a):** Update `internal/railway/operations.graphql` to use `ProjectToken` (capitalized):
-
-```graphql
-query ProjectToken {
-  projectToken {
-    projectId
-    environmentId
-  }
-}
-```
-
-Then regenerate:
-
-```bash
-go generate ./internal/railway/
-```
-
-This generates an exported `func ProjectToken(ctx, client) (*ProjectTokenResponse, error)`.
-
 **Step 2: Run the test**
 
 Run:
@@ -1341,7 +1193,7 @@ Expected: All checks pass.
 **Step 4: Commit**
 
 ```bash
-git add internal/railway/operations.graphql internal/railway/generated.go internal/railway/client_test.go
+git add internal/railway/client_test.go
 git commit -m "Add end-to-end test for projectToken query via mock GQL server"
 ```
 
@@ -1349,15 +1201,15 @@ git commit -m "Add end-to-end test for projectToken query via mock GQL server"
 
 ### Task 10: Update auth status to use refresh-aware client
 
-Now that M2's refresh-aware transport exists, update `auth status` to use it instead of calling `FetchUserInfo` directly. This means expired tokens get refreshed transparently.
+Now that M2's refresh-aware transport exists, update `auth status` to use it instead of calling `FetchUserInfo` with a bare HTTP client. This means expired stored OAuth tokens get refreshed transparently on 401.
 
 **Files:**
 
-- Modify: `cmd/cli.go`
+- Modify: `internal/cli/cli.go`
 
 **Step 1: Update AuthStatusCmd.Run**
 
-Replace the stored-token section in `cmd/cli.go`'s `AuthStatusCmd.Run` method. The current code (lines 132-147) does:
+Replace the stored-token section in `internal/cli/cli.go`'s `AuthStatusCmd.Run` method. The current code does:
 
 ```go
 // For stored OAuth tokens, fetch user info.
@@ -1374,21 +1226,19 @@ if err != nil {
 }
 ```
 
-Replace it with code that creates a refresh-aware HTTP client:
+Replace it with code that wraps the OAuth client's HTTP client with the refresh-aware transport. Reuse the `store` variable already created earlier in the function:
 
 ```go
 // For stored OAuth tokens, use the refresh-aware transport so
-// expired tokens get refreshed transparently.
+// expired tokens get refreshed transparently on 401.
 oauth := auth.NewOAuthClient()
-store := auth.NewTokenStore(
-    auth.WithFallbackPath(platform.AuthFilePath()),
-)
 refresher := railway.NewOAuthRefresher(oauth)
 transport := railway.NewAuthTransport(resolved, store, refresher)
-httpClient := &http.Client{Transport: transport}
+oauth.HTTPClient = &http.Client{Transport: transport}
 
-// Use the transport-wrapped HTTP client for the userinfo request.
-oauth.HTTPClient = httpClient
+// Note: FetchUserInfo sets its own Authorization header, but the
+// transport overwrites it. On 401, the transport refreshes the token,
+// updates resolved.Token, and retries — all transparently.
 info, err := oauth.FetchUserInfo(resolved.Token)
 if err != nil {
     fmt.Println("Authenticated (stored OAuth token).")
@@ -1398,7 +1248,7 @@ if err != nil {
 }
 ```
 
-Add the `railway` import to `cmd/cli.go`:
+Add the `railway` import to `internal/cli/cli.go`:
 
 ```go
 import (
@@ -1435,7 +1285,7 @@ Expected: All checks pass.
 **Step 4: Commit**
 
 ```bash
-git add cmd/cli.go
+git add internal/cli/cli.go
 git commit -m "Use refresh-aware transport in auth status for transparent token refresh"
 ```
 

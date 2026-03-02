@@ -65,8 +65,19 @@ func setDefaults() {
 }
 
 // String returns a human-readable version string.
+// When commit/date are unknown (e.g. `go install @version` via module proxy),
+// they are omitted rather than showing "unknown".
 func String() string {
-	return fmt.Sprintf("%s (commit %s, built %s)", version, commit, date)
+	var detail string
+	switch {
+	case commit != "unknown" && date != "unknown":
+		detail = fmt.Sprintf(" (commit %s, built %s)", commit, date)
+	case commit != "unknown":
+		detail = fmt.Sprintf(" (commit %s)", commit)
+	case date != "unknown":
+		detail = fmt.Sprintf(" (built %s)", date)
+	}
+	return version + detail
 }
 
 // Version returns the semantic version (e.g. "v1.0.0" or "dev").

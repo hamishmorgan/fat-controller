@@ -25,12 +25,13 @@ func TestString_Format(t *testing.T) {
 	if strings.Contains(got, "\n") {
 		t.Errorf("String() should be single line, got %q", got)
 	}
-	// Should always have the three-part format.
-	if !strings.Contains(got, "(commit ") {
-		t.Errorf("String() should contain '(commit ', got %q", got)
+	// Should never contain "unknown" — unknown values are omitted.
+	if strings.Contains(got, "unknown") {
+		t.Errorf("String() should omit unknown values, got %q", got)
 	}
-	if !strings.Contains(got, ", built ") {
-		t.Errorf("String() should contain ', built ', got %q", got)
+	// Must start with the version.
+	if !strings.HasPrefix(got, "dev") {
+		t.Errorf("String() should start with version, got %q", got)
 	}
 }
 

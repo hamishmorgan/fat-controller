@@ -1,3 +1,6 @@
+[settings]
+experimental = true
+
 [hooks]
 postinstall = "mise run setup"
 

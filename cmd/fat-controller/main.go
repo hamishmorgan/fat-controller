@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
+	"github.com/hamishmorgan/fat-controller/internal/version"
 	"github.com/muesli/termenv"
 )
 
@@ -20,6 +21,7 @@ func main() {
 	ctx := kong.Parse(&c,
 		kong.Name("fat-controller"),
 		kong.Description("CLI for managing Railway projects. Pull live config, diff against desired state, apply the difference."),
+		kong.Vars{"version": version.String()},
 		kong.UsageOnError(),
 		kong.Help(cli.ColorHelpPrinter),
 	)

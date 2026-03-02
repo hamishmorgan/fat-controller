@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/alecthomas/kong"
 )
 
 // Globals holds values that are available to every command's Run() method.
@@ -32,6 +34,8 @@ type Globals struct {
 // Global flags come from the embedded Globals; subcommand groups are nested structs.
 type CLI struct {
 	Globals `kong:"embed"`
+
+	Version kong.VersionFlag `help:"Print version." short:"V"`
 
 	// Subcommand groups
 	Auth        AuthCmd        `cmd:"" help:"Manage authentication."`

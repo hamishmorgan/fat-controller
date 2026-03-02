@@ -2,41 +2,21 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 )
 
 // Globals holds values that are available to every command's Run() method.
+// Kong tags are here so CLI can embed Globals directly.
 type Globals struct {
-	Token       string
-	Project     string
-	Environment string
-	Output      string
-	Color       string
-	Timeout     string
-	Confirm     bool
-	DryRun      bool
-	ShowSecrets bool
-	SkipDeploys bool
-	FailFast    bool
-	Config      []string
-	Service     string
-	Full        bool
-	Verbose     bool
-	Quiet       bool
-}
-
-// CLI is the root struct for the kong CLI parser.
-// Global flags are defined here; subcommand groups are nested structs.
-type CLI struct {
-	// Global flags
 	Token       string   `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
 	Project     string   `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
 	Environment string   `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
 	Output      string   `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
 	Color       string   `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
-	Timeout     string   `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
+	Timeout     time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
 	Confirm     bool     `help:"Auto-execute mutations (skip confirmation)." env:"FAT_CONTROLLER_CONFIRM"`
 	DryRun      bool     `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"config" short:"c" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
@@ -47,6 +27,12 @@ type CLI struct {
 	Full        bool     `help:"Include IDs and read-only fields (get only)."`
 	Verbose     bool     `help:"Debug output (HTTP requests, timing)." short:"v"`
 	Quiet       bool     `help:"Suppress informational output." short:"q"`
+}
+
+// CLI is the root struct for the kong CLI parser.
+// Global flags come from the embedded Globals; subcommand groups are nested structs.
+type CLI struct {
+	Globals `kong:"embed"`
 
 	// Subcommand groups
 	Auth   AuthCmd   `cmd:"" help:"Manage authentication."`

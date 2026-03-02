@@ -1,10 +1,15 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
 )
+
+// errCodeExchange is a sentinel wrapper used to identify token exchange
+// failures, which may indicate a stale client ID and warrant a retry.
+var errCodeExchange = errors.New("code exchange failed")
 
 // BrowserOpener is a function that opens a URL in the user's browser.
 // Injected so tests can simulate the browser redirect without a real browser.
@@ -41,13 +46,20 @@ func OpenBrowser(url string) error {
 // Pass OpenBrowser for production use, or a fake for testing.
 func Login(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) error {
 	err := loginAttempt(oauth, store, openBrowser, false)
-	if err != nil {
-		// If the first attempt failed, retry with a fresh client registration.
-		// This handles the case where a stored client ID was revoked.
-		fmt.Println("Retrying with fresh client registration...")
-		return loginAttempt(oauth, store, openBrowser, true)
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	// Only retry with a fresh client registration if the token exchange
+	// itself failed — that's the symptom of a stale/revoked client ID.
+	// Other errors (user denied, CSRF mismatch, network, etc.) should
+	// propagate immediately.
+	if !errors.Is(err, errCodeExchange) {
+		return err
+	}
+
+	fmt.Println("Token exchange failed; retrying with fresh client registration...")
+	return loginAttempt(oauth, store, openBrowser, true)
 }
 
 func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
@@ -103,7 +115,7 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 	// Exchange code for tokens.
 	tokenResp, err := oauth.ExchangeCode(clientID, result.Code, redirectURI, verifier)
 	if err != nil {
-		return fmt.Errorf("exchanging authorization code: %w", err)
+		return fmt.Errorf("%w: %w", errCodeExchange, err)
 	}
 
 	// Store tokens.

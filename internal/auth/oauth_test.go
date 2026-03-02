@@ -139,6 +139,38 @@ func TestOAuthClient_ExchangeCode(t *testing.T) {
 	}
 }
 
+func TestOAuthClient_RegisterClient_ErrorStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{RegistrationURL: server.URL}
+	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	if err == nil {
+		t.Fatal("expected error for 403 response")
+	}
+	if !strings.Contains(err.Error(), "403") {
+		t.Errorf("error should mention status 403, got: %s", err)
+	}
+}
+
+func TestOAuthClient_ExchangeCode_ErrorStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
+	_, err := client.ExchangeCode("client-123", "bad-code", "http://127.0.0.1:8080/callback", "verifier")
+	if err == nil {
+		t.Fatal("expected error for 400 response")
+	}
+	if !strings.Contains(err.Error(), "400") {
+		t.Errorf("error should mention status 400, got: %s", err)
+	}
+}
+
 func TestOAuthClient_RefreshToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -175,5 +207,21 @@ func TestOAuthClient_RefreshToken(t *testing.T) {
 	}
 	if resp.RefreshToken != "rotated-refresh" {
 		t.Errorf("RefreshToken = %q", resp.RefreshToken)
+	}
+}
+
+func TestOAuthClient_RefreshToken_ErrorStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
+	_, err := client.RefreshToken("client-123", "expired-refresh")
+	if err == nil {
+		t.Fatal("expected error for 401 response")
+	}
+	if !strings.Contains(err.Error(), "401") {
+		t.Errorf("error should mention status 401, got: %s", err)
 	}
 }

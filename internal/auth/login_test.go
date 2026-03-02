@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -129,4 +130,93 @@ func TestLogin_AuthorizationDenied(t *testing.T) {
 	if err == nil {
 		t.Fatal("Login() should have returned an error")
 	}
+	// Should contain the original error, not a retry-related error.
+	if got := err.Error(); !strings.Contains(got, "access_denied") {
+		t.Errorf("error should mention access_denied, got: %s", got)
+	}
 }
+
+func TestLogin_RetriesOnStaleClientID(t *testing.T) {
+	keyring.MockInit()
+
+	regCalls := 0
+	regServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		regCalls++
+		if err := json.NewEncoder(w).Encode(auth.RegistrationResponse{
+			ClientID: fmt.Sprintf("client-%d", regCalls),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer regServer.Close()
+
+	tokenCalls := 0
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenCalls++
+		if tokenCalls == 1 {
+			// First attempt: reject (simulates stale client ID).
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// Second attempt: succeed.
+		if err := json.NewEncoder(w).Encode(auth.TokenResponse{
+			AccessToken:  "retry-access-token",
+			RefreshToken: "retry-refresh-token",
+			ExpiresIn:    3600,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer tokenServer.Close()
+
+	oauth := &auth.OAuthClient{
+		AuthEndpoint:    "https://example.com/oauth/auth",
+		TokenEndpoint:   tokenServer.URL,
+		RegistrationURL: regServer.URL,
+	}
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+
+	fakeBrowser := func(authURL string) error {
+		parsed, err := url.Parse(authURL)
+		if err != nil {
+			return err
+		}
+		state := parsed.Query().Get("state")
+		redirectURI := parsed.Query().Get("redirect_uri")
+		callbackURL := fmt.Sprintf("%s?code=fake-code&state=%s", redirectURI, state)
+		resp, err := http.Get(callbackURL) //nolint:noctx
+		if err != nil {
+			return err
+		}
+		resp.Body.Close() //nolint:errcheck
+		return nil
+	}
+
+	err := auth.Login(oauth, store, fakeBrowser)
+	if err != nil {
+		t.Fatalf("Login() error: %v", err)
+	}
+
+	// Should have registered twice (once for initial, once for retry).
+	if regCalls != 2 {
+		t.Errorf("registration calls = %d, want 2", regCalls)
+	}
+	// Should have hit token endpoint twice.
+	if tokenCalls != 2 {
+		t.Errorf("token calls = %d, want 2", tokenCalls)
+	}
+
+	tokens, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if tokens.AccessToken != "retry-access-token" {
+		t.Errorf("AccessToken = %q, want %q", tokens.AccessToken, "retry-access-token")
+	}
+}
+
+

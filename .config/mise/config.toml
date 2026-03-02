@@ -44,11 +44,51 @@ mise generate git-pre-commit --write --task=pre-push --hook=pre-push
 [tasks.pre-commit]
 description = "Git pre-commit: format, scan for secrets, and abort if files changed"
 hide = true
-depends = ["format", "lint:secrets:staged"]
+depends = ["lint:secrets:staged"]
 run = """
-if ! git diff --quiet; then
-  echo "Pre-commit formatters modified files. Stage the changes and commit again."
-  exit 1
+staged_files=$(git diff --name-only --cached --diff-filter=ACMR)
+
+if [ -n "$staged_files" ]; then
+  md_files=""
+  json_files=""
+  yaml_files=""
+  graphql_files=""
+  toml_files=""
+
+  for file in $staged_files; do
+    case "$file" in
+      *.md) md_files="$md_files $file" ;;
+      *.json|*.jsonc) json_files="$json_files $file" ;;
+      *.yml|*.yaml) yaml_files="$yaml_files $file" ;;
+      *.graphql|*.gql) graphql_files="$graphql_files $file" ;;
+      *.toml) toml_files="$toml_files $file" ;;
+    esac
+  done
+
+  if [ -n "$md_files" ]; then
+    markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc --fix $md_files
+  fi
+
+  if [ -n "$json_files" ]; then
+    prettier --write $json_files --ignore-path .gitignore
+  fi
+
+  if [ -n "$yaml_files" ]; then
+    prettier --write $yaml_files --ignore-path .gitignore
+  fi
+
+  if [ -n "$graphql_files" ]; then
+    prettier --write $graphql_files --ignore-path .gitignore
+  fi
+
+  if [ -n "$toml_files" ]; then
+    taplo format $toml_files
+  fi
+
+  if [ -n "$(git diff --name-only -- $staged_files)" ]; then
+    echo "Pre-commit formatters modified staged files. Stage the changes and commit again."
+    exit 1
+  fi
 fi
 """
 

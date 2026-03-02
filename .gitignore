@@ -31,5 +31,5 @@ go.work
 .env
 .env.*
 *.local.*
+.config/mise/.env.local
 auth.json
-

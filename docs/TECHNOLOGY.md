@@ -6,6 +6,10 @@
 versions, and task running. Config in `.config/mise/config.toml`.
 `mise run check` runs all linters and checks.
 
+Local secrets are loaded via `.config/mise/.env.local` (git-ignored) using
+`[env] _.file` in the mise config. Note: `mise env` always prints raw values;
+`redact = true` is for filtering and CI masking, not hiding output.
+
 ## Language: Go
 
 - `go run github.com/hamishmorgan/fat-controller@latest` — zero-install

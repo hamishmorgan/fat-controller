@@ -1,4 +1,4 @@
-![Fat Controller Logo](docs/logo.png)
+![Fat Controller Logo](docs/logo.svg)
 
 # Fat Controller
 

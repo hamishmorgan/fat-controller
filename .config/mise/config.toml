@@ -7,6 +7,7 @@ golangci-lint = "latest"
 taplo = "latest"
 actionlint = "latest"
 gitleaks = "latest"
+apollo-rover = "latest"
 
 [settings]
 experimental = true
@@ -114,6 +115,19 @@ run = "gitleaks detect --verbose"
 description = "Scan staged changes for secrets"
 hide = true
 run = "gitleaks protect --verbose --staged"
+
+# ---------------------------------------------------------------------------
+# GraphQL Schema
+# ---------------------------------------------------------------------------
+
+[tasks."schema:introspect"]
+alias = ["introspect"]
+description = "Fetch Railway GraphQL schema via introspection (requires RAILWAY_API_TOKEN)"
+run = """
+rover graph introspect https://backboard.railway.com/graphql/v2 \
+  --header "Authorization:Bearer ${RAILWAY_API_TOKEN:?Set RAILWAY_API_TOKEN to introspect the schema}" \
+  --output internal/railway/schema.graphql
+"""
 
 # ---------------------------------------------------------------------------
 # Go

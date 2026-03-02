@@ -1,3 +1,12 @@
+```text
+        ┌───────┐
+        │  F C  │
+     ┌──┴───────┴──┐
+     ╞══════════════╡
+          •   •
+           \_/
+```
+
 # Fat Controller
 
 A CLI for managing [Railway](https://railway.com) projects.

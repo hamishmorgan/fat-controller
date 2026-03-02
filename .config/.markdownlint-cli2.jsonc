@@ -9,6 +9,8 @@
     // Allow compact table style (no spaces around pipes)
     "MD060": false,
     // Allow bold emphasis for sub-steps (e.g. *Step 1: ...*)
-    "MD036": false
+    "MD036": false,
+    // Allow non-heading first line (ASCII art logo in README)
+    "MD041": false
   }
 }

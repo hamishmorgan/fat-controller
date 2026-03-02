@@ -179,3 +179,18 @@ run = """
 [ -f go.mod ] || exit 0
 go build ./...
 """
+
+[tasks."deps:update"]
+description = "Update Go module dependencies"
+run = """
+[ -f go.mod ] || exit 0
+go get -u ./...
+go mod tidy
+"""
+
+[tasks."deps:list"]
+description = "List available Go module updates"
+run = """
+[ -f go.mod ] || exit 0
+go list -m -u all
+"""

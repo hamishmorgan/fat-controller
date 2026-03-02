@@ -21,13 +21,29 @@ func OpenBrowser(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", url)
+		cmd = browserCommand("open", url)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		cmd = browserCommand("rundll32", "url.dll,FileProtocolHandler", url)
 	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", url)
+		cmd = browserCommand("xdg-open", url)
 	}
 	return cmd.Start()
+}
+
+var browserCommand = exec.Command
+
+// BrowserCommand returns the current command factory used by OpenBrowser.
+func BrowserCommand() func(name string, arg ...string) *exec.Cmd {
+	return browserCommand
+}
+
+// SetBrowserCommand overrides the command factory used by OpenBrowser.
+// Intended for tests.
+func SetBrowserCommand(cmd func(name string, arg ...string) *exec.Cmd) {
+	if cmd == nil {
+		return
+	}
+	browserCommand = cmd
 }
 
 // Login performs the full OAuth login flow:

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
@@ -74,9 +73,6 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 // Run implements `environment list`.
 // Requires --project flag (or env var) to know which project to list environments for.
 func (c *EnvironmentListCmd) Run(globals *Globals) error {
-	if globals.Project == "" {
-		return fmt.Errorf("--project is required for environment list")
-	}
 	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
 	resolved, err := auth.ResolveAuth(globals.Token, store)
 	if err != nil {
@@ -84,32 +80,11 @@ func (c *EnvironmentListCmd) Run(globals *Globals) error {
 	}
 	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 
-	projID := globals.Project
-	if !isUUID(projID) {
-		projLister := &defaultProjectLister{client: client}
-		projects, err := projLister.ListProjects(context.Background(), globals.Workspace)
-		if err != nil {
-			return err
-		}
-		found := false
-		for _, p := range projects {
-			if p.Name == globals.Project {
-				projID = p.ID
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("project not found: %s", globals.Project)
-		}
+	projID, err := railway.ResolveProjectID(context.Background(), client, globals.Workspace, globals.Project)
+	if err != nil {
+		return err
 	}
 
 	lister := &defaultEnvironmentLister{client: client}
 	return RunEnvironmentList(context.Background(), globals, projID, lister, os.Stdout)
-}
-
-var uuidRE = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func isUUID(s string) bool {
-	return uuidRE.MatchString(s)
 }

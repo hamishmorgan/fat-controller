@@ -110,6 +110,11 @@ func ResolveWorkspaceID(ctx context.Context, client *Client, workspace string) (
 	return *id, nil
 }
 
+// ResolveProjectID returns a project ID, prompting or auto-selecting when missing.
+func ResolveProjectID(ctx context.Context, client *Client, workspace, project string) (string, error) {
+	return resolveProjectID(ctx, client, workspace, project)
+}
+
 func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string) (string, error) {
 	if env != "" && uuidPattern.MatchString(env) {
 		return env, nil

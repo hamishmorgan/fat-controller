@@ -156,3 +156,52 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 		t.Errorf("expected error to list projects, got: %v", err)
 	}
 }
+
+func TestResolveProjectID_AutoSelectsSingleProject(t *testing.T) {
+	ctx := context.Background()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var body struct{ Query string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		switch {
+		case strings.Contains(body.Query, "apiToken"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"apiToken": map[string]any{
+						"workspaces": []map[string]any{{
+							"id":   "ws-1",
+							"name": "workspace",
+						}},
+					},
+				},
+			})
+		case strings.Contains(body.Query, "projects("):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"projects": map[string]any{
+						"edges": []map[string]any{{
+							"node": map[string]any{"id": "proj-1", "name": "my-app"},
+						}},
+					},
+				},
+			})
+		default:
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}})
+		}
+	}))
+	defer server.Close()
+
+	client := railway.NewClient(server.URL, &auth.ResolvedAuth{
+		Source:      auth.SourceEnvAPIToken,
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer test",
+	}, nil, nil)
+
+	projID, err := railway.ResolveProjectID(ctx, client, "", "")
+	if err != nil {
+		t.Fatalf("ResolveProjectID() error: %v", err)
+	}
+	if projID != "proj-1" {
+		t.Errorf("projID = %q, want proj-1", projID)
+	}
+}

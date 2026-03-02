@@ -82,6 +82,12 @@ fat-controller/
 └── README.md
 ```
 
+## Decisions
+
+See [docs/DECISIONS.md](DECISIONS.md) — design decision log covering
+variable ownership, secret handling, deletion safety, error handling,
+orchestration, CLI framework, and testing strategy.
+
 ## Milestones
 
 ### M1: Scaffold + auth
@@ -134,9 +140,3 @@ fat-controller/
 - Volume, domain, and TCP proxy management in config
 - GoReleaser for prebuilt binaries
 - `init` command to interactively bootstrap `fat-controller.toml`
-
-## Decisions
-
-See [docs/DECISIONS.md](DECISIONS.md) — design decision log covering
-variable ownership, secret handling, deletion safety, error handling,
-orchestration, CLI framework, and testing strategy.

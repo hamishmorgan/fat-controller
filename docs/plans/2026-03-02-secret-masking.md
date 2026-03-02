@@ -4,7 +4,9 @@
 
 **Goal:** Automatically mask secret values in `config get` output using name-based keyword matching and Shannon entropy detection, with `--show-secrets` to override.
 
-**Architecture:** Create a standalone `internal/config/mask.go` package with a `Masker` struct that holds compiled regexes for sensitive keywords and allowlist patterns. The masker exposes a single `MaskValue(name, value string) string` method implementing the combined logic from `docs/SECRET-MASKING.md`. Wire it into `Render()` via a new `RenderOptions` struct that replaces the current `full bool` parameter. All stdlib — no new dependencies.
+**Architecture:** Create `internal/config/mask.go` with a `Masker` struct that holds compiled regexes for sensitive keywords and allowlist patterns. The masker exposes a single `MaskValue(name, value string) string` method implementing the combined logic from `docs/SECRET-MASKING.md`.
+
+Wire it into `Render()` via a new `RenderOptions` struct that replaces the current `full bool` parameter. All stdlib — no new dependencies.
 
 **Tech Stack:** Go stdlib (`regexp`, `math`, `strings`, `unicode`)
 
@@ -14,10 +16,11 @@
 
 ### How the codebase works today
 
-- `internal/config/render.go` has `Render(cfg LiveConfig, format string, full bool) (string, error)` which outputs config in text/json/toml formats. **No masking exists.** Values are written verbatim.
+- `internal/config/render.go` has `Render(cfg LiveConfig, format string, full bool) (string, error)` which outputs config in text/json/toml formats. The shared variables section is rendered under the key `shared` (JSON) / `[shared]` (TOML/text). **No masking exists.** Values are written verbatim.
 - `internal/cli/config_get.go:77` calls `config.Render(*cfg, globals.Output, globals.Full)` — this is the single integration point.
 - `internal/cli/cli.go` has a `Globals` struct with `ShowSecrets bool` already defined but unused.
 - `sensitive_keywords` and `sensitive_allowlist` are config-file-only settings (no CLI flag, no env var). Config file loading doesn't exist yet, so for now the masker uses hardcoded defaults. The API accepts custom lists so config loading can wire in later.
+- **Known trade-off:** The keyword `PASS` with `(\b|_)` boundaries won't match mid-word (`COMPASS`), but will match segment boundaries like `BOARDING_PASS`. This is intentional — erring on the side of masking is safer than leaking secrets. Users can suppress false positives via the allowlist.
 - All test files use **external test packages** (`package config_test`, `package cli_test`).
 - Tests use **plain `testing.T`** — no testify.
 - Run tests with `go test ./internal/config -v` or `mise run check` for full suite.
@@ -379,6 +382,9 @@ const (
 )
 
 // Character set patterns for entropy classification.
+// Note: base64Pattern includes URL-safe chars (_-). This means slugs like
+// "my-app-name-here-12345" are candidates, but the entropy threshold (4.5)
+// filters them out — structured/repetitive strings score well below that.
 var (
 	hexPattern    = regexp.MustCompile(`^[0-9a-fA-F]+$`)
 	base64Pattern = regexp.MustCompile(`^[A-Za-z0-9+/=_\-]+$`)
@@ -776,11 +782,7 @@ output, err := config.Render(*cfg, config.RenderOptions{
 
 **Step 4: Update existing config_get tests**
 
-The existing tests in `config_get_test.go` construct `cli.Globals{Output: "text"}` etc. Since `ShowSecrets` defaults to `false`, the existing tests that check for specific values like `"FOO"` and `"PORT"` will now see `********` if those names happen to match keywords. Review each test:
-
-- `TestRunConfigGet_RendersText` uses `FOO` and `PORT` — neither matches sensitive keywords, so these still pass.
-- `TestRunConfigGet_RendersJSON` uses `DB` — not a keyword match. Still passes.
-- If any test uses names like `TOKEN` or `PASSWORD` in its fixture, add `ShowSecrets: true` to its `Globals`.
+The existing tests in `config_get_test.go` construct `cli.Globals{Output: "text"}` etc. Since `ShowSecrets` defaults to `false`, existing tests that check for specific values would break if their variable names match sensitive keywords. The current fixtures use `FOO`, `PORT`, `DB`, and `SHARED` — none match, so **no changes are needed** to existing tests.
 
 **Step 5: Run all CLI tests**
 
@@ -799,31 +801,13 @@ git commit -m "Wire --show-secrets through to config get output"
 
 ## Task 5: Final verification
 
-Run the full check suite and verify everything works end-to-end.
+Run the full suite to confirm nothing is broken.
 
-**Files:**
+```bash
+mise run check
+```
 
-- Test: `./...`
-
-**Step 1: Run the full check suite**
-
-Run: `mise run check`
-
-Expected: All linters pass, all tests pass, build succeeds.
-
-**Step 2: Run targeted masking tests**
-
-Run: `go test ./internal/config -run "TestMaskValue|TestShannonEntropy|TestRender_Masks|TestRender_ShowSecrets|TestRender_Reference" -v`
-
-Expected: PASS for all.
-
-**Step 3: Smoke test the masking behavior manually**
-
-Run: `go test ./internal/config -v -count=1`
-
-Verify the test output shows all mask-related tests passing.
-
-**Step 4: Commit if any remaining changes**
+Expected: All linters pass, all tests pass, build succeeds. If there are uncommitted changes, commit them:
 
 ```bash
 git add -A

@@ -5,8 +5,6 @@
 - [ ] Batch variable updates in apply using `variableCollectionUpsert` instead of per-variable mutations.
 - [ ] Add an interactive confirmation prompt for apply when `--confirm` is not set and stdin is a TTY.
 - [ ] Support JSON/TOML output formats for `config apply`.
-- [ ] Add TOML output for `project list`, `environment list`, and `workspace list`.
-- [ ] Avoid double project/environment resolution in `config apply` Run path by loading config first.
 - [ ] Add `workspace` as an optional top-level config key (parsing, merge, and resolution fallback).
 - [ ] Extend `config init` with optional service selection (choose which services to include).
 - [ ] Add `config init` support for environment-specific files (e.g. generate overlay files).
@@ -24,5 +22,4 @@
 
 ## Features
 
-- [ ] Add a `--dry-run` flag to `config apply` to simulate and validate mutations without making changes.
 - [ ] Support parsing, validating, and updating standard `railway.toml` native service configurations natively.

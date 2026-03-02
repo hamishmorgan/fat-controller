@@ -371,6 +371,7 @@ func TestColorHelpPrinter_AllLeafCommands(t *testing.T) {
 		{"auth", "login"},
 		{"auth", "logout"},
 		{"auth", "status"},
+		{"config", "init"},
 		{"config", "get"},
 		{"config", "set"},
 		{"config", "delete"},

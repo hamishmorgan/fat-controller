@@ -59,6 +59,7 @@ type AuthStatusCmd struct{}
 
 // ConfigCmd is the `config` command group.
 type ConfigCmd struct {
+	Init     ConfigInitCmd     `cmd:"" help:"Bootstrap a fat-controller.toml from live Railway state."`
 	Get      ConfigGetCmd      `cmd:"" help:"Fetch live config from Railway."`
 	Set      ConfigSetCmd      `cmd:"" help:"Set a single value by dot-path."`
 	Delete   ConfigDeleteCmd   `cmd:"" help:"Delete a single value by dot-path."`
@@ -84,6 +85,7 @@ type ConfigDeleteCmd struct {
 	Path string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
 }
 
+type ConfigInitCmd struct{}
 type ConfigDiffCmd struct{}
 type ConfigApplyCmd struct{}
 type ConfigValidateCmd struct{}
@@ -107,6 +109,7 @@ type WorkspaceCmd struct {
 type WorkspaceListCmd struct{}
 
 // Run methods:
+// - ConfigInitCmd.Run   → config_init.go
 // - ConfigGetCmd.Run    → config_get.go
 // - ConfigSetCmd.Run    → config_set.go
 // - ConfigDeleteCmd.Run → config_delete.go

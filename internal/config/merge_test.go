@@ -135,3 +135,44 @@ func TestMerge_SharedNilInBaseNonNilInOverride(t *testing.T) {
 		t.Error("expected shared X=1 from override")
 	}
 }
+
+func TestMerge_ProjectEnvironment(t *testing.T) {
+	base := &config.DesiredConfig{
+		Project:     "my-app",
+		Environment: "production",
+		Services:    map[string]*config.DesiredService{},
+	}
+	// Local override sets environment but not project.
+	local := &config.DesiredConfig{
+		Environment: "staging",
+		Services:    map[string]*config.DesiredService{},
+	}
+	result := config.Merge(base, local)
+	if result.Project != "my-app" {
+		t.Errorf("Project = %q, want %q (preserved from base)", result.Project, "my-app")
+	}
+	if result.Environment != "staging" {
+		t.Errorf("Environment = %q, want %q (overridden by local)", result.Environment, "staging")
+	}
+}
+
+func TestMerge_ProjectEnvironment_EmptyDoesNotOverride(t *testing.T) {
+	base := &config.DesiredConfig{
+		Project:     "my-app",
+		Environment: "production",
+		Services:    map[string]*config.DesiredService{},
+	}
+	// Overlay with empty project/environment should not wipe base values.
+	overlay := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"PORT": "9090"}},
+		},
+	}
+	result := config.Merge(base, overlay)
+	if result.Project != "my-app" {
+		t.Errorf("Project = %q, want %q (empty should not override)", result.Project, "my-app")
+	}
+	if result.Environment != "production" {
+		t.Errorf("Environment = %q, want %q (empty should not override)", result.Environment, "production")
+	}
+}

@@ -11,6 +11,13 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 		if cfg == nil {
 			continue
 		}
+		// Merge project/environment: non-empty overrides.
+		if cfg.Project != "" {
+			result.Project = cfg.Project
+		}
+		if cfg.Environment != "" {
+			result.Environment = cfg.Environment
+		}
 		result.Shared = mergeVariables(result.Shared, cfg.Shared)
 		for name, svc := range cfg.Services {
 			existing, ok := result.Services[name]

@@ -2,9 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
@@ -52,11 +54,16 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 		return nil
 	}
 
-	// For stored OAuth tokens, fetch user info.
-	// Note: if the access token is expired (>1hr), this will fail with a 401.
-	// M2 will add a refresh-aware HTTP client that handles this transparently.
-	// For now, we show a helpful message.
+	// For stored OAuth tokens, use the refresh-aware transport so
+	// expired tokens get refreshed transparently on 401.
 	oauth := auth.NewOAuthClient()
+	refresher := railway.NewOAuthRefresher(oauth)
+	transport := railway.NewAuthTransport(resolved, store, refresher)
+	oauth.HTTPClient = &http.Client{Transport: transport}
+
+	// Note: FetchUserInfo sets its own Authorization header, but the
+	// transport overwrites it. On 401, the transport refreshes and retries.
+	// Task 11 cleans this up by removing the token parameter entirely.
 	info, err := oauth.FetchUserInfo(resolved.Token)
 	if err != nil {
 		fmt.Println("Authenticated (stored OAuth token).")

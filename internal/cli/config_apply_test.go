@@ -193,3 +193,71 @@ QUEUE = "high"
 		t.Errorf("expected 1 upsert (api only), got %d", applier.upserts)
 	}
 }
+
+func TestRunConfigApply_UsesConfigFileProject(t *testing.T) {
+	dir := t.TempDir()
+	writeApplyTOML(t, dir, "fat-controller.toml", `
+project = "my-app"
+environment = "production"
+
+[api.variables]
+PORT = "9090"
+`)
+	captureFetcher := &capturingFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID: "proj-1", EnvironmentID: "env-1",
+			Services: map[string]*config.ServiceConfig{
+				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			},
+		},
+	}
+	applier := &countingApplier{}
+	var buf bytes.Buffer
+	// Globals with empty Project/Environment — should fall back to config file.
+	globals := &cli.Globals{Confirm: true}
+
+	err := cli.RunConfigApply(context.Background(), globals, dir, nil, captureFetcher, applier, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigApply() error: %v", err)
+	}
+	if captureFetcher.project != "my-app" {
+		t.Errorf("project passed to Resolve = %q, want %q", captureFetcher.project, "my-app")
+	}
+	if captureFetcher.environment != "production" {
+		t.Errorf("environment passed to Resolve = %q, want %q", captureFetcher.environment, "production")
+	}
+}
+
+func TestRunConfigApply_FlagOverridesConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	writeApplyTOML(t, dir, "fat-controller.toml", `
+project = "my-app"
+environment = "production"
+
+[api.variables]
+PORT = "9090"
+`)
+	captureFetcher := &capturingFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID: "proj-1", EnvironmentID: "env-1",
+			Services: map[string]*config.ServiceConfig{
+				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			},
+		},
+	}
+	applier := &countingApplier{}
+	var buf bytes.Buffer
+	// Flag values should override config file.
+	globals := &cli.Globals{Project: "other-project", Environment: "staging", Confirm: true}
+
+	err := cli.RunConfigApply(context.Background(), globals, dir, nil, captureFetcher, applier, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigApply() error: %v", err)
+	}
+	if captureFetcher.project != "other-project" {
+		t.Errorf("project = %q, want %q (flag should override)", captureFetcher.project, "other-project")
+	}
+	if captureFetcher.environment != "staging" {
+		t.Errorf("environment = %q, want %q (flag should override)", captureFetcher.environment, "staging")
+	}
+}

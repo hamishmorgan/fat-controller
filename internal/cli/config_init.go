@@ -13,7 +13,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
-const localConfigStub = `# local overrides (gitignored). Use for secrets and per-developer settings.
+const localConfigStub = `# Local overrides (gitignored). Use for secrets and per-developer settings.
 # Example:
 #   [api.variables]
 #   STRIPE_KEY = "${STRIPE_KEY}"
@@ -71,7 +71,7 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 		return err
 	}
 
-	// 6. Create .local.toml stub if it doesn't exist.
+	// 5. Create .local.toml stub if it doesn't exist.
 	localPath := filepath.Join(dir, config.LocalConfigFile)
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
 		if err := os.WriteFile(localPath, []byte(localConfigStub), 0o644); err != nil {

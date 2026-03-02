@@ -97,7 +97,7 @@ func TestRunConfigInit_CreatesLocalTOMLStub(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading local config: %v", err)
 	}
-	if !strings.Contains(string(content), "local overrides") {
+	if !strings.Contains(string(content), "Local overrides") {
 		t.Errorf("expected comment in local stub:\n%s", string(content))
 	}
 }

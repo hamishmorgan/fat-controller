@@ -1,8 +1,10 @@
 package config
 
 import (
+	"math"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // MaskedValue is the replacement string for masked secrets.
@@ -90,7 +92,7 @@ func buildBoundaryRegex(keywords []string) *regexp.Regexp {
 
 // MaskValue returns MaskedValue if the variable should be masked, or the
 // original value if it should be shown. Implements the combined logic from
-// docs/SECRET-MASKING.md (name-based layer only; entropy added in Task 2).
+// docs/SECRET-MASKING.md.
 func (m *Masker) MaskValue(name, value string) string {
 	// Railway reference templates are always shown.
 	if strings.Contains(value, "${{") {
@@ -100,9 +102,71 @@ func (m *Masker) MaskValue(name, value string) string {
 	if m.allowlist != nil && m.allowlist.MatchString(name) {
 		return value
 	}
-	// Check sensitive keywords.
+	// Layer 1: name-based keyword matching.
 	if m.sensitive != nil && m.sensitive.MatchString(name) {
 		return MaskedValue
 	}
+	// Layer 2: entropy-based detection.
+	if hasHighEntropy(value) {
+		return MaskedValue
+	}
 	return value
+}
+
+// Entropy detection thresholds (matching truffleHog / detect-secrets).
+const (
+	base64Threshold  = 4.5
+	hexThreshold     = 3.0
+	entropyMinLength = 20
+)
+
+// Character set patterns for entropy classification.
+// base64Pattern includes URL-safe chars (_-). Slug-like strings
+// ("my-app-prod-12345") match the charset but score well below the
+// 4.5 entropy threshold, so they won't be falsely masked.
+var (
+	hexPattern    = regexp.MustCompile(`^[0-9a-fA-F]+$`)
+	base64Pattern = regexp.MustCompile(`^[A-Za-z0-9+/=_\-]+$`)
+)
+
+// ShannonEntropy computes the Shannon entropy (bits per character) of s.
+// Returns 0 for empty strings.
+func ShannonEntropy(s string) float64 {
+	if len(s) == 0 {
+		return 0
+	}
+	freq := make(map[rune]int)
+	for _, r := range s {
+		freq[r]++
+	}
+	length := float64(len([]rune(s)))
+	var entropy float64
+	for _, count := range freq {
+		p := float64(count) / length
+		entropy -= p * math.Log2(p)
+	}
+	return entropy
+}
+
+// hasHighEntropy returns true if value looks like a random secret based
+// on Shannon entropy thresholds for base64 and hex character sets.
+func hasHighEntropy(value string) bool {
+	v := strings.TrimSpace(value)
+	if len(v) < entropyMinLength {
+		return false
+	}
+	// Skip values with spaces — likely human text, not secrets.
+	for _, r := range v {
+		if unicode.IsSpace(r) {
+			return false
+		}
+	}
+	entropy := ShannonEntropy(v)
+	if hexPattern.MatchString(v) && entropy > hexThreshold {
+		return true
+	}
+	if base64Pattern.MatchString(v) && entropy > base64Threshold {
+		return true
+	}
+	return false
 }

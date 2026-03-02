@@ -87,3 +87,79 @@ func TestMaskValue_CustomAllowlist(t *testing.T) {
 		t.Errorf("custom allowlist should suppress, got %q", got)
 	}
 }
+
+func TestMaskValue_HighEntropyBase64Masked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// A random-looking base64 string (>20 chars, high entropy).
+	got := m.MaskValue("SETTING_X", "xK9mZpQ7wL3nR8vY2jT6bA5cD4eF1gH")
+	if got != "********" {
+		t.Errorf("high entropy base64 should be masked, got %q", got)
+	}
+}
+
+func TestMaskValue_HighEntropyHexMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// A random hex string (>20 chars, high entropy).
+	got := m.MaskValue("BUILD_THING", "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")
+	if got != "********" {
+		t.Errorf("high entropy hex should be masked, got %q", got)
+	}
+}
+
+func TestMaskValue_ShortStringNotMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// Short string — below 20 char minimum for entropy check.
+	got := m.MaskValue("BUILD_HASH", "abc123")
+	if got != "abc123" {
+		t.Errorf("short string should not trigger entropy mask, got %q", got)
+	}
+}
+
+func TestMaskValue_LowEntropyLongStringNotMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// Long but low-entropy (repeated pattern).
+	got := m.MaskValue("APP_DESCRIPTION", "aaaaaaaaaaaaaaaaaaaaaaaaa")
+	if got != "aaaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Errorf("low entropy string should not be masked, got %q", got)
+	}
+}
+
+func TestMaskValue_URLNotMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// URLs contain :// and / which fail the base64/hex charset check.
+	got := m.MaskValue("APP_URL", "https://my-app.railway.app/api/v1/health")
+	if got != "https://my-app.railway.app/api/v1/health" {
+		t.Errorf("URL should not trigger entropy mask, got %q", got)
+	}
+}
+
+func TestMaskValue_SlugNotMasked(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// Slug-like strings match base64 charset but have low entropy.
+	got := m.MaskValue("APP_SLUG", "my-app-production-deploy-v2")
+	if got != "my-app-production-deploy-v2" {
+		t.Errorf("slug should not trigger entropy mask, got %q", got)
+	}
+}
+
+func TestShannonEntropy_RandomBase64(t *testing.T) {
+	// "xK9mZpQ7wL3nR8vY2jT6bA5cD4eF1gH" has high entropy.
+	e := config.ShannonEntropy("xK9mZpQ7wL3nR8vY2jT6bA5cD4eF1gH")
+	if e < 4.0 {
+		t.Errorf("expected high entropy, got %.2f", e)
+	}
+}
+
+func TestShannonEntropy_RepeatedChars(t *testing.T) {
+	e := config.ShannonEntropy("aaaaaaaaaa")
+	if e != 0 {
+		t.Errorf("expected zero entropy, got %.2f", e)
+	}
+}
+
+func TestShannonEntropy_EmptyString(t *testing.T) {
+	e := config.ShannonEntropy("")
+	if e != 0 {
+		t.Errorf("expected zero entropy for empty string, got %.2f", e)
+	}
+}

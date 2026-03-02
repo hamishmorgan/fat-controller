@@ -8,12 +8,17 @@ experimental = true
 [hooks]
 postinstall = "mise run setup"
 
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
 [tasks.setup]
 description = "Set up local development environment"
 depends = ["setup:hooks"]
 
 [tasks."setup:hooks"]
 description = "Install git hooks"
+hide = true
 sources = [".config/mise/config.toml"]
 outputs = [".git/hooks/pre-commit", ".git/hooks/pre-push"]
 run = """
@@ -21,8 +26,13 @@ mise generate git-pre-commit --write --task=pre-commit
 mise generate git-pre-commit --write --task=pre-push --hook=pre-push
 """
 
+# ---------------------------------------------------------------------------
+# Git hooks (not intended to be run directly)
+# ---------------------------------------------------------------------------
+
 [tasks.pre-commit]
 description = "Git pre-commit: format and abort if files changed"
+hide = true
 depends = ["format"]
 run = """
 if ! git diff --quiet; then
@@ -33,7 +43,12 @@ fi
 
 [tasks.pre-push]
 description = "Git pre-push: run all checks"
+hide = true
 depends = ["check"]
+
+# ---------------------------------------------------------------------------
+# Aggregate tasks
+# ---------------------------------------------------------------------------
 
 [tasks.lint]
 description = "Run all linters"
@@ -42,18 +57,27 @@ depends = ["lint:md", "lint:toml"]
 [tasks.check]
 description = "Run all linters and checks"
 depends = ["lint"]
+# Will gain test/vet/build deps once Go code exists.
 
 [tasks.format]
 description = "Run all fixers/formatters"
 depends = ["lint:md:fix", "lint:toml:fix"]
+
+# ---------------------------------------------------------------------------
+# Markdown
+# ---------------------------------------------------------------------------
 
 [tasks."lint:md"]
 description = "Lint markdown files"
 run = "markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc '**/*.md' '#node_modules'"
 
 [tasks."lint:md:fix"]
-description = "Lint and fix markdown files"
+description = "Format markdown files"
 run = "markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc --fix '**/*.md' '#node_modules'"
+
+# ---------------------------------------------------------------------------
+# TOML
+# ---------------------------------------------------------------------------
 
 [tasks."lint:toml"]
 description = "Lint TOML files"

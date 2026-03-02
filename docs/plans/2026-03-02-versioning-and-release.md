@@ -54,8 +54,7 @@ When the user runs `fat-controller --version` or `fat-controller -V`, kong print
 |------|--------|
 | `internal/version/version.go` | **Create** — version variables + `String()` formatter |
 | `internal/version/version_test.go` | **Create** — tests |
-| `internal/cli/cli.go` | **Modify** — add `Version kong.VersionFlag` to `CLI` struct |
-| `internal/cli/cli_test.go` | **Modify** — update help printer test (new `--version` flag) |
+| `internal/cli/cli.go` | **Modify** — add `kong` import + `Version kong.VersionFlag` to `CLI` struct |
 | `cmd/fat-controller/main.go` | **Modify** — add `kong.Vars{"version": ...}` |
 | `.goreleaser.yaml` | **Create** — goreleaser config |
 | `.github/workflows/release.yml` | **Create** — tag-triggered release workflow |
@@ -65,10 +64,13 @@ When the user runs `fat-controller --version` or `fat-controller -V`, kong print
 ### Hazards
 
 - Kong's `VersionFlag` uses `BeforeReset`, which runs before command parsing. This means `--version` works even without a subcommand.
-- The `TestColorHelpPrinter_AllLeafCommands` test traces all leaf commands. Adding `Version` to `CLI` adds a `--version` global flag — this should not break existing tests since it's a flag, not a command. But verify.
+- The `TestColorHelpPrinter_AllLeafCommands` test traces all leaf commands. Adding `Version` to `CLI` adds a `--version` global flag — this does not break existing tests (verified). It's a flag, not a command.
+- The test parsers in `cli_test.go` (`newTestParser`, `newTestParserWithHelp`) do not pass `kong.Vars{"version": ...}`. This is fine — `VersionFlag.BeforeReset` only runs when `--version` is actually parsed, and no test triggers it.
+- `internal/cli/cli.go` currently imports only `fmt`, `io`, `time`. Adding `kong.VersionFlag` requires adding `"github.com/alecthomas/kong"` to the import block.
 - Goreleaser expects the `dist/` directory to be clean. It must be gitignored.
 - The release workflow needs `contents: write` permission to create GitHub Releases and upload assets.
-- `mise run build` should inject version from `git describe --tags --always --dirty` for local dev builds. If no tags exist yet, it falls back to the commit hash (e.g., `dev-abc1234`).
+- `mise run build` should inject version from `git describe --tags --always --dirty` for local dev builds. If no tags exist yet, it falls back to the commit hash (e.g., `abc1234`).
+- The version tests can only test compile-time defaults (`dev`, `unknown`). Ldflags-injected values are build-time — they cannot be tested in `go test`. The goreleaser snapshot build (Task 4) is the only way to verify end-to-end.
 
 ---
 
@@ -172,9 +174,21 @@ git commit -m "feat(version): add build-time version package with ldflags suppor
 - Modify: `internal/cli/cli.go`
 - Modify: `cmd/fat-controller/main.go`
 
-**Step 1: Add `Version` field to `CLI` struct**
+**Step 1: Add `kong` import and `Version` field to `CLI` struct**
 
-In `internal/cli/cli.go`, add to the `CLI` struct after the `Globals` embed:
+In `internal/cli/cli.go`, add `kong` to the import block (currently `fmt`, `io`, `time`):
+
+```go
+import (
+	"fmt"
+	"io"
+	"time"
+
+	"github.com/alecthomas/kong"
+)
+```
+
+Then add the `Version` field to the `CLI` struct after the `Globals` embed:
 
 ```go
 type CLI struct {
@@ -190,8 +204,6 @@ type CLI struct {
 	Workspace   WorkspaceCmd   `cmd:"" help:"Manage workspaces."`
 }
 ```
-
-This requires adding `"github.com/alecthomas/kong"` to the import block in `cli.go`.
 
 **Step 2: Pass version to kong in `main.go`**
 
@@ -366,31 +378,20 @@ changelog:
       - "^chore:"
       - "^test:"
       - "^ci:"
-
-release:
-  github:
-    owner: hamishmorgan
-    name: fat-controller
 ```
 
-**Step 3: Verify the config locally**
+Note: the `release.github` section is omitted — goreleaser auto-detects the owner and repo name from the git remote.
 
-Run:
+**Step 3: Verify the config locally (optional)**
+
+If goreleaser is installed (e.g. via `brew install goreleaser` or `go install github.com/goreleaser/goreleaser/v2@latest`):
 
 ```bash
-go install github.com/goreleaser/goreleaser/v2@latest
 goreleaser check
-```
-
-Expected: no errors.
-
-Optionally, test a snapshot build:
-
-```bash
 goreleaser build --snapshot --clean
 ```
 
-Expected: binaries in `dist/` for all platform/arch combinations.
+Expected: `check` reports no errors. `build --snapshot` produces binaries in `dist/` for all 6 platform/arch combinations. If goreleaser is not installed, skip this step — CI will validate the config on the first tag push.
 
 **Step 4: Commit**
 
@@ -432,7 +433,7 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: release --clean

@@ -277,7 +277,11 @@ description = "Build Go binary"
 run = """
 [ -f go.mod ] || exit 0
 mkdir -p .build
-go build -o .build/fat-controller ./cmd/fat-controller
+VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS="-s -w -X github.com/hamishmorgan/fat-controller/internal/version.version=${VERSION} -X github.com/hamishmorgan/fat-controller/internal/version.commit=${COMMIT} -X github.com/hamishmorgan/fat-controller/internal/version.date=${DATE}"
+go build -ldflags "${LDFLAGS}" -o .build/fat-controller ./cmd/fat-controller
 """
 
 [tasks."deps:update"]

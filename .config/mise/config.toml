@@ -1,6 +1,8 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
+go = "latest"
+golangci-lint = "latest"
 "npm:markdownlint-cli2" = "latest"
 taplo = "latest"
 
@@ -54,13 +56,12 @@ depends = ["check"]
 
 [tasks.lint]
 description = "Run all linters"
-depends = ["lint:md", "lint:toml"]
+depends = ["lint:md", "lint:toml", "lint:go"]
 
 [tasks.check]
 alias = ["chk", "c"]
 description = "Run all linters and checks"
-depends = ["lint"]
-# Will gain test/vet/build deps once Go code exists.
+depends = ["lint", "test", "build"]
 
 [tasks.format]
 alias = ["fmt", "f"]
@@ -90,3 +91,28 @@ run = "taplo check"
 [tasks."lint:toml:fix"]
 description = "Format TOML files"
 run = "taplo format"
+
+# ---------------------------------------------------------------------------
+# Go
+# ---------------------------------------------------------------------------
+
+[tasks."lint:go"]
+description = "Lint Go code"
+run = """
+[ -f go.mod ] || exit 0
+golangci-lint run
+"""
+
+[tasks.test]
+description = "Run Go tests"
+run = """
+[ -f go.mod ] || exit 0
+go test ./...
+"""
+
+[tasks.build]
+description = "Build Go binary"
+run = """
+[ -f go.mod ] || exit 0
+go build ./...
+"""

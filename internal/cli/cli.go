@@ -111,11 +111,6 @@ type WorkspaceListCmd struct{}
 // - ConfigSetCmd.Run    → config_set.go
 // - ConfigDeleteCmd.Run → config_delete.go
 
-func (c *ConfigDiffCmd) Run(globals *Globals) error {
-	fmt.Println("config diff: not yet implemented")
-	return nil
-}
-
 func (c *ConfigApplyCmd) Run(globals *Globals) error {
 	fmt.Println("config apply: not yet implemented")
 	return nil

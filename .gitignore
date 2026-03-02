@@ -26,3 +26,9 @@ go.work
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 
+### Secrets and local config ###
+.env
+.env.*
+*.local.*
+auth.json
+

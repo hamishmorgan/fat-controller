@@ -10,6 +10,13 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
+// roundTripFunc lets us build a one-off RoundTripper from a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 func TestFetchUserInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer test-token" {
@@ -26,12 +33,18 @@ func TestFetchUserInfo(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Inject auth via a simple transport that sets the Authorization header.
 	client := &auth.OAuthClient{
 		UserinfoURL: server.URL,
-		HTTPClient:  http.DefaultClient,
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				req.Header.Set("Authorization", "Bearer test-token")
+				return http.DefaultTransport.RoundTrip(req)
+			}),
+		},
 	}
 
-	info, err := client.FetchUserInfo("test-token")
+	info, err := client.FetchUserInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +67,7 @@ func TestFetchUserInfo_Unauthorized(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo("expired-token")
+	_, err := client.FetchUserInfo()
 	if err == nil {
 		t.Fatal("expected error for 401 response")
 	}
@@ -73,7 +86,7 @@ func TestFetchUserInfo_NetworkError(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo("test-token")
+	_, err := client.FetchUserInfo()
 	if err == nil {
 		t.Fatal("expected network error")
 	}
@@ -88,7 +101,7 @@ func TestFetchUserInfo_InvalidURL(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo("test-token")
+	_, err := client.FetchUserInfo()
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
 	}
@@ -105,7 +118,7 @@ func TestFetchUserInfo_InvalidJSON(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo("test-token")
+	_, err := client.FetchUserInfo()
 	if err == nil {
 		t.Fatal("expected JSON decode error")
 	}

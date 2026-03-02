@@ -61,10 +61,7 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	transport := railway.NewAuthTransport(resolved, store, refresher)
 	oauth.HTTPClient = &http.Client{Transport: transport}
 
-	// Note: FetchUserInfo sets its own Authorization header, but the
-	// transport overwrites it. On 401, the transport refreshes and retries.
-	// Task 11 cleans this up by removing the token parameter entirely.
-	info, err := oauth.FetchUserInfo(resolved.Token)
+	info, err := oauth.FetchUserInfo()
 	if err != nil {
 		fmt.Println("Authenticated (stored OAuth token).")
 		fmt.Printf("Could not fetch user info: %v\n", err)

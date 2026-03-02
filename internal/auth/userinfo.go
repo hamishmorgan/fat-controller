@@ -15,12 +15,13 @@ type UserInfo struct {
 }
 
 // FetchUserInfo calls the OIDC userinfo endpoint.
-func (c *OAuthClient) FetchUserInfo(accessToken string) (*UserInfo, error) {
+// Auth is handled by the OAuthClient's HTTPClient transport —
+// callers must set HTTPClient to a client with an auth-injecting transport.
+func (c *OAuthClient) FetchUserInfo() (*UserInfo, error) {
 	req, err := http.NewRequest(http.MethodGet, c.UserinfoURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {

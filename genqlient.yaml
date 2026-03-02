@@ -1,0 +1,16 @@
+schema: internal/railway/schema.graphql
+operations:
+  - internal/railway/operations.graphql
+generated: internal/railway/generated.go
+optional: pointer
+bindings:
+  DateTime:
+    type: time.Time
+  JSON:
+    type: map[string]interface{}
+  EnvironmentVariables:
+    type: map[string]interface{}
+  DeploymentMeta:
+    type: map[string]interface{}
+  PluginType:
+    type: string

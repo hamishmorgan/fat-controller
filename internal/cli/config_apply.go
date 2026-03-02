@@ -83,17 +83,17 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 	}
 
 	// 5. Compute diff.
-	result := diff.Compute(desired, live)
+	changes := diff.Compute(desired, live)
 
 	// 6. If no changes, report and return.
-	if result.IsEmpty() {
+	if changes.IsEmpty() {
 		_, err := fmt.Fprintln(out, "No changes.")
 		return err
 	}
 
 	// 7. Dry-run by default unless --confirm is set and --dry-run is not.
 	if !globals.Confirm || globals.DryRun {
-		formatted := diff.Format(result, globals.ShowSecrets)
+		formatted := diff.Format(changes, globals.ShowSecrets)
 		_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --confirm to execute)\n\n%s\n", formatted)
 		return err
 	}

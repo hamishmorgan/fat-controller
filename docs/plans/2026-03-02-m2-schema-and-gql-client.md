@@ -74,7 +74,7 @@ The transport uses `HeaderName` and `HeaderValue` directly — no need to know w
 fat-controller/
 ├── genqlient.yaml                    # genqlient config (points to internal/railway/)
 ├── tools.go                          # //go:build tools — blank import keeps genqlient in go.mod
-├── main.go
+├── cmd/fat-controller/main.go        # Entry point
 ├── internal/
 │   ├── cli/cli.go                    # CLI struct, kong wiring, command Run() methods
 │   ├── auth/                         # Existing — OAuth, keyring, token resolution
@@ -1025,7 +1025,7 @@ func NewClient(endpoint string, resolved *auth.ResolvedAuth, store *auth.TokenSt
 // GQL returns the underlying genqlient client for making queries.
 // Callers use the generated functions directly:
 //
-//	resp, err := projectToken(ctx, client.GQL())
+//	resp, err := ProjectToken(ctx, client.GQL())
 func (c *Client) GQL() graphql.Client {
 	return c.gql
 }
@@ -1236,9 +1236,10 @@ refresher := railway.NewOAuthRefresher(oauth)
 transport := railway.NewAuthTransport(resolved, store, refresher)
 oauth.HTTPClient = &http.Client{Transport: transport}
 
-// FetchUserInfo relies on the transport for auth (refactored in Task 11).
-// On 401, the transport refreshes the token and retries transparently.
-info, err := oauth.FetchUserInfo()
+// Note: FetchUserInfo sets its own Authorization header, but the
+// transport overwrites it. On 401, the transport refreshes and retries.
+// Task 11 cleans this up by removing the token parameter entirely.
+info, err := oauth.FetchUserInfo(resolved.Token)
 if err != nil {
     fmt.Println("Authenticated (stored OAuth token).")
     fmt.Printf("Could not fetch user info: %v\n", err)

@@ -55,11 +55,13 @@ description = "Run all linters"
 depends = ["lint:md", "lint:toml"]
 
 [tasks.check]
+alias = ["chk", "c"]
 description = "Run all linters and checks"
 depends = ["lint"]
 # Will gain test/vet/build deps once Go code exists.
 
 [tasks.format]
+alias = ["fmt", "f"]
 description = "Run all fixers/formatters"
 depends = ["lint:md:fix", "lint:toml:fix"]
 

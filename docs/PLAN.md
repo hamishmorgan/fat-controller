@@ -100,6 +100,8 @@ The full settings table:
 | Service | `--service` | `FAT_CONTROLLER_SERVICE` | `service` | — | Scope to a single service. |
 | Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments. |
 | Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error during apply. |
+| Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking them. |
+| Sensitive patterns | — | — | `sensitive_patterns` | *(see below)* | List of patterns for detecting sensitive variable names. |
 | Full output | `--full` | — | — | `false` | Include IDs and read-only fields (get only). |
 | Verbose | `--verbose`, `-v` | — | — | `false` | Debug output (HTTP requests, timing). |
 | Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output. |
@@ -128,8 +130,11 @@ timeout = "60s"
 
 project = "my-railway-project"
 environment = "production"
-config = "infra/fat-controller.toml"   # non-default config location
-skip_deploys = true                     # batch changes, deploy separately
+config = "infra/fat-controller.toml"    # non-default config location
+skip_deploys = true                      # batch changes, deploy separately
+sensitive_patterns = ["SECRET", "TOKEN", "PASSWORD", "PASSWD", "KEY",
+  "CREDENTIAL", "AUTH", "PRIVATE", "CERT", "DSN", "CONNECTION_STRING",
+  "SIGNING"]                             # custom: adds SIGNING to defaults
 ```
 
 ### Confirmation mode
@@ -250,6 +255,44 @@ ignored. Three patterns for managing secrets:
 3. **Local env interpolation** — `STRIPE_KEY = "${STRIPE_KEY}"`. Resolved
    from local environment at apply time. Config file is safe to commit;
    actual value comes from CI env vars or a `.env` file.
+
+### Secret masking
+
+Variables with sensitive names are automatically masked in output. The
+tool detects them by matching variable name segments (case-insensitive,
+regex word boundaries) against a configurable pattern list.
+
+**Default patterns:**
+
+```
+SECRET, TOKEN, PASSWORD, PASSWD, KEY, CREDENTIAL, AUTH,
+PRIVATE, CERT, DSN, CONNECTION_STRING
+```
+
+**Masking logic:**
+
+1. The tool always fetches the unrendered value from Railway (needed to
+   detect `${{}}` references and compute diffs correctly).
+2. If the value contains `${{` — it's a Railway reference template.
+   **Show as-is** regardless of name, since the template is not a secret.
+3. If the name matches a sensitive pattern AND the value is a literal —
+   **display as `********`**.
+4. `--show-secrets` overrides masking and shows all values.
+
+**Examples:**
+
+```
+DATABASE_PASSWORD = "********"              # masked (literal + matches PASSWORD)
+DATABASE_URL = "${{postgres.DATABASE_URL}}" # shown (it's a reference, not a secret)
+APP_ENV = "production"                      # shown (name doesn't match any pattern)
+```
+
+**Custom patterns** (replaces defaults entirely):
+
+```toml
+# .fat-controller.toml
+sensitive_patterns = ["SECRET", "TOKEN", "PASSWORD", "MY_CUSTOM_FIELD"]
+```
 
 ### Apply ordering and redeployment
 

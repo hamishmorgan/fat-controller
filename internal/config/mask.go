@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // MaskedValue is the replacement string for masked secrets.
@@ -126,7 +127,7 @@ const (
 // 4.5 entropy threshold, so they won't be falsely masked.
 var (
 	hexPattern    = regexp.MustCompile(`^[0-9a-fA-F]+$`)
-	base64Pattern = regexp.MustCompile(`^[A-Za-z0-9+/=_\-]+$`)
+	base64Pattern = regexp.MustCompile(`^[A-Za-z0-9+/=_-]+$`)
 )
 
 // ShannonEntropy computes the Shannon entropy (bits per character) of s.
@@ -136,10 +137,12 @@ func ShannonEntropy(s string) float64 {
 		return 0
 	}
 	freq := make(map[rune]int)
+	var total int
 	for _, r := range s {
 		freq[r]++
+		total++
 	}
-	length := float64(len([]rune(s)))
+	length := float64(total)
 	var entropy float64
 	for _, count := range freq {
 		p := float64(count) / length
@@ -152,7 +155,7 @@ func ShannonEntropy(s string) float64 {
 // on Shannon entropy thresholds for base64 and hex character sets.
 func hasHighEntropy(value string) bool {
 	v := strings.TrimSpace(value)
-	if len(v) < entropyMinLength {
+	if utf8.RuneCountInString(v) < entropyMinLength {
 		return false
 	}
 	// Skip values with spaces — likely human text, not secrets.

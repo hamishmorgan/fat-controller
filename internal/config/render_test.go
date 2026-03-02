@@ -120,7 +120,7 @@ func TestRender_TOMLQuotesValues(t *testing.T) {
 	cfg := config.LiveConfig{
 		Shared: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
 	}
-	got, err := config.Render(cfg, config.RenderOptions{Format: "toml", ShowSecrets: true})
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}

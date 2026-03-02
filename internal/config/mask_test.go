@@ -163,3 +163,32 @@ func TestShannonEntropy_EmptyString(t *testing.T) {
 		t.Errorf("expected zero entropy for empty string, got %.2f", e)
 	}
 }
+
+func TestMaskValue_EmptyKeywordsDisablesNameMatching(t *testing.T) {
+	// Passing an empty (non-nil) slice disables all keyword matching.
+	m := config.NewMasker([]string{}, nil)
+	got := m.MaskValue("DATABASE_PASSWORD", "hunter2")
+	if got != "hunter2" {
+		t.Errorf("empty keywords should disable name masking, got %q", got)
+	}
+}
+
+func TestMaskValue_AllowlistSuppressesEntropyToo(t *testing.T) {
+	// An allowlisted name should suppress both name-based AND entropy-based
+	// masking, since the user explicitly marked it as non-secret.
+	m := config.NewMasker(nil, []string{"BUILD_KEY"})
+	got := m.MaskValue("BUILD_KEY", "xK9mZpQ7wL3nR8vY2jT6bA5cD4eF1gH") // gitleaks:allow test fixture
+	if got == "********" {
+		t.Errorf("allowlisted name should not be entropy-masked, got %q", got)
+	}
+}
+
+func TestMaskValue_BoardingPassMasked(t *testing.T) {
+	// BOARDING_PASS matches PASS at a segment boundary — intentionally
+	// errs on the side of masking (see SECRET-MASKING.md).
+	m := config.NewMasker(nil, nil)
+	got := m.MaskValue("BOARDING_PASS", "ABC123")
+	if got != "********" {
+		t.Errorf("BOARDING_PASS should trigger PASS match, got %q", got)
+	}
+}

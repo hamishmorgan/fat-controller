@@ -1,3 +1,7 @@
 # TODO
 
-- [x] Rename `shared_variables` section to `shared` to match Railway's `${{shared.MY_VAR}}` reference syntax.
+- [ ] Implement config validation warnings (M4: unknown keys/typos) and wire up `config validate`.
+- [ ] Include deploy/build settings in live state fetches so `config get --full` and diffs reflect them.
+- [ ] Add volume, domain, and TCP proxy management to config (Future).
+- [ ] Add GoReleaser pipeline for prebuilt binaries (Future).
+- [ ] Make `config init` interactive bootstrap (Future).

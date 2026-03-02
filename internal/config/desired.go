@@ -4,8 +4,10 @@ package config
 // It contains only the fields the user explicitly specified — omitted fields
 // mean "don't touch".
 type DesiredConfig struct {
-	Shared   *DesiredVariables          // nil means no shared section in config
-	Services map[string]*DesiredService // keyed by service name
+	Project     string                     // from top-level `project` key (optional)
+	Environment string                     // from top-level `environment` key (optional)
+	Shared      *DesiredVariables          // nil means no shared section in config
+	Services    map[string]*DesiredService // keyed by service name
 }
 
 // DesiredService holds one service's desired configuration.

@@ -220,6 +220,52 @@ STRIPE_KEY = "${STRIPE_KEY}"
 	}
 }
 
+func TestParseFile_ProjectAndEnvironment(t *testing.T) {
+	content := `
+project = "my-app"
+environment = "production"
+
+[api.variables]
+PORT = "8080"
+`
+	path := writeTempTOML(t, content)
+	cfg, err := config.ParseFile(path)
+	if err != nil {
+		t.Fatalf("ParseFile() error: %v", err)
+	}
+	if cfg.Project != "my-app" {
+		t.Errorf("Project = %q, want %q", cfg.Project, "my-app")
+	}
+	if cfg.Environment != "production" {
+		t.Errorf("Environment = %q, want %q", cfg.Environment, "production")
+	}
+	// Verify they're not treated as service names.
+	if _, ok := cfg.Services["project"]; ok {
+		t.Error("'project' should not be a service")
+	}
+	if _, ok := cfg.Services["environment"]; ok {
+		t.Error("'environment' should not be a service")
+	}
+}
+
+func TestParseFile_ProjectAndEnvironmentOptional(t *testing.T) {
+	content := `
+[api.variables]
+PORT = "8080"
+`
+	path := writeTempTOML(t, content)
+	cfg, err := config.ParseFile(path)
+	if err != nil {
+		t.Fatalf("ParseFile() error: %v", err)
+	}
+	if cfg.Project != "" {
+		t.Errorf("Project should be empty, got %q", cfg.Project)
+	}
+	if cfg.Environment != "" {
+		t.Errorf("Environment should be empty, got %q", cfg.Environment)
+	}
+}
+
 // writeTempTOML writes content to a temp .toml file and returns its path.
 func writeTempTOML(t *testing.T, content string) string {
 	t.Helper()

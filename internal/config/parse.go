@@ -10,6 +10,8 @@ import (
 // knownTopLevelKeys are keys that are NOT service names.
 // These are tool settings or the shared section.
 var knownTopLevelKeys = map[string]bool{
+	"project":             true,
+	"environment":         true,
 	"shared":              true,
 	"sensitive_keywords":  true,
 	"sensitive_allowlist": true,
@@ -33,6 +35,14 @@ func Parse(data []byte) (*DesiredConfig, error) {
 	}
 
 	cfg := &DesiredConfig{}
+
+	// Extract project/environment metadata.
+	if v, ok := raw["project"].(string); ok {
+		cfg.Project = v
+	}
+	if v, ok := raw["environment"].(string); ok {
+		cfg.Environment = v
+	}
 
 	// Extract shared section.
 	if sharedRaw, ok := raw["shared"]; ok {

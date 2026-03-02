@@ -1,12 +1,17 @@
 # M2: Schema + GQL Client — Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Set up genqlient code generation against the Railway GraphQL schema, build a refresh-aware authenticated HTTP transport, and verify the pipeline works end-to-end with a `projectToken` query.
 
-**Architecture:** Apollo Rover introspects the Railway schema into `internal/railway/schema.graphql` (checked in). genqlient generates typed Go functions from `.graphql` operation files. An authenticated `http.RoundTripper` wraps requests with the correct auth header (Bearer vs Project-Access-Token) based on `ResolvedAuth`, and transparently refreshes expired OAuth tokens. A `Client` struct in `internal/railway/client.go` ties it all together.
+**Architecture:** Apollo Rover introspects the Railway schema into
+`internal/railway/schema.graphql` (checked in). genqlient generates typed
+Go functions from `.graphql` operation files. An authenticated
+`http.RoundTripper` wraps requests with the correct auth header (Bearer
+vs Project-Access-Token) based on `ResolvedAuth`, and transparently
+refreshes expired OAuth tokens. A `Client` struct in
+`internal/railway/client.go` ties it all together.
 
-**Tech Stack:** Go, Khan/genqlient, apollo-rover (mise tool, introspection only), existing internal/auth package
+**Tech Stack:** Go, Khan/genqlient, apollo-rover (mise tool, introspection
+only), existing internal/auth package
 
 ---
 
@@ -19,8 +24,13 @@
 - **`operations.graphql`** — queries and mutations we use. Each becomes a typed Go function.
 - **`generated.go`** — genqlient output. Checked into git (CI doesn't need a Railway token).
 - **`//go:generate go run github.com/Khan/genqlient`** — runs code generation.
-- Generated functions have signature: `func queryName(ctx context.Context, client graphql.Client, args...) (*queryNameResponse, error)`
-- `graphql.Client` is created via `graphql.NewClient(url, httpClient)` where `httpClient` has a custom `RoundTripper` for auth.
+- Generated function names preserve the query name casing from the
+  `.graphql` file. A query named `ProjectToken` generates an exported
+  `func ProjectToken(...)`. A query named `projectToken` generates an
+  unexported `func projectToken(...)`.
+- Signature: `func QueryName(ctx context.Context, client graphql.Client, args...) (*QueryNameResponse, error)`
+- `graphql.Client` is created via `graphql.NewClient(endpoint, httpClient)`
+  where `httpClient` satisfies the `Doer` interface (`*http.Client` works).
 - Fragments in `.graphql` files create shared Go types across queries/mutations.
 
 ### genqlient annotations
@@ -76,7 +86,10 @@ fat-controller/
 ├── tools.go                          # //go:build tools — blank import keeps genqlient in go.mod
 ├── cmd/fat-controller/main.go        # Entry point
 ├── internal/
-│   ├── cli/cli.go                    # CLI struct, kong wiring, command Run() methods
+│   ├── cli/
+│   │   ├── cli.go                    # CLI struct, kong wiring, config command stubs
+│   │   ├── auth.go                   # Auth command Run() methods (login, logout, status)
+│   │   └── help.go                   # Colored help printer
 │   ├── auth/                         # Existing — OAuth, keyring, token resolution
 │   │   ├── resolver.go               # ResolvedAuth (used by transport)
 │   │   ├── oauth.go                  # OAuthClient.RefreshToken (used by transport)
@@ -109,12 +122,6 @@ fat-controller/
 Open `.config/mise/config.toml` and add `apollo-rover` to the `[tools]` section:
 
 ```toml
-[tools]
-go = "latest"
-golangci-lint = "latest"
-"npm:markdownlint-cli2" = "latest"
-taplo = "latest"
-actionlint = "latest"
 apollo-rover = "latest"
 ```
 
@@ -128,10 +135,11 @@ Add a new task section to `.config/mise/config.toml`, after the GitHub Actions s
 # ---------------------------------------------------------------------------
 
 [tasks."schema:introspect"]
+alias = ["introspect"]
 description = "Fetch Railway GraphQL schema via introspection (requires RAILWAY_API_TOKEN)"
 run = """
 rover graph introspect https://backboard.railway.com/graphql/v2 \
-  --header "Authorization: Bearer ${RAILWAY_API_TOKEN:?Set RAILWAY_API_TOKEN to introspect the schema}" \
+  --header "Authorization:Bearer ${RAILWAY_API_TOKEN:?Set RAILWAY_API_TOKEN to introspect the schema}" \
   --output internal/railway/schema.graphql
 """
 ```
@@ -186,7 +194,8 @@ mkdir -p internal/railway
 Run:
 
 ```bash
-RAILWAY_API_TOKEN=<your-token> mise run schema:introspect
+export RAILWAY_API_TOKEN=<your-token>
+mise run schema:introspect
 ```
 
 Expected: `internal/railway/schema.graphql` created with the full Railway API schema in SDL format. The file will be large (thousands of lines).
@@ -298,8 +307,13 @@ bindings:
 
 **Key config choices:**
 
-- `optional: pointer` — nullable GraphQL fields become Go pointers. This is safer than `value` (which silently zero-fills nulls) and matches Railway's schema where many fields are optional.
-- `bindings` — maps Railway's custom scalars to Go types. These 5 bindings match what the Terraform provider uses. `DateTime` → `time.Time` is standard. `JSON`, `EnvironmentVariables`, and `DeploymentMeta` are opaque JSON blobs. `PluginType` is a string enum.
+- `optional: pointer` — nullable GraphQL fields become Go pointers. This
+  is safer than `value` (which silently zero-fills nulls) and matches
+  Railway's schema where many fields are optional.
+- `bindings` — maps Railway's custom scalars and enums to Go types. These
+  5 bindings match what the Terraform provider uses. `DateTime` → `time.Time`
+  is standard. `JSON`, `EnvironmentVariables`, and `DeploymentMeta` are
+  opaque JSON blobs. `PluginType` is a GraphQL enum mapped to `string`.
 
 **Step 4: Run `go mod tidy`**
 
@@ -1062,6 +1076,7 @@ Add to `.config/mise/config.toml`, in the Go section:
 
 ```toml
 [tasks.generate]
+alias = ["gen"]
 description = "Run Go code generation (genqlient)"
 run = """
 [ -f go.mod ] || exit 0
@@ -1201,15 +1216,17 @@ git commit -m "Add end-to-end test for projectToken query via mock GQL server"
 
 ### Task 10: Update auth status to use refresh-aware client
 
-Now that M2's refresh-aware transport exists, update `auth status` to use it instead of calling `FetchUserInfo` with a bare HTTP client. This means expired stored OAuth tokens get refreshed transparently on 401.
+Now that M2's refresh-aware transport exists, update `auth status` to use
+it instead of calling `FetchUserInfo` with a bare HTTP client. This means
+expired stored OAuth tokens get refreshed transparently on 401.
 
 **Files:**
 
-- Modify: `internal/cli/cli.go`
+- Modify: `internal/cli/auth.go`
 
 **Step 1: Update AuthStatusCmd.Run**
 
-Replace the stored-token section in `internal/cli/cli.go`'s `AuthStatusCmd.Run` method. The current code does:
+Replace the stored-token section in `internal/cli/auth.go`'s `AuthStatusCmd.Run` method. The current code does:
 
 ```go
 // For stored OAuth tokens, fetch user info.
@@ -1248,13 +1265,12 @@ if err != nil {
 }
 ```
 
-Add the `railway` import to `internal/cli/cli.go`:
+Add the `railway` and `net/http` imports to `internal/cli/auth.go`:
 
 ```go
 import (
     "fmt"
     "net/http"
-    "time"
 
     "github.com/hamishmorgan/fat-controller/internal/auth"
     "github.com/hamishmorgan/fat-controller/internal/platform"
@@ -1285,7 +1301,7 @@ Expected: All checks pass.
 **Step 4: Commit**
 
 ```bash
-git add internal/cli/cli.go
+git add internal/cli/auth.go
 git commit -m "Use refresh-aware transport in auth status for transparent token refresh"
 ```
 
@@ -1299,11 +1315,14 @@ Currently `FetchUserInfo(accessToken string)` sets its own `Authorization` heade
 
 - Modify: `internal/auth/userinfo.go`
 - Modify: `internal/auth/userinfo_test.go`
-- Modify: `internal/cli/cli.go`
+- Modify: `internal/cli/auth.go`
 
 **Step 1: Update the tests first**
 
-Replace `internal/auth/userinfo_test.go` with tests that inject auth via the `HTTPClient` instead of a parameter:
+Update `internal/auth/userinfo_test.go` to inject auth via the `HTTPClient`
+instead of a parameter. Existing error-path tests (network error, JSON
+decode error) should also be updated to remove the token parameter. The
+key changes to the existing tests:
 
 ```go
 package auth_test
@@ -1427,9 +1446,9 @@ func (c *OAuthClient) FetchUserInfo() (*UserInfo, error) {
 }
 ```
 
-**Step 4: Update the caller in cli.go**
+**Step 4: Update the caller in auth.go**
 
-In `internal/cli/cli.go`, change:
+In `internal/cli/auth.go`, change:
 
 ```go
 info, err := oauth.FetchUserInfo(resolved.Token)
@@ -1458,7 +1477,7 @@ Expected: All tests pass, build succeeds.
 **Step 6: Commit**
 
 ```bash
-git add internal/auth/userinfo.go internal/auth/userinfo_test.go internal/cli/cli.go
+git add internal/auth/userinfo.go internal/auth/userinfo_test.go internal/cli/auth.go
 git commit -m "Refactor FetchUserInfo to rely on HTTPClient transport for auth"
 ```
 
@@ -1530,10 +1549,10 @@ Expected: All linters pass, all tests pass (including race detector), build succ
 Run:
 
 ```bash
-go test -coverprofile=/tmp/cover.out ./internal/... && go tool cover -func=/tmp/cover.out
+mise run test:coverage
 ```
 
-Expected: `internal/railway` coverage should be reasonable (>70%). Transport, refresher, and client should all show covered functions.
+Expected: `internal/railway` coverage should be >85%. Transport, refresher, and client should all show covered functions. Overall project coverage should remain >85%.
 
 **Step 3: Verify the generated code is committed**
 

@@ -7,20 +7,29 @@ import (
 	"strings"
 )
 
+// RenderOptions controls how config is rendered.
+type RenderOptions struct {
+	Format      string   // "text", "json", "toml"
+	Full        bool     // Include IDs and deploy settings
+	ShowSecrets bool     // Show all values unmasked
+	Keywords    []string // Custom sensitive keywords (nil = defaults)
+	Allowlist   []string // Custom allowlist (nil = defaults)
+}
+
 // Render renders the live config in the requested output format.
-// When full is true, IDs and deploy settings are included.
-func Render(cfg LiveConfig, format string, full bool) (string, error) {
-	switch format {
+// Variable values are masked by default unless ShowSecrets is true.
+func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
+	switch opts.Format {
 	case "json":
-		buf, err := json.MarshalIndent(toJSONMap(cfg, full), "", "  ")
+		buf, err := json.MarshalIndent(toJSONMap(cfg, opts.Full), "", "  ")
 		if err != nil {
 			return "", err
 		}
 		return string(buf), nil
 	case "toml":
-		return renderTOML(cfg, full), nil
+		return renderTOML(cfg, opts.Full), nil
 	case "text", "":
-		return renderText(cfg, full), nil
+		return renderText(cfg, opts.Full), nil
 	default:
 		return "", errors.New("unsupported output format")
 	}

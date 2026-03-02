@@ -29,7 +29,7 @@ func sampleConfig() config.LiveConfig {
 }
 
 func TestRender_TextIncludesServiceAndKey(t *testing.T) {
-	got, err := config.Render(sampleConfig(), "text", false)
+	got, err := config.Render(sampleConfig(), config.RenderOptions{Format: "text"})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestRender_TextIncludesServiceAndKey(t *testing.T) {
 }
 
 func TestRender_TextFullIncludesIDsAndDeploy(t *testing.T) {
-	got, err := config.Render(sampleConfig(), "text", true)
+	got, err := config.Render(sampleConfig(), config.RenderOptions{Format: "text", Full: true})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestRender_TextFullOmitsDeployWhenEmpty(t *testing.T) {
 			"api": {Name: "api", Variables: map[string]string{"X": "1"}},
 		},
 	}
-	got, err := config.Render(cfg, "text", true)
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text", Full: true})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestRender_TextFullOmitsDeployWhenEmpty(t *testing.T) {
 }
 
 func TestRender_JSONIncludesVariables(t *testing.T) {
-	got, err := config.Render(sampleConfig(), "json", false)
+	got, err := config.Render(sampleConfig(), config.RenderOptions{Format: "json"})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestRender_JSONIncludesVariables(t *testing.T) {
 }
 
 func TestRender_JSONFullIncludesIDsAndDeploy(t *testing.T) {
-	got, err := config.Render(sampleConfig(), "json", true)
+	got, err := config.Render(sampleConfig(), config.RenderOptions{Format: "json", Full: true})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestRender_TOMLQuotesValues(t *testing.T) {
 	cfg := config.LiveConfig{
 		Shared: map[string]string{"DSN": `host="db" port=5432`},
 	}
-	got, err := config.Render(cfg, "toml", false)
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestRender_TOMLQuotesValues(t *testing.T) {
 }
 
 func TestRender_TOMLFullIncludesIDs(t *testing.T) {
-	got, err := config.Render(sampleConfig(), "toml", true)
+	got, err := config.Render(sampleConfig(), config.RenderOptions{Format: "toml", Full: true})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -144,14 +144,14 @@ func TestRender_TOMLFullIncludesIDs(t *testing.T) {
 }
 
 func TestRender_UnsupportedFormat(t *testing.T) {
-	_, err := config.Render(config.LiveConfig{}, "xml", false)
+	_, err := config.Render(config.LiveConfig{}, config.RenderOptions{Format: "xml"})
 	if err == nil {
 		t.Fatal("expected error for unsupported format")
 	}
 }
 
 func TestRender_EmptyConfig(t *testing.T) {
-	got, err := config.Render(config.LiveConfig{}, "text", false)
+	got, err := config.Render(config.LiveConfig{}, config.RenderOptions{Format: "text"})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}

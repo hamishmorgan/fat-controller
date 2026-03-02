@@ -74,7 +74,11 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 	if cfg == nil {
 		return errors.New("no config returned")
 	}
-	output, err := config.Render(*cfg, globals.Output, globals.Full)
+	output, err := config.Render(*cfg, config.RenderOptions{
+		Format:      globals.Output,
+		Full:        globals.Full,
+		ShowSecrets: globals.ShowSecrets,
+	})
 	if err != nil {
 		return err
 	}

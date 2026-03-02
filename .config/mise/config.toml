@@ -5,6 +5,7 @@ go = "latest"
 golangci-lint = "latest"
 "npm:markdownlint-cli2" = "latest"
 taplo = "latest"
+actionlint = "latest"
 
 [settings]
 experimental = true
@@ -56,7 +57,7 @@ depends = ["check"]
 
 [tasks.lint]
 description = "Run all linters"
-depends = ["lint:md", "lint:toml", "lint:go"]
+depends = ["lint:md", "lint:toml", "lint:go", "lint:actions"]
 
 [tasks.check]
 alias = ["chk", "c"]
@@ -91,6 +92,14 @@ run = "taplo check"
 [tasks."lint:toml:fix"]
 description = "Format TOML files"
 run = "taplo format"
+
+# ---------------------------------------------------------------------------
+# GitHub Actions
+# ---------------------------------------------------------------------------
+
+[tasks."lint:actions"]
+description = "Lint GitHub Actions workflows"
+run = "actionlint"
 
 # ---------------------------------------------------------------------------
 # Go

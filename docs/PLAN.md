@@ -101,7 +101,8 @@ The full settings table:
 | Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments. |
 | Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error during apply. |
 | Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking them. |
-| Sensitive patterns | — | — | `sensitive_patterns` | *(see below)* | List of patterns for detecting sensitive variable names. |
+| Sensitive keywords | — | — | `sensitive_keywords` | *(see below)* | Keywords for detecting sensitive variable names (substring match). |
+| Sensitive allowlist | — | — | `sensitive_allowlist` | *(see below)* | Keywords that suppress false-positive secret matches. |
 | Full output | `--full` | — | — | `false` | Include IDs and read-only fields (get only). |
 | Verbose | `--verbose`, `-v` | — | — | `false` | Debug output (HTTP requests, timing). |
 | Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output. |
@@ -132,9 +133,9 @@ project = "my-railway-project"
 environment = "production"
 config = "infra/fat-controller.toml"    # non-default config location
 skip_deploys = true                      # batch changes, deploy separately
-sensitive_patterns = ["SECRET", "TOKEN", "PASSWORD", "PASSWD", "KEY",
-  "CREDENTIAL", "AUTH", "PRIVATE", "CERT", "DSN", "CONNECTION_STRING",
-  "SIGNING"]                             # custom: adds SIGNING to defaults
+sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "KEY",
+  "SIGNING"]                             # replaces all defaults
+sensitive_allowlist = ["KEYSTROKE"]       # replaces all defaults
 ```
 
 ### Confirmation mode
@@ -263,15 +264,76 @@ secrets. Detection uses two layers: **name-based** and **entropy-based**.
 
 #### Layer 1: Name-based detection
 
-Variable names are matched (case-insensitive, regex word boundaries)
-against a configurable pattern list.
+Variable names are matched case-insensitively using **substring matching**
+against a keyword list, plus a false-positive **allowlist** to suppress
+known non-secret matches. This is the same approach used by gitleaks and
+Yelp's detect-secrets.
 
-**Default patterns:**
+**Default sensitive keywords** (case-insensitive substring match):
 
 ```
-SECRET, TOKEN, PASSWORD, PASSWD, KEY, CREDENTIAL, AUTH,
-PRIVATE, CERT, DSN, CONNECTION_STRING
+# Passwords & passphrases
+PASSWORD, PASSWD, PASS, PWD
+
+# Secrets & keys
+SECRET, PRIVATE_KEY, SIGNING_KEY, ENCRYPTION_KEY, MASTER_KEY,
+DEPLOY_KEY, KEY
+
+# API & access credentials
+API_KEY, APIKEY, API_SECRET, ACCESS_KEY, AUTH_TOKEN, AUTH_KEY,
+CLIENT_SECRET, SERVICE_KEY, ACCOUNT_KEY
+
+# Tokens
+TOKEN
+
+# Credentials
+CREDENTIAL, CREDS, AUTH
+
+# Certificates
+CERT, PEM, PFX, KEYSTORE, STOREPASS
+
+# Cryptographic material
+HMAC, SALT, PEPPER, NONCE, SEED, CIPHER
+
+# Connection strings (often embed credentials)
+CONNECTION_STRING, DATABASE_URL, REDIS_URL, MONGODB_URI,
+MYSQL_URL, POSTGRES_URL, DSN
+
+# Webhooks & sessions
+WEBHOOK_SECRET, WEBHOOK_URL, SESSION_SECRET, COOKIE_SECRET,
+JWT_SECRET
 ```
+
+**Default false-positive allowlist** (suppress matches on these):
+
+```
+# KEY false positives
+KEYBOARD, KEYSTROKE, KEYFRAME, KEYSTONE, KEYPRESS, KEYWORD,
+MONKEY, DONKEY, TURKEY, PRIMARY_KEY, FOREIGN_KEY, SORT_KEY,
+PARTITION_KEY, PUBLIC_KEY, KEY_ID, KEY_NAME, KEY_FILE,
+KEY_LENGTH, KEY_SIZE, KEY_TYPE, KEY_FORMAT, KEY_VAULT_NAME
+
+# AUTH false positives
+AUTHOR, AUTHORITY, AUTHORIZE, AUTHENTICATION_RESULTS
+
+# PASS false positives
+PASSENGER, PASSIVE, COMPASS, BYPASS, PASSPORT_STRATEGY
+
+# TOKEN false positives
+TOKEN_URL, TOKEN_ENDPOINT, TOKEN_FILE, TOKEN_TYPE, TOKEN_EXPIRY
+
+# CREDENTIAL false positives
+CREDENTIAL_ID, CREDENTIALS_URL, CREDENTIALS_ENDPOINT
+
+# SECRET false positives
+SECRET_NAME, SECRET_LENGTH, SECRET_VERSION
+
+# SEED false positives
+SEED_DATA, SEED_FILE
+```
+
+Both lists are configurable. Setting `sensitive_keywords` or
+`sensitive_allowlist` in config replaces the respective defaults.
 
 #### Layer 2: Entropy-based detection
 
@@ -314,11 +376,12 @@ SETTING_X = "********"                      # masked (high entropy value)
 BUILD_HASH = "abc123"                       # shown (too short for entropy check)
 ```
 
-**Custom name patterns** (replaces defaults entirely):
+**Custom keywords and allowlist** (each replaces its defaults entirely):
 
 ```toml
 # .fat-controller.toml
-sensitive_patterns = ["SECRET", "TOKEN", "PASSWORD", "MY_CUSTOM_FIELD"]
+sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "MY_CUSTOM_FIELD"]
+sensitive_allowlist = ["KEYSTROKE", "MY_SAFE_TOKEN_NAME"]
 ```
 
 ### Apply ordering and redeployment

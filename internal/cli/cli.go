@@ -33,9 +33,10 @@ type CLI struct {
 	Globals `kong:"embed"`
 
 	// Subcommand groups
-	Auth    AuthCmd    `cmd:"" help:"Manage authentication."`
-	Config  ConfigCmd  `cmd:"" name:"config" help:"Declarative configuration management."`
-	Project ProjectCmd `cmd:"" help:"Manage projects."`
+	Auth        AuthCmd        `cmd:"" help:"Manage authentication."`
+	Config      ConfigCmd      `cmd:"" name:"config" help:"Declarative configuration management."`
+	Project     ProjectCmd     `cmd:"" help:"Manage projects."`
+	Environment EnvironmentCmd `cmd:"" help:"Manage environments."`
 }
 
 // AuthCmd is the `auth` command group.
@@ -88,6 +89,12 @@ type ProjectCmd struct {
 }
 
 type ProjectListCmd struct{}
+
+type EnvironmentCmd struct {
+	List EnvironmentListCmd `cmd:"" help:"List environments for a project."`
+}
+
+type EnvironmentListCmd struct{}
 
 // Run methods:
 // - ConfigGetCmd.Run    → config_get.go

@@ -4,6 +4,7 @@
 go = "1.25"
 golangci-lint = "latest"
 "npm:markdownlint-cli2" = "latest"
+"npm:prettier" = "latest"
 taplo = "latest"
 actionlint = "latest"
 gitleaks = "latest"
@@ -59,7 +60,14 @@ depends = ["check"]
 
 [tasks.lint]
 description = "Run all linters"
-depends = ["lint:md", "lint:toml", "lint:go", "lint:actions", "lint:secrets"]
+depends = [
+  "lint:md",
+  "lint:toml",
+  "lint:yaml",
+  "lint:go",
+  "lint:actions",
+  "lint:secrets",
+]
 
 [tasks.check]
 alias = ["chk", "c"]
@@ -69,7 +77,7 @@ depends = ["lint", "test", "build"]
 [tasks.format]
 alias = ["fmt", "f"]
 description = "Run all fixers/formatters"
-depends = ["lint:md:fix", "lint:toml:fix"]
+depends = ["lint:md:fix", "lint:toml:fix", "lint:yaml:fix"]
 
 # ---------------------------------------------------------------------------
 # Markdown
@@ -94,6 +102,18 @@ run = "taplo check"
 [tasks."lint:toml:fix"]
 description = "Format TOML files"
 run = "taplo format"
+
+# ---------------------------------------------------------------------------
+# YAML
+# ---------------------------------------------------------------------------
+
+[tasks."lint:yaml"]
+description = "Check YAML formatting"
+run = "prettier --check '**/*.{yml,yaml}' --ignore-path .gitignore"
+
+[tasks."lint:yaml:fix"]
+description = "Format YAML files"
+run = "prettier --write '**/*.{yml,yaml}' --ignore-path .gitignore"
 
 # ---------------------------------------------------------------------------
 # GitHub Actions

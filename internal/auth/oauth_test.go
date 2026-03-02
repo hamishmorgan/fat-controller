@@ -198,7 +198,7 @@ func TestOAuthClient_RefreshToken(t *testing.T) {
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
 
-	resp, err := client.RefreshToken("client-123", "old-refresh")
+	resp, err := client.RefreshToken(t.Context(), "client-123", "old-refresh")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestOAuthClient_RefreshToken_ErrorStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
-	_, err := client.RefreshToken("client-123", "expired-refresh")
+	_, err := client.RefreshToken(t.Context(), "client-123", "expired-refresh")
 	if err == nil {
 		t.Fatal("expected error for 401 response")
 	}
@@ -315,7 +315,7 @@ func TestOAuthClient_RefreshToken_NetworkError(t *testing.T) {
 	server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: serverURL}
-	_, err := client.RefreshToken("client-123", "refresh-token")
+	_, err := client.RefreshToken(t.Context(), "client-123", "refresh-token")
 	if err == nil {
 		t.Fatal("expected network error")
 	}
@@ -331,7 +331,7 @@ func TestOAuthClient_RefreshToken_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
-	_, err := client.RefreshToken("client-123", "refresh-token")
+	_, err := client.RefreshToken(t.Context(), "client-123", "refresh-token")
 	if err == nil {
 		t.Fatal("expected JSON decode error")
 	}

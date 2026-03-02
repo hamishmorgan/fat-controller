@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,8 +18,8 @@ type UserInfo struct {
 // FetchUserInfo calls the OIDC userinfo endpoint.
 // Auth is handled by the OAuthClient's HTTPClient transport —
 // callers must set HTTPClient to a client with an auth-injecting transport.
-func (c *OAuthClient) FetchUserInfo() (*UserInfo, error) {
-	req, err := http.NewRequest(http.MethodGet, c.UserinfoURL, nil)
+func (c *OAuthClient) FetchUserInfo(ctx context.Context) (*UserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.UserinfoURL, nil)
 	if err != nil {
 		return nil, err
 	}

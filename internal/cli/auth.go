@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -67,7 +68,7 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	oauth := auth.NewOAuthClient()
 	oauth.HTTPClient = &http.Client{Transport: transport}
 
-	info, err := oauth.FetchUserInfo()
+	info, err := oauth.FetchUserInfo(context.Background())
 	if err != nil {
 		fmt.Println("Authenticated (stored OAuth token).")
 		fmt.Printf("Could not fetch user info: %v\n", err)

@@ -1,6 +1,10 @@
 package railway
 
-import "github.com/hamishmorgan/fat-controller/internal/auth"
+import (
+	"context"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+)
 
 // OAuthRefresher implements Refresher by delegating to auth.OAuthClient.
 type OAuthRefresher struct {
@@ -13,6 +17,6 @@ func NewOAuthRefresher(oauth *auth.OAuthClient) *OAuthRefresher {
 }
 
 // Refresh exchanges a refresh token for new tokens via the OAuth token endpoint.
-func (r *OAuthRefresher) Refresh(clientID, refreshToken string) (*auth.TokenResponse, error) {
-	return r.oauth.RefreshToken(clientID, refreshToken)
+func (r *OAuthRefresher) Refresh(ctx context.Context, clientID, refreshToken string) (*auth.TokenResponse, error) {
+	return r.oauth.RefreshToken(ctx, clientID, refreshToken)
 }

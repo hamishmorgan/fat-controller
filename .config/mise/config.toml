@@ -1,7 +1,7 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools]
-go = "latest"
+go = "1.25"
 golangci-lint = "latest"
 "npm:markdownlint-cli2" = "latest"
 taplo = "latest"

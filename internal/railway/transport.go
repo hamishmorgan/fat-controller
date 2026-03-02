@@ -1,6 +1,7 @@
 package railway
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -9,7 +10,7 @@ import (
 
 // Refresher abstracts token refresh so transport doesn't depend on OAuthClient directly.
 type Refresher interface {
-	Refresh(clientID, refreshToken string) (*auth.TokenResponse, error)
+	Refresh(ctx context.Context, clientID, refreshToken string) (*auth.TokenResponse, error)
 }
 
 // AuthTransport is an http.RoundTripper that injects auth headers and
@@ -72,7 +73,7 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return t.base.RoundTrip(retry)
 	}
 
-	newTokens, refreshErr := t.tryRefresh()
+	newTokens, refreshErr := t.tryRefresh(req.Context())
 	if refreshErr != nil {
 		return resp, nil
 	}
@@ -91,13 +92,13 @@ func (t *AuthTransport) canRefresh(source string) bool {
 	return source == auth.SourceStored && t.refresh != nil && t.store != nil
 }
 
-func (t *AuthTransport) tryRefresh() (*auth.TokenResponse, error) {
+func (t *AuthTransport) tryRefresh(ctx context.Context) (*auth.TokenResponse, error) {
 	stored, err := t.store.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	newTokens, err := t.refresh.Refresh(stored.ClientID, stored.RefreshToken)
+	newTokens, err := t.refresh.Refresh(ctx, stored.ClientID, stored.RefreshToken)
 	if err != nil {
 		return nil, err
 	}

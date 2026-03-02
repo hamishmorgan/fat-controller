@@ -2,10 +2,13 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -146,21 +149,28 @@ func (c *OAuthClient) ExchangeCode(clientID, code, redirectURI, codeVerifier str
 
 // RefreshToken exchanges a refresh token for a new access + refresh token pair.
 // Important: Railway rotates refresh tokens. Always store the new one.
-func (c *OAuthClient) RefreshToken(clientID, refreshToken string) (*TokenResponse, error) {
+func (c *OAuthClient) RefreshToken(ctx context.Context, clientID, refreshToken string) (*TokenResponse, error) {
 	data := url.Values{
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {refreshToken},
 		"client_id":     {clientID},
 	}
 
-	resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.TokenEndpoint, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("building refresh request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("refresh request failed: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("refresh failed with status %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("refresh failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var tok TokenResponse

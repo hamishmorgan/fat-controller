@@ -44,7 +44,7 @@ func TestFetchUserInfo(t *testing.T) {
 		},
 	}
 
-	info, err := client.FetchUserInfo()
+	info, err := client.FetchUserInfo(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestFetchUserInfo_Unauthorized(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo()
+	_, err := client.FetchUserInfo(t.Context())
 	if err == nil {
 		t.Fatal("expected error for 401 response")
 	}
@@ -86,7 +86,7 @@ func TestFetchUserInfo_NetworkError(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo()
+	_, err := client.FetchUserInfo(t.Context())
 	if err == nil {
 		t.Fatal("expected network error")
 	}
@@ -101,7 +101,7 @@ func TestFetchUserInfo_InvalidURL(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo()
+	_, err := client.FetchUserInfo(t.Context())
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
 	}
@@ -118,7 +118,7 @@ func TestFetchUserInfo_InvalidJSON(t *testing.T) {
 		HTTPClient:  http.DefaultClient,
 	}
 
-	_, err := client.FetchUserInfo()
+	_, err := client.FetchUserInfo(t.Context())
 	if err == nil {
 		t.Fatal("expected JSON decode error")
 	}

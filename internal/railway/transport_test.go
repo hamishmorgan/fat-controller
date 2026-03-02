@@ -1,6 +1,7 @@
 package railway_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,12 +16,14 @@ import (
 
 // fakeRefresher implements railway.Refresher for testing.
 type fakeRefresher struct {
+	calls     atomic.Int32
 	called    atomic.Bool
 	returnTok *auth.TokenResponse
 	returnErr error
 }
 
-func (f *fakeRefresher) Refresh(clientID, refreshToken string) (*auth.TokenResponse, error) {
+func (f *fakeRefresher) Refresh(_ context.Context, clientID, refreshToken string) (*auth.TokenResponse, error) {
+	f.calls.Add(1)
 	f.called.Store(true)
 	return f.returnTok, f.returnErr
 }
@@ -185,6 +188,76 @@ func TestAuthTransport_RefreshesOnUnauthorized(t *testing.T) {
 	}
 	if saved.RefreshToken != "new-refresh-token" {
 		t.Errorf("saved RefreshToken = %q, want %q", saved.RefreshToken, "new-refresh-token")
+	}
+}
+
+func TestAuthTransport_ConcurrentRefresh(t *testing.T) {
+	keyring.MockInit()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got == "Bearer refreshed-token" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("test-refresh-concurrent"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	if err := store.Save(&auth.StoredTokens{
+		AccessToken:  "expired-token",
+		RefreshToken: "valid-refresh-token",
+		ClientID:     "client-123",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved := &auth.ResolvedAuth{
+		Token:       "expired-token",
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer expired-token",
+		Source:      auth.SourceStored,
+	}
+
+	refresher := &fakeRefresher{
+		returnTok: &auth.TokenResponse{
+			AccessToken:  "refreshed-token",
+			RefreshToken: "new-refresh-token",
+		},
+	}
+
+	transport := railway.NewAuthTransport(resolved, store, refresher)
+	client := &http.Client{Transport: transport}
+
+	const workers = 5
+	errCh := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			resp, err := client.Get(server.URL)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			defer resp.Body.Close() //nolint:errcheck
+			if resp.StatusCode != http.StatusOK {
+				errCh <- fmt.Errorf("StatusCode = %d, want 200", resp.StatusCode)
+				return
+			}
+			errCh <- nil
+		}()
+	}
+
+	for i := 0; i < workers; i++ {
+		if err := <-errCh; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if refresher.calls.Load() != 1 {
+		t.Errorf("refresh calls = %d, want 1", refresher.calls.Load())
 	}
 }
 

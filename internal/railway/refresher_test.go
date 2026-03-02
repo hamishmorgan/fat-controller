@@ -40,7 +40,7 @@ func TestOAuthRefresher_Refresh(t *testing.T) {
 	}
 	refresher := railway.NewOAuthRefresher(oauth)
 
-	tok, err := refresher.Refresh("client-abc", "refresh-xyz")
+	tok, err := refresher.Refresh(t.Context(), "client-abc", "refresh-xyz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestOAuthRefresher_RefreshError(t *testing.T) {
 	}
 	refresher := railway.NewOAuthRefresher(oauth)
 
-	_, err := refresher.Refresh("client-abc", "bad-refresh")
+	_, err := refresher.Refresh(t.Context(), "client-abc", "bad-refresh")
 	if err == nil {
 		t.Fatal("expected error for 400 response")
 	}

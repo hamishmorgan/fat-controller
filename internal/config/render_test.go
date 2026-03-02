@@ -118,9 +118,9 @@ func TestRender_JSONFullIncludesIDsAndDeploy(t *testing.T) {
 
 func TestRender_TOMLQuotesValues(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"DSN": `host="db" port=5432`},
+		Shared: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
 	}
-	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml", ShowSecrets: true})
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
@@ -157,5 +157,90 @@ func TestRender_EmptyConfig(t *testing.T) {
 	}
 	if strings.TrimSpace(got) != "" {
 		t.Errorf("expected empty output for empty config, got: %q", got)
+	}
+}
+
+func TestRender_MasksSecretsByDefault(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{"DATABASE_PASSWORD": "hunter2"},
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{
+				"AUTH_TOKEN": "secret123",
+				"APP_ENV":    "production",
+			}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text"})
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, "********") {
+		t.Errorf("expected masked values, got:\n%s", got)
+	}
+	if !strings.Contains(got, "production") {
+		t.Errorf("expected non-secret shown, got:\n%s", got)
+	}
+	if strings.Contains(got, "hunter2") {
+		t.Errorf("password should be masked, got:\n%s", got)
+	}
+	if strings.Contains(got, "secret123") {
+		t.Errorf("token should be masked, got:\n%s", got)
+	}
+}
+
+func TestRender_ShowSecretsOverridesMasking(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{"DATABASE_PASSWORD": "hunter2"},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{
+		Format:      "text",
+		ShowSecrets: true,
+	})
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, "hunter2") {
+		t.Errorf("--show-secrets should show password, got:\n%s", got)
+	}
+}
+
+func TestRender_MaskingWorksInJSON(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "json"})
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if strings.Contains(got, "fakekeyfakekeyfakekey") {
+		t.Errorf("API key should be masked in JSON, got:\n%s", got)
+	}
+}
+
+func TestRender_MaskingWorksInTOML(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if strings.Contains(got, "fakekeyfakekeyfakekey") {
+		t.Errorf("API key should be masked in TOML, got:\n%s", got)
+	}
+}
+
+func TestRender_ReferenceTemplateNotMasked(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{
+			"DATABASE_URL": "${{postgres.DATABASE_URL}}",
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text"})
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, "${{postgres.DATABASE_URL}}") {
+		t.Errorf("reference template should not be masked, got:\n%s", got)
 	}
 }

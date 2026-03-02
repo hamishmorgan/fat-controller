@@ -19,20 +19,61 @@ type RenderOptions struct {
 // Render renders the live config in the requested output format.
 // Variable values are masked by default unless ShowSecrets is true.
 func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
+	var masker *Masker
+	if !opts.ShowSecrets {
+		masker = NewMasker(opts.Keywords, opts.Allowlist)
+	}
+	masked := maskConfig(cfg, masker)
+
 	switch opts.Format {
 	case "json":
-		buf, err := json.MarshalIndent(toJSONMap(cfg, opts.Full), "", "  ")
+		buf, err := json.MarshalIndent(toJSONMap(masked, opts.Full), "", "  ")
 		if err != nil {
 			return "", err
 		}
 		return string(buf), nil
 	case "toml":
-		return renderTOML(cfg, opts.Full), nil
+		return renderTOML(masked, opts.Full), nil
 	case "text", "":
-		return renderText(cfg, opts.Full), nil
+		return renderText(masked, opts.Full), nil
 	default:
 		return "", errors.New("unsupported output format")
 	}
+}
+
+// maskConfig returns a copy of cfg with variable values masked.
+// If masker is nil (ShowSecrets mode), returns cfg unchanged.
+func maskConfig(cfg LiveConfig, masker *Masker) LiveConfig {
+	if masker == nil {
+		return cfg
+	}
+	out := LiveConfig{
+		ProjectID:     cfg.ProjectID,
+		EnvironmentID: cfg.EnvironmentID,
+		Shared:        maskVars(cfg.Shared, masker),
+		Services:      make(map[string]*ServiceConfig, len(cfg.Services)),
+	}
+	for name, svc := range cfg.Services {
+		out.Services[name] = &ServiceConfig{
+			ID:        svc.ID,
+			Name:      svc.Name,
+			Variables: maskVars(svc.Variables, masker),
+			Deploy:    svc.Deploy,
+		}
+	}
+	return out
+}
+
+// maskVars returns a new map with values masked as needed.
+func maskVars(vars map[string]string, masker *Masker) map[string]string {
+	if len(vars) == 0 {
+		return vars
+	}
+	out := make(map[string]string, len(vars))
+	for k, v := range vars {
+		out[k] = masker.MaskValue(k, v)
+	}
+	return out
 }
 
 // toJSONMap builds a clean map for JSON output.

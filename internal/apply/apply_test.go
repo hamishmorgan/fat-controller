@@ -198,6 +198,3 @@ func TestApply_DeleteVariable(t *testing.T) {
 		t.Errorf("unexpected calls: %v", rec.calls)
 	}
 }
-
-func strPtr(s string) *string     { return &s }
-func floatPtr(v float64) *float64 { return &v }

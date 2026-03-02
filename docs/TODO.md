@@ -11,7 +11,7 @@
 - [ ] Resolve project/environment IDs to names when `config init` is passed UUIDs.
 - [ ] Update `.gitignore` automatically when creating `fat-controller.local.toml` (optional safety).
 - [ ] Add volume, domain, and TCP proxy management to config (Future).
-- [ ] Add GoReleaser pipeline for prebuilt binaries (Future).
+- [x] Add GoReleaser pipeline for prebuilt binaries.
 - [ ] Make `config init` interactive bootstrap (Future).
 
 ## Code Quality & Testing

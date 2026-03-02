@@ -23,3 +23,49 @@ fat-controller config get       # pull live config
 fat-controller config diff      # compare config file against live state
 fat-controller config apply     # push differences
 ```
+
+## Installation
+
+### Download a release binary
+
+Grab the latest binary from the
+[Releases](https://github.com/hamishmorgan/fat-controller/releases) page.
+Archives are available for Linux, macOS, and Windows on amd64 and arm64.
+
+### Build from source
+
+```sh
+go install github.com/hamishmorgan/fat-controller/cmd/fat-controller@latest
+```
+
+Verify the installation:
+
+```sh
+fat-controller --version
+```
+
+## Getting started
+
+1. **Authenticate** with your Railway account:
+
+   ```sh
+   fat-controller auth login
+   ```
+
+2. **Bootstrap** a config file from your live project:
+
+   ```sh
+   fat-controller config init --project my-project --environment production
+   ```
+
+   This creates `fat-controller.toml` with your current live configuration.
+
+3. **Edit** the TOML file to declare your desired state, then **diff** and
+   **apply**:
+
+   ```sh
+   fat-controller config diff
+   fat-controller config apply
+   ```
+
+See [docs/COMMANDS.md](docs/COMMANDS.md) for the full command reference.

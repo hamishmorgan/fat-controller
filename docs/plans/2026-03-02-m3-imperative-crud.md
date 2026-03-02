@@ -1,10 +1,8 @@
 # M3 Imperative CRUD Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Implement `config get/set/delete` to read and mutate live Railway config by dot-path, with safe confirmation defaults.
 
-**Architecture:** Add GraphQL operations + a small Railway fetch/mutate layer to resolve project/environment, load live config, and apply single-field updates. Build a minimal config model + dot-path parser in `internal/config` and wire CLI commands to render output and enforce confirm/dry-run semantics.
+**Architecture:** Add GraphQL operations plus a small Railway fetch/mutate layer to resolve project/environment, load live config, and apply single-field updates. Build a minimal config model and dot-path parser in `internal/config`, then wire CLI commands to render output and enforce confirm/dry-run semantics.
 
 **Tech Stack:** Go, genqlient, kong, httptest, BurntSushi/toml
 
@@ -78,11 +76,11 @@ func TestParsePath(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/config -run TestParsePath -v`
 
-Expected: FAIL with “undefined: ParsePath”.
+Expected: FAIL with `undefined: ParsePath`.
 
 **Step 3: Write minimal implementation**
 
@@ -163,7 +161,7 @@ func ParsePath(input string) (Path, error) {
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/config -run TestParsePath -v`
 
@@ -221,11 +219,11 @@ func TestRender_TextIncludesServiceAndKey(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/config -run TestRender_TextIncludesServiceAndKey -v`
 
-Expected: FAIL with “undefined: Render”.
+Expected: FAIL with `undefined: Render`.
 
 **Step 3: Write minimal implementation**
 
@@ -308,7 +306,7 @@ func sortedKeys(m map[string]string) []string {
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/config -run TestRender_TextIncludesServiceAndKey -v`
 
@@ -373,11 +371,11 @@ func TestProjectsQuery_ParsesResponse(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/railway -run TestProjectsQuery_ParsesResponse -v`
 
-Expected: FAIL with “undefined: railway.Projects”.
+Expected: FAIL with `undefined: railway.Projects`.
 
 **Step 3: Write minimal implementation**
 
@@ -464,7 +462,7 @@ mutation ServiceInstanceLimitsUpdate($input: ServiceInstanceLimitsUpdateInput!) 
 
 Run: `go generate ./internal/railway/`
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/railway -run TestProjectsQuery_ParsesResponse -v`
 
@@ -529,11 +527,11 @@ func TestResolveProjectEnvironment_ProjectToken(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/railway -run TestResolveProjectEnvironment_ProjectToken -v`
 
-Expected: FAIL with “undefined: railway.ResolveProjectEnvironment”.
+Expected: FAIL with `undefined: railway.ResolveProjectEnvironment`.
 
 **Step 3: Write minimal implementation**
 
@@ -620,7 +618,7 @@ type Client struct {
 return &Client{gql: gql, auth: resolved}
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/railway -run TestResolveProjectEnvironment_ProjectToken -v`
 
@@ -667,11 +665,11 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 		// Minimal dispatcher based on query name
 		var body struct{ Query string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		switch {
-		case contains(body.Query, "project(id"):
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"project": map[string]any{"services": map[string]any{"edges": []map[string]any{{"node": map[string]any{"id": "svc-1", "name": "api"}}}}}}})
-		case contains(body.Query, "variables("):
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"variables": map[string]any{"FOO": "bar"}}})
+        switch {
+        case strings.Contains(body.Query, "project(id"):
+            _ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"project": map[string]any{"services": map[string]any{"edges": []map[string]any{{"node": map[string]any{"id": "svc-1", "name": "api"}}}}}}})
+        case strings.Contains(body.Query, "variables("):
+            _ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"variables": map[string]any{"FOO": "bar"}}})
 		default:
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}})
 		}
@@ -689,19 +687,15 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 	if cfg.Services["api"].Variables["FOO"] != "bar" {
 		t.Fatalf("service FOO = %q", cfg.Services["api"].Variables["FOO"])
 	}
-	_ = config.LiveConfig{} // keep compile reference
-}
-
-func contains(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (string([]byte(haystack)) != "" && (func() bool { return len(needle) == 0 || (len(haystack) > 0 && (string(haystack) != "" && (func() bool { return (len(haystack) >= len(needle)) && (strings.Contains(haystack, needle)) })())) })())
+    _ = config.LiveConfig{} // keep compile reference
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/railway -run TestFetchLiveConfig_IncludesSharedAndServiceVars -v`
 
-Expected: FAIL with “undefined: railway.FetchLiveConfig”.
+Expected: FAIL with `undefined: railway.FetchLiveConfig`.
 
 **Step 3: Write minimal implementation**
 
@@ -760,9 +754,9 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 }
 ```
 
-Update the test helper to use `strings.Contains` directly (replace the inline contains hack).
+Note: this test already uses `strings.Contains`; no extra helper is needed.
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/railway -run TestFetchLiveConfig_IncludesSharedAndServiceVars -v`
 
@@ -816,11 +810,11 @@ func TestVariableUpsert_SendsInput(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/railway -run TestVariableUpsert_SendsInput -v`
 
-Expected: FAIL with “undefined: railway.UpsertVariable”.
+Expected: FAIL with `undefined: railway.UpsertVariable`.
 
 **Step 3: Write minimal implementation**
 
@@ -862,7 +856,7 @@ func DeleteVariable(ctx context.Context, client *Client, projectID, environmentI
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/railway -run TestVariableUpsert_SendsInput -v`
 
@@ -904,11 +898,11 @@ func TestUpdateServiceLimits_Succeeds(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/railway -run TestUpdateServiceLimits_Succeeds -v`
 
-Expected: FAIL with “undefined: railway.UpdateServiceLimits”.
+Expected: FAIL with `undefined: railway.UpdateServiceLimits`.
 
 **Step 3: Write minimal implementation**
 
@@ -935,7 +929,7 @@ func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/railway -run TestUpdateServiceLimits_Succeeds -v`
 
@@ -982,11 +976,11 @@ func TestConfigGet_PrintsOutput(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/cli -run TestConfigGet_PrintsOutput -v`
 
-Expected: FAIL with “undefined: (*ConfigGetCmd).SetOutput”.
+Expected: FAIL with `undefined: (*ConfigGetCmd).SetOutput`.
 
 **Step 3: Write minimal implementation**
 
@@ -1083,11 +1077,11 @@ func runConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 
 Update `internal/cli/cli.go` to add a `output io.Writer` field to `ConfigGetCmd` and remove stub Run body.
 
-**Step 4: Run test to verify it passes**
+**Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/cli -run TestConfigGet_PrintsOutput -v`
 
-Expected: PASS (or update test to assert error behavior once wiring is complete).
+Expected: PASS (or update the test to assert error behavior once wiring is complete).
 
 **Step 5: Commit**
 
@@ -1182,11 +1176,11 @@ func TestConfigDelete_DryRunByDefault(t *testing.T) {
 }
 ```
 
-**Step 2: Run tests to verify they fail**
+**Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/cli -run TestConfigSet_DryRunByDefault -v`
 
-Expected: FAIL with “undefined: cli.RunConfigSet”.
+Expected: FAIL with `undefined: cli.RunConfigSet`.
 
 **Step 3: Write minimal implementation**
 
@@ -1264,7 +1258,7 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, runner 
 
 Wire `ConfigSetCmd.Run` and `ConfigDeleteCmd.Run` in `internal/cli/cli.go` to call these helpers with real railway mutations.
 
-**Step 4: Run tests to verify they pass**
+**Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/cli -run TestConfigSet_DryRunByDefault -v`
 
@@ -1301,7 +1295,7 @@ func TestConfigSet_RejectsNonVariablePath(t *testing.T) {
 }
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/cli -run TestConfigSet_RejectsNonVariablePath -v`
 
@@ -1332,7 +1326,7 @@ Add a small `resolveServiceID` helper that maps service name → ID using a cach
 
 Do the same for delete using `railway.DeleteVariable`.
 
-**Step 4: Run tests to verify they pass**
+**Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/cli -run TestConfigSet_RejectsNonVariablePath -v`
 
@@ -1353,11 +1347,11 @@ git commit -m "Wire config set/delete to Railway variable mutations"
 
 - Modify: `docs/COMMANDS.md`
 
-**Step 1: Write the failing doc lint check**
+**Step 1: Run the doc lint check**
 
 Run: `mise run lint:md`
 
-Expected: PASS (this is a no-op check for later).
+Expected: PASS.
 
 **Step 2: Update docs**
 

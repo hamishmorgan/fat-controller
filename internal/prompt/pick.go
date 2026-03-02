@@ -1,8 +1,9 @@
 package prompt
 
 import (
+	"errors"
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 )
@@ -14,10 +15,10 @@ type Item struct {
 }
 
 // pickItem selects an item from the list:
-// - 0 items: error
-// - 1 item: auto-select
-// - multiple + interactive: huh Select picker
-// - multiple + non-interactive: error with listing
+//   - 0 items: error
+//   - 1 item: auto-select
+//   - multiple + interactive: huh Select picker
+//   - multiple + non-interactive: error with listing
 func pickItem(label string, items []Item, interactive bool) (string, error) {
 	if len(items) == 0 {
 		return "", fmt.Errorf("no %ss found", label)
@@ -32,11 +33,12 @@ func pickItem(label string, items []Item, interactive bool) (string, error) {
 }
 
 func ambiguousError(label string, items []Item) error {
-	msg := fmt.Sprintf("multiple %ss available — specify with --%s flag:\n", label, label)
+	var b strings.Builder
+	fmt.Fprintf(&b, "multiple %ss available — specify with --%s flag:", label, label)
 	for _, item := range items {
-		msg += fmt.Sprintf("  %s (%s)\n", item.Name, item.ID)
+		fmt.Fprintf(&b, "\n  %s (%s)", item.Name, item.ID)
 	}
-	return fmt.Errorf("%s", msg)
+	return errors.New(b.String())
 }
 
 func runPicker(label string, items []Item) (string, error) {
@@ -51,6 +53,9 @@ func runPicker(label string, items []Item) (string, error) {
 		Value(&selected).
 		Run()
 	if err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return "", errors.New("selection cancelled")
+		}
 		return "", err
 	}
 	return selected, nil
@@ -69,9 +74,4 @@ func PickEnvironment(items []Item, interactive bool) (string, error) {
 // PickWorkspace selects a workspace from the list.
 func PickWorkspace(items []Item, interactive bool) (string, error) {
 	return pickItem("workspace", items, interactive)
-}
-
-// StdinIsInteractive checks if os.Stdin is a TTY.
-func StdinIsInteractive() bool {
-	return IsInteractive(os.Stdin)
 }

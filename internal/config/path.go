@@ -18,7 +18,7 @@ func ParsePath(input string) (Path, error) {
 		return Path{}, errors.New("path cannot be empty")
 	}
 	parts := strings.Split(input, ".")
-	if len(parts) < 1 || len(parts) > 3 {
+	if len(parts) > 3 {
 		return Path{}, errors.New("path must have 1 to 3 segments")
 	}
 	for _, p := range parts {

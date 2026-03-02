@@ -34,6 +34,35 @@ func TestVariableUpsert_SendsInput(t *testing.T) {
 	}
 }
 
+func TestDeleteVariable_SendsInput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"variableDelete": true}})
+	}))
+	defer server.Close()
+
+	client := railway.NewClient(server.URL, testAuth(), nil, nil)
+	err := railway.DeleteVariable(context.Background(), client, "proj", "env", "svc", "OLD_VAR")
+	if err != nil {
+		t.Fatalf("DeleteVariable() error: %v", err)
+	}
+}
+
+func TestDeleteVariable_SharedScope(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"variableDelete": true}})
+	}))
+	defer server.Close()
+
+	client := railway.NewClient(server.URL, testAuth(), nil, nil)
+	// Empty serviceID means shared scope.
+	err := railway.DeleteVariable(context.Background(), client, "proj", "env", "", "SHARED_VAR")
+	if err != nil {
+		t.Fatalf("DeleteVariable() error: %v", err)
+	}
+}
+
 func TestUpdateServiceLimits_Succeeds(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

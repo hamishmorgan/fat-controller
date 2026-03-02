@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -11,10 +12,11 @@ import (
 
 type fakeEnvironmentLister struct {
 	environments []cli.EnvironmentInfo
+	err          error
 }
 
 func (f *fakeEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]cli.EnvironmentInfo, error) {
-	return f.environments, nil
+	return f.environments, f.err
 }
 
 func TestRunEnvironmentList_Text(t *testing.T) {
@@ -62,5 +64,17 @@ func TestRunEnvironmentList_Empty(t *testing.T) {
 	got := buf.String()
 	if !strings.Contains(got, "No environments") {
 		t.Errorf("expected 'No environments' message, got:\n%s", got)
+	}
+}
+
+func TestRunEnvironmentList_PropagatesError(t *testing.T) {
+	lister := &fakeEnvironmentLister{err: errors.New("api error")}
+	var buf bytes.Buffer
+	err := cli.RunEnvironmentList(context.Background(), &cli.Globals{Output: "text"}, "proj-1", lister, &buf)
+	if err == nil {
+		t.Fatal("expected error from lister")
+	}
+	if !strings.Contains(err.Error(), "api error") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }

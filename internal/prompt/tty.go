@@ -10,3 +10,8 @@ import (
 func IsInteractive(f *os.File) bool {
 	return term.IsTerminal(f.Fd())
 }
+
+// StdinIsInteractive checks if os.Stdin is a TTY.
+func StdinIsInteractive() bool {
+	return IsInteractive(os.Stdin)
+}

@@ -115,6 +115,27 @@ func ResolveProjectID(ctx context.Context, client *Client, workspace, project st
 	return resolveProjectID(ctx, client, workspace, project)
 }
 
+// ResolveServiceID maps a service name to its ID within a project.
+// If the name is already a UUID, it is returned as-is.
+func ResolveServiceID(ctx context.Context, client *Client, projectID, service string) (string, error) {
+	if service == "" {
+		return "", nil // shared scope
+	}
+	if uuidPattern.MatchString(service) {
+		return service, nil
+	}
+	resp, err := ProjectServices(ctx, client.GQL(), projectID)
+	if err != nil {
+		return "", err
+	}
+	for _, edge := range resp.Project.Services.Edges {
+		if edge.Node.Name == service {
+			return edge.Node.Id, nil
+		}
+	}
+	return "", fmt.Errorf("service not found: %s", service)
+}
+
 func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string) (string, error) {
 	if env != "" && uuidPattern.MatchString(env) {
 		return env, nil

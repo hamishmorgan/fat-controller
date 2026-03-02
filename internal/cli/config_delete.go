@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -17,7 +19,12 @@ type configDeleter interface {
 }
 
 // RunConfigDelete validates the path, checks confirm/dry-run, and calls the deleter.
-func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter configDeleter) error {
+// In dry-run mode (default when --confirm is not set), it writes a preview
+// message to out and returns nil. Pass out=nil to use os.Stdout.
+func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter configDeleter, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
 	parsed, err := config.ParsePath(path)
 	if err != nil {
 		return err
@@ -26,7 +33,8 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 		return errors.New("config delete currently supports only variables (path: service.variables.KEY)")
 	}
 	if !globals.Confirm || globals.DryRun {
-		return fmt.Errorf("dry run: would delete %s (use --confirm to apply)", path)
+		_, err := fmt.Fprintf(out, "dry run: would delete %s (use --confirm to apply)\n", path)
+		return err
 	}
 	return deleter.DeleteVar(ctx, parsed.Service, parsed.Key)
 }
@@ -39,7 +47,11 @@ type railwayDeleter struct {
 }
 
 func (r *railwayDeleter) DeleteVar(ctx context.Context, service, key string) error {
-	return railway.DeleteVariable(ctx, r.client, r.projectID, r.environmentID, service, key)
+	serviceID, err := railway.ResolveServiceID(ctx, r.client, r.projectID, service)
+	if err != nil {
+		return err
+	}
+	return railway.DeleteVariable(ctx, r.client, r.projectID, r.environmentID, serviceID, key)
 }
 
 // Run implements `config delete`.
@@ -60,5 +72,5 @@ func (c *ConfigDeleteCmd) Run(globals *Globals) error {
 		projectID:     projID,
 		environmentID: envID,
 	}
-	return RunConfigDelete(context.Background(), globals, c.Path, deleter)
+	return RunConfigDelete(context.Background(), globals, c.Path, deleter, os.Stdout)
 }

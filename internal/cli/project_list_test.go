@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -11,10 +12,11 @@ import (
 
 type fakeProjectLister struct {
 	projects []cli.ProjectInfo
+	err      error
 }
 
 func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]cli.ProjectInfo, error) {
-	return f.projects, nil
+	return f.projects, f.err
 }
 
 func TestRunProjectList_Text(t *testing.T) {
@@ -65,5 +67,17 @@ func TestRunProjectList_Empty(t *testing.T) {
 	got := buf.String()
 	if !strings.Contains(got, "No projects") {
 		t.Errorf("expected 'No projects' message, got:\n%s", got)
+	}
+}
+
+func TestRunProjectList_PropagatesError(t *testing.T) {
+	lister := &fakeProjectLister{err: errors.New("api error")}
+	var buf bytes.Buffer
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, lister, &buf)
+	if err == nil {
+		t.Fatal("expected error from lister")
+	}
+	if !strings.Contains(err.Error(), "api error") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }

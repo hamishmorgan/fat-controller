@@ -73,11 +73,13 @@ type ConfigGetCmd struct {
 	output io.Writer `kong:"-"`
 }
 
+// ConfigSetCmd implements `config set`.
 type ConfigSetCmd struct {
 	Path  string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
 	Value string `arg:"" required:"" help:"Value to set."`
 }
 
+// ConfigDeleteCmd implements `config delete`.
 type ConfigDeleteCmd struct {
 	Path string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
 }

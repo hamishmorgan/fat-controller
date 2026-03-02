@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -17,7 +19,12 @@ type configSetter interface {
 }
 
 // RunConfigSet validates the path, checks confirm/dry-run, and calls the setter.
-func RunConfigSet(ctx context.Context, globals *Globals, path, value string, setter configSetter) error {
+// In dry-run mode (default when --confirm is not set), it writes a preview
+// message to out and returns nil. Pass out=nil to use os.Stdout.
+func RunConfigSet(ctx context.Context, globals *Globals, path, value string, setter configSetter, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
 	parsed, err := config.ParsePath(path)
 	if err != nil {
 		return err
@@ -26,7 +33,8 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 		return errors.New("config set currently supports only variables (path: service.variables.KEY)")
 	}
 	if !globals.Confirm || globals.DryRun {
-		return fmt.Errorf("dry run: would set %s = %q (use --confirm to apply)", path, value)
+		_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --confirm to apply)\n", path, value)
+		return err
 	}
 	return setter.SetVar(ctx, parsed.Service, parsed.Key, value)
 }
@@ -40,8 +48,11 @@ type railwaySetter struct {
 }
 
 func (r *railwaySetter) SetVar(ctx context.Context, service, key, value string) error {
-	// For shared variables, service is empty string — UpsertVariable handles this.
-	return railway.UpsertVariable(ctx, r.client, r.projectID, r.environmentID, service, key, value, r.skipDeploys)
+	serviceID, err := railway.ResolveServiceID(ctx, r.client, r.projectID, service)
+	if err != nil {
+		return err
+	}
+	return railway.UpsertVariable(ctx, r.client, r.projectID, r.environmentID, serviceID, key, value, r.skipDeploys)
 }
 
 // Run implements `config set`.
@@ -63,5 +74,5 @@ func (c *ConfigSetCmd) Run(globals *Globals) error {
 		environmentID: envID,
 		skipDeploys:   globals.SkipDeploys,
 	}
-	return RunConfigSet(context.Background(), globals, c.Path, c.Value, setter)
+	return RunConfigSet(context.Background(), globals, c.Path, c.Value, setter, os.Stdout)
 }

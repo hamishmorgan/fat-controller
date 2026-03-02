@@ -16,6 +16,9 @@ experimental = true
 [hooks]
 postinstall = "mise run setup"
 
+[env]
+_.file = [{ path = '{{config_root}}/.config/mise/.env.local', redact = true }]
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
@@ -174,6 +177,7 @@ run = "gitleaks protect --verbose --staged"
 
 [tasks."schema:introspect"]
 alias = ["introspect"]
+env = { RAILWAY_API_TOKEN = { required = true, redact = true } }
 description = "Fetch Railway GraphQL schema via introspection (requires RAILWAY_API_TOKEN)"
 run = """
 rover graph introspect https://backboard.railway.com/graphql/v2 \

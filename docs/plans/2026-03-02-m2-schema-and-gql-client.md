@@ -1236,10 +1236,9 @@ refresher := railway.NewOAuthRefresher(oauth)
 transport := railway.NewAuthTransport(resolved, store, refresher)
 oauth.HTTPClient = &http.Client{Transport: transport}
 
-// Note: FetchUserInfo sets its own Authorization header, but the
-// transport overwrites it. On 401, the transport refreshes the token,
-// updates resolved.Token, and retries — all transparently.
-info, err := oauth.FetchUserInfo(resolved.Token)
+// FetchUserInfo relies on the transport for auth (refactored in Task 11).
+// On 401, the transport refreshes the token and retries transparently.
+info, err := oauth.FetchUserInfo()
 if err != nil {
     fmt.Println("Authenticated (stored OAuth token).")
     fmt.Printf("Could not fetch user info: %v\n", err)
@@ -1291,7 +1290,180 @@ git commit -m "Use refresh-aware transport in auth status for transparent token 
 
 ---
 
-### Task 11: Update docs/DECISIONS.md
+### Task 11: Refactor FetchUserInfo to rely on HTTPClient transport for auth
+
+Currently `FetchUserInfo(accessToken string)` sets its own `Authorization` header, but Task 10 wraps the `HTTPClient` with a transport that also sets it. This double-auth is confusing — the transport wins (it overwrites the header), making the parameter misleading. Refactor to remove the parameter: `FetchUserInfo()` now relies entirely on the `HTTPClient`'s transport for auth.
+
+**Files:**
+
+- Modify: `internal/auth/userinfo.go`
+- Modify: `internal/auth/userinfo_test.go`
+- Modify: `internal/cli/cli.go`
+
+**Step 1: Update the tests first**
+
+Replace `internal/auth/userinfo_test.go` with tests that inject auth via the `HTTPClient` instead of a parameter:
+
+```go
+package auth_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+)
+
+// roundTripFunc lets us build a one-off RoundTripper from a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestFetchUserInfo(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Errorf("Authorization = %q", r.Header.Get("Authorization"))
+		}
+
+		if err := json.NewEncoder(w).Encode(auth.UserInfo{
+			Sub:   "user_abc123",
+			Email: "test@example.com",
+			Name:  "Test User",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	// Inject auth via a simple transport that sets the Authorization header.
+	client := &auth.OAuthClient{
+		UserinfoURL: server.URL,
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				req.Header.Set("Authorization", "Bearer test-token")
+				return http.DefaultTransport.RoundTrip(req)
+			}),
+		},
+	}
+
+	info, err := client.FetchUserInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Email != "test@example.com" {
+		t.Errorf("Email = %q", info.Email)
+	}
+	if info.Name != "Test User" {
+		t.Errorf("Name = %q", info.Name)
+	}
+}
+
+func TestFetchUserInfo_Unauthorized(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{
+		UserinfoURL: server.URL,
+		HTTPClient:  http.DefaultClient,
+	}
+
+	_, err := client.FetchUserInfo()
+	if err == nil {
+		t.Fatal("expected error for 401 response")
+	}
+	if !strings.Contains(err.Error(), "401") {
+		t.Errorf("error should mention status 401, got: %s", err)
+	}
+}
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run:
+
+```bash
+go test ./internal/auth/ -run TestFetchUserInfo -v
+```
+
+Expected: FAIL — `FetchUserInfo` still takes a parameter.
+
+**Step 3: Update the implementation**
+
+Replace `internal/auth/userinfo.go`'s `FetchUserInfo` method:
+
+```go
+// FetchUserInfo calls the OIDC userinfo endpoint.
+// Auth is handled by the OAuthClient's HTTPClient transport —
+// callers must set HTTPClient to a client with an auth-injecting transport.
+func (c *OAuthClient) FetchUserInfo() (*UserInfo, error) {
+	req, err := http.NewRequest(http.MethodGet, c.UserinfoURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("userinfo request failed: %w", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("userinfo failed with status %d", resp.StatusCode)
+	}
+
+	var info UserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("decoding userinfo: %w", err)
+	}
+	return &info, nil
+}
+```
+
+**Step 4: Update the caller in cli.go**
+
+In `internal/cli/cli.go`, change:
+
+```go
+info, err := oauth.FetchUserInfo(resolved.Token)
+```
+
+to:
+
+```go
+info, err := oauth.FetchUserInfo()
+```
+
+The transport (set up in Task 10) already handles auth, so no token parameter is needed.
+
+**Step 5: Run tests**
+
+Run:
+
+```bash
+go test ./internal/auth/ -run TestFetchUserInfo -v
+go build ./...
+mise run check
+```
+
+Expected: All tests pass, build succeeds.
+
+**Step 6: Commit**
+
+```bash
+git add internal/auth/userinfo.go internal/auth/userinfo_test.go internal/cli/cli.go
+git commit -m "Refactor FetchUserInfo to rely on HTTPClient transport for auth"
+```
+
+---
+
+### Task 12: Update docs/DECISIONS.md
 
 **Files:**
 
@@ -1340,7 +1512,7 @@ git commit -m "Update token refresh decision: implemented in M2 via HTTP transpo
 
 ---
 
-### Task 12: Final verification
+### Task 13: Final verification
 
 **Step 1: Run the full check suite**
 
@@ -1387,8 +1559,8 @@ Expected: No issues.
 Run:
 
 ```bash
-go run . --help
-go run . auth status
+go run ./cmd/fat-controller --help
+go run ./cmd/fat-controller auth status
 ```
 
 Expected: Help text shows all commands. Auth status works (shows "not authenticated" if no token stored, or shows user info if logged in).

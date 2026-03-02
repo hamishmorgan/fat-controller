@@ -266,12 +266,14 @@ secrets. Detection uses two layers: **name-based** and **entropy-based**.
 
 #### Layer 1: Name-based detection
 
-Variable names are matched case-insensitively using **substring matching**
-against a keyword list, plus a false-positive **allowlist** to suppress
-known non-secret matches. This is the same approach used by gitleaks and
-Yelp's detect-secrets.
+Keywords are compiled into a single case-insensitive regex using
+`(\b|_)` as the boundary: e.g. `AUTH, WEBHOOK_URL` becomes
+`(?i)(\b|_)(AUTH|WEBHOOK_URL)(\b|_)`. This matches at underscores and
+string edges but not mid-word (`AUTH_TOKEN` matches, `AUTHORIZE` does
+not). A false-positive **allowlist** uses the same pattern to suppress
+known non-secret matches.
 
-**Default sensitive keywords** (case-insensitive substring match):
+**Default sensitive keywords**:
 
 ```text
 # Passwords & passphrases
@@ -306,33 +308,30 @@ WEBHOOK_SECRET, WEBHOOK_URL, SESSION_SECRET, COOKIE_SECRET,
 JWT_SECRET
 ```
 
-**Default false-positive allowlist** (suppress matches on these):
+**Default false-positive allowlist** (same boundary regex, checked first):
 
 ```text
-# KEY false positives
-KEYBOARD, KEYSTROKE, KEYFRAME, KEYSTONE, KEYPRESS, KEYWORD,
-MONKEY, DONKEY, TURKEY, PRIMARY_KEY, FOREIGN_KEY, SORT_KEY,
-PARTITION_KEY, PUBLIC_KEY, KEY_ID, KEY_NAME, KEY_FILE,
-KEY_LENGTH, KEY_SIZE, KEY_TYPE, KEY_FORMAT, KEY_VAULT_NAME
+# KEY — whole-segment matches that aren't secrets
+PRIMARY_KEY, FOREIGN_KEY, SORT_KEY, PARTITION_KEY, PUBLIC_KEY,
+KEY_ID, KEY_NAME, KEY_FILE, KEY_LENGTH, KEY_SIZE, KEY_TYPE,
+KEY_FORMAT, KEY_VAULT_NAME
 
-# AUTH false positives
-AUTHOR, AUTHORITY, AUTHORIZE, AUTHENTICATION_RESULTS
-
-# PASS false positives
-PASSENGER, PASSIVE, COMPASS, BYPASS, PASSPORT_STRATEGY
-
-# TOKEN false positives
+# TOKEN — metadata, not token values
 TOKEN_URL, TOKEN_ENDPOINT, TOKEN_FILE, TOKEN_TYPE, TOKEN_EXPIRY
 
-# CREDENTIAL false positives
+# CREDENTIAL — metadata
 CREDENTIAL_ID, CREDENTIALS_URL, CREDENTIALS_ENDPOINT
 
-# SECRET false positives
+# SECRET — metadata
 SECRET_NAME, SECRET_LENGTH, SECRET_VERSION
 
-# SEED false positives
+# SEED — data seeding, not cryptographic seeds
 SEED_DATA, SEED_FILE
 ```
+
+Note: with `(\b|_)` boundaries, mid-word matches like `KEYBOARD`,
+`AUTHORIZE`, `PASSENGER` are already excluded — no allowlist entry
+needed.
 
 Both lists are configurable. Setting `sensitive_keywords` or
 `sensitive_allowlist` in config replaces the respective defaults.

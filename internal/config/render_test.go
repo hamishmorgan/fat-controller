@@ -33,7 +33,7 @@ func TestRender_TextIncludesServiceAndKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
-	if !strings.Contains(got, "[shared_variables]") {
+	if !strings.Contains(got, "[shared]") {
 		t.Fatalf("expected shared header, got: %s", got)
 	}
 	if !strings.Contains(got, "[api.variables]") {

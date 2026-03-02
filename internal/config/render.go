@@ -35,7 +35,7 @@ func toJSONMap(cfg LiveConfig, full bool) map[string]any {
 		m["environment_id"] = cfg.EnvironmentID
 	}
 	if len(cfg.Shared) > 0 {
-		m["shared_variables"] = cfg.Shared
+		m["shared"] = cfg.Shared
 	}
 	for name, svc := range cfg.Services {
 		svcMap := map[string]any{"variables": svc.Variables}
@@ -77,7 +77,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		out.WriteString("environment_id = " + tomlQuote(cfg.EnvironmentID) + "\n\n")
 	}
 	if len(cfg.Shared) > 0 {
-		out.WriteString("[shared_variables]\n")
+		out.WriteString("[shared]\n")
 		keys := sortedKeys(cfg.Shared)
 		for _, k := range keys {
 			out.WriteString(k + " = " + tomlQuote(cfg.Shared[k]) + "\n")
@@ -169,7 +169,7 @@ func renderText(cfg LiveConfig, full bool) string {
 	}
 
 	if len(cfg.Shared) > 0 {
-		out.WriteString("[shared_variables]\n")
+		out.WriteString("[shared]\n")
 		keys := sortedKeys(cfg.Shared)
 		for _, k := range keys {
 			out.WriteString(k + " = " + cfg.Shared[k] + "\n")

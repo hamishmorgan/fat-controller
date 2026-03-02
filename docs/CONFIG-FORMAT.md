@@ -24,7 +24,7 @@ at diff/apply time.
 present.
 
 ```toml
-[shared_variables]
+[shared]
 SHARED_SECRET = "some-value"
 
 [api.variables]
@@ -62,7 +62,7 @@ For settings (resources, deploy config), the same principle applies: only
 explicitly specified fields are diffed — omitted fields are never zeroed
 out.
 
-Shared variables (`[shared_variables]`) follow the same rules as
+Shared variables (`[shared]`) follow the same rules as
 per-service variables. Railway's own precedence applies: per-service
 overrides shared when both define the same key.
 

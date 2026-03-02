@@ -308,86 +308,14 @@ via queries, apply via `variableCollectionUpsert`,
 
 ## Technology
 
-### Language: Go
-
-- `go run github.com/hamishmorgan/fat-controller@latest` — zero-install
-- Static binary via GoReleaser if distribution is needed later
-
-### CLI framework: kong
-
-[kong](https://github.com/alecthomas/kong) — struct-based CLI parser.
-Commands and flags are defined as Go structs with tags. Cleaner than cobra
-for nested subcommand groups, less boilerplate.
-
-### GraphQL: genqlient
-
-[genqlient](https://github.com/Khan/genqlient) generates typed Go functions
-from `.graphql` operation files against the schema. Workflow:
-
-1. Fetch schema via introspection -> `schema.graphql`
-2. Write queries/mutations in `.graphql` files
-3. `go generate` -> `generated.go` with typed functions and structs
-
-### TOML: BurntSushi/toml
-
-[BurntSushi/toml](https://github.com/BurntSushi/toml) — the standard Go TOML
-library. Supports both encoding and decoding, preserves key order.
-
-### Configuration: koanf
-
-[koanf](https://github.com/knadh/koanf) — layered configuration library.
-Modular (zero deps in core), case-sensitive keys, explicit merge order.
-Replaces viper without the baggage (forced lowercase, global singleton,
-massive dep tree).
-
-### XDG directories: adrg/xdg
-
-[adrg/xdg](https://github.com/adrg/xdg) — full XDG Base Directory spec
-implementation. Cross-platform (Linux, macOS, Windows). Handles
-`CONFIG_HOME`, `DATA_HOME`, `STATE_HOME`, `CACHE_HOME`, `RUNTIME_DIR`.
-
-### Keyring: zalando/go-keyring
-
-[go-keyring](https://github.com/zalando/go-keyring) — OS keychain access.
-macOS Keychain, Linux Secret Service (GNOME Keyring / KWallet), Windows
-Credential Manager. Pure Go, no CGo.
+See [docs/TECHNOLOGY.md](TECHNOLOGY.md) — Go, kong, genqlient, koanf,
+BurntSushi/toml, adrg/xdg, go-keyring.
 
 ## Configuration and storage
 
-### File locations (XDG-compliant via adrg/xdg)
-
-| Path | Purpose | Example (Linux) |
-|------|---------|-----------------|
-| `$XDG_CONFIG_HOME/fat-controller/config.toml` | User preferences, defaults | `~/.config/fat-controller/config.toml` |
-| `$XDG_CONFIG_HOME/fat-controller/auth.json` | Token fallback (mode 0600, used when keyring unavailable) | `~/.config/fat-controller/auth.json` |
-| `$XDG_STATE_HOME/fat-controller/` | Logs, command history | `~/.local/state/fat-controller/` |
-| `$XDG_CACHE_HOME/fat-controller/` | Cached schema, etc. | `~/.cache/fat-controller/` |
-| `.fat-controller.toml` | Project-level config overrides (in working dir or git root) | `.fat-controller.toml` |
-
-### Token storage
-
-OAuth tokens are stored using a keyring-first strategy (same pattern as
-the `gh` CLI):
-
-1. **`--token` flag or env vars** — highest priority. `RAILWAY_TOKEN`
-   (project-scoped) or `RAILWAY_API_TOKEN` (account/workspace-scoped).
-2. **OS keyring** — primary persistent storage. Encrypted at rest by the OS.
-   Service name: `fat-controller`, key: hostname or user identifier.
-3. **Fallback file** — `$XDG_CONFIG_HOME/fat-controller/auth.json` with mode
-   0600. Used when no keyring daemon is available (headless, SSH, containers).
-   A warning is printed when falling back to plaintext storage.
-
-### Config loading
-
-All settings (see "Settings" table above) can be specified at five
-levels. Layering is handled by koanf — each level is loaded in order,
-later values override earlier ones:
-
-1. Compiled-in defaults
-2. Global config — `$XDG_CONFIG_HOME/fat-controller/config.toml`
-3. Local config — `.fat-controller.toml` in working directory or git root
-4. Environment variables — `FAT_CONTROLLER_*` / `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN`
-5. CLI flags
+See [docs/CONFIGURATION.md](CONFIGURATION.md) — XDG file locations,
+keyring-first token storage, 5-level config loading (defaults → global →
+local → env → flags).
 
 ## Project structure
 
@@ -468,69 +396,6 @@ fat-controller/
 
 ## Decisions
 
-Resolved during planning. Rationale preserved for future reference.
-
-### Variable ownership: additive-only
-
-Variables are additive-only by default. Only variables explicitly listed in
-config are managed. Unmentioned variables are left alone — no implicit
-deletion by omission. To delete a variable, set it to empty string:
-`OLD_VAR = ""`. This eliminates the previous "section presence = ownership"
-model and avoids accidental deletions.
-
-### Secret handling: local env interpolation + multi-file
-
-Secrets are handled through three complementary mechanisms: don't mention
-them (unmanaged), use Railway references (`${{service.VAR}}`), or use
-local env interpolation (`${VAR}`). The `${VAR}` syntax (single braces) is
-deliberately distinct from Railway's `${{}}` (double braces) — Railway
-chose double braces specifically to avoid shell variable collision.
-
-Multi-file merging provides additional flexibility: a gitignored
-`fat-controller.local.toml` is auto-discovered, and `--config` can be
-repeated for explicit layering.
-
-### Deletion safety: dry-run default is sufficient
-
-With additive-only semantics, deletions are always explicit (`KEY = ""`).
-The dry-run default on apply plus prominent diff output (showing "DELETE"
-clearly) provides sufficient safety without extra flags.
-
-### Volumes, domains, TCP proxies: pull-only for now
-
-These are included in the state file for visibility but are not manageable
-via config in the initial release. The focus is on the variable/settings
-gap. Management can be added in a future milestone — the additive-only
-model makes it safe when we do.
-
-### Shared variables: same semantics as per-service
-
-Shared variables follow the same additive-only rules. The API call is the
-same mutation (`variableCollectionUpsert`) without a `serviceId`. Railway
-handles precedence: per-service overrides shared when both define the
-same key.
-
-### Error handling: continue by default, --fail-fast option
-
-Apply is best-effort and non-transactional. By default, a failure on one
-service does not stop processing of remaining services. `--fail-fast` stops
-on first error. A summary reports what was applied and what failed. Exit
-code is non-zero if anything failed.
-
-### Orchestration: thick cmd/ layer
-
-Command handlers in `cmd/` directly call `internal/` packages. No separate
-engine or orchestration package. Extract if complexity warrants it later.
-
-### CLI framework: kong
-
-[kong](https://github.com/alecthomas/kong) for struct-based CLI parsing.
-Less boilerplate than cobra for nested subcommand groups.
-
-### Testing strategy
-
-- Unit tests for pure logic: diff, config parsing, interpolation, PKCE
-- HTTP mock tests (`httptest.NewServer`) for OAuth and GraphQL
-- Keyring mock tests (`go-keyring MockInit()`) for token storage
-- Golden file tests for diff output formatting
-- No live Railway integration tests in CI
+See [docs/DECISIONS.md](DECISIONS.md) — design decision log covering
+variable ownership, secret handling, deletion safety, error handling,
+orchestration, CLI framework, and testing strategy.

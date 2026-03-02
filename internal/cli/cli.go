@@ -33,8 +33,9 @@ type CLI struct {
 	Globals `kong:"embed"`
 
 	// Subcommand groups
-	Auth   AuthCmd   `cmd:"" help:"Manage authentication."`
-	Config ConfigCmd `cmd:"" name:"config" help:"Declarative configuration management."`
+	Auth    AuthCmd    `cmd:"" help:"Manage authentication."`
+	Config  ConfigCmd  `cmd:"" name:"config" help:"Declarative configuration management."`
+	Project ProjectCmd `cmd:"" help:"Manage projects."`
 }
 
 // AuthCmd is the `auth` command group.
@@ -81,6 +82,12 @@ type ConfigDeleteCmd struct {
 type ConfigDiffCmd struct{}
 type ConfigApplyCmd struct{}
 type ConfigValidateCmd struct{}
+
+type ProjectCmd struct {
+	List ProjectListCmd `cmd:"" help:"List available projects."`
+}
+
+type ProjectListCmd struct{}
 
 // Run methods:
 // - ConfigGetCmd.Run    → config_get.go

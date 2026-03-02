@@ -244,3 +244,59 @@ func TestRender_ReferenceTemplateNotMasked(t *testing.T) {
 		t.Errorf("reference template should not be masked, got:\n%s", got)
 	}
 }
+
+func TestRenderInitTOML_Header(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080"},
+			},
+		},
+	}
+	got := config.RenderInitTOML("my-app", "production", cfg)
+	if !strings.Contains(got, `project = "my-app"`) {
+		t.Errorf("expected project header:\n%s", got)
+	}
+	if !strings.Contains(got, `environment = "production"`) {
+		t.Errorf("expected environment header:\n%s", got)
+	}
+	if !strings.Contains(got, "[api.variables]") {
+		t.Errorf("expected service section:\n%s", got)
+	}
+	if !strings.Contains(got, `PORT = "8080"`) {
+		t.Errorf("expected PORT variable:\n%s", got)
+	}
+}
+
+func TestRenderInitTOML_MasksSecrets(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"PORT":              "8080",
+					"DATABASE_PASSWORD": "hunter2",
+				},
+			},
+		},
+	}
+	got := config.RenderInitTOML("proj", "env", cfg)
+	if strings.Contains(got, "hunter2") {
+		t.Errorf("secret should be masked:\n%s", got)
+	}
+	if !strings.Contains(got, "PORT") {
+		t.Errorf("expected PORT variable:\n%s", got)
+	}
+}
+
+func TestRenderInitTOML_SharedVariables(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared:   map[string]string{"GLOBAL": "value"},
+		Services: map[string]*config.ServiceConfig{},
+	}
+	got := config.RenderInitTOML("proj", "env", cfg)
+	if !strings.Contains(got, "[shared.variables]") {
+		t.Errorf("expected shared section:\n%s", got)
+	}
+}

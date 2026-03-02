@@ -156,6 +156,28 @@ func renderTOML(cfg LiveConfig, full bool) string {
 	return strings.TrimRight(out.String(), "\n")
 }
 
+// RenderInitTOML generates a fat-controller.toml for the init command.
+// It includes a project/environment header, masks secrets, and excludes
+// deploy settings and IDs (those are operational, not config).
+func RenderInitTOML(project, environment string, cfg LiveConfig) string {
+	masker := NewMasker(nil, nil)
+	masked := maskConfig(cfg, masker)
+
+	var out strings.Builder
+	out.WriteString("project = " + tomlQuote(project) + "\n")
+	out.WriteString("environment = " + tomlQuote(environment) + "\n")
+
+	// Render service sections using the existing TOML renderer (without
+	// IDs or deploy settings — those are fetched live, not managed in config).
+	body := renderTOML(masked, false)
+	if body != "" {
+		out.WriteString("\n")
+		out.WriteString(body)
+	}
+
+	return out.String()
+}
+
 func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
 	// Only write deploy section if there's something to show.
 	var lines []string

@@ -14,4 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - run: go test -race ./...
+      - name: Run tests with coverage
+        run: |
+          mkdir -p .build/coverage
+          go test -race -coverprofile=.build/coverage/coverage.out ./...
+      - name: Print coverage summary
+        run: go tool cover -func=.build/coverage/coverage.out
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .build/coverage/coverage.out

@@ -135,7 +135,20 @@ run = "go run ./cmd/fat-controller"
 description = "Run Go tests"
 run = """
 [ -f go.mod ] || exit 0
-go test ./...
+go test -race ./...
+"""
+
+[tasks."test:coverage"]
+alias = ["cover", "cov"]
+description = "Run tests with coverage and open HTML report"
+run = """
+[ -f go.mod ] || exit 0
+mkdir -p .build/coverage
+go test -race -coverprofile=.build/coverage/coverage.out ./...
+go tool cover -func=.build/coverage/coverage.out
+go tool cover -html=.build/coverage/coverage.out -o .build/coverage/coverage.html
+echo ""
+echo "HTML report: .build/coverage/coverage.html"
 """
 
 [tasks.build]

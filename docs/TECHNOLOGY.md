@@ -1,5 +1,11 @@
 # Technology
 
+## Task runner: mise
+
+[mise](https://mise.jdx.dev/) — manages the project environment, tool
+versions, and task running. Config in `.config/mise/config.toml`.
+`mise run check` runs all linters and checks.
+
 ## Language: Go
 
 - `go run github.com/hamishmorgan/fat-controller@latest` — zero-install

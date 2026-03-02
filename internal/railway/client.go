@@ -15,8 +15,15 @@ type Client struct {
 // NewClient creates a Railway GraphQL client with authenticated transport.
 // The transport injects the correct auth header and handles token refresh
 // for stored OAuth tokens.
+//
+// The oauth parameter is used only for token refresh — its HTTPClient is NOT
+// modified and should use the default transport (not AuthTransport) to avoid
+// circular refresh calls.
 func NewClient(endpoint string, resolved *auth.ResolvedAuth, store *auth.TokenStore, oauth *auth.OAuthClient) *Client {
-	refresher := NewOAuthRefresher(oauth)
+	var refresher Refresher
+	if oauth != nil {
+		refresher = NewOAuthRefresher(oauth)
+	}
 	transport := NewAuthTransport(resolved, store, refresher)
 
 	httpClient := &http.Client{Transport: transport}

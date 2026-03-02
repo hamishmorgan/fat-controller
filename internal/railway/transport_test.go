@@ -37,7 +37,7 @@ func TestAuthTransport_InjectsHeader(t *testing.T) {
 		Token:       "test-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer test-token",
-		Source:      "flag",
+		Source:      auth.SourceFlag,
 	}
 	transport := railway.NewAuthTransport(resolved, nil, nil)
 	client := &http.Client{Transport: transport}
@@ -65,7 +65,7 @@ func TestAuthTransport_ProjectAccessTokenHeader(t *testing.T) {
 		Token:       "proj-token",
 		HeaderName:  "Project-Access-Token",
 		HeaderValue: "proj-token",
-		Source:      "env:RAILWAY_TOKEN",
+		Source:      auth.SourceEnvToken,
 	}
 	transport := railway.NewAuthTransport(resolved, nil, nil)
 	client := &http.Client{Transport: transport}
@@ -93,7 +93,7 @@ func TestAuthTransport_NoRefreshForNonStoredTokens(t *testing.T) {
 		Token:       "flag-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer flag-token",
-		Source:      "flag",
+		Source:      auth.SourceFlag,
 	}
 	transport := railway.NewAuthTransport(resolved, nil, nil)
 	client := &http.Client{Transport: transport}
@@ -146,7 +146,7 @@ func TestAuthTransport_RefreshesOnUnauthorized(t *testing.T) {
 		Token:       "expired-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer expired-token",
-		Source:      "stored",
+		Source:      auth.SourceStored,
 	}
 
 	refresher := &fakeRefresher{
@@ -212,7 +212,7 @@ func TestAuthTransport_RefreshFailsReturnsOriginal401(t *testing.T) {
 		Token:       "expired-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer expired-token",
-		Source:      "stored",
+		Source:      auth.SourceStored,
 	}
 
 	refresher := &fakeRefresher{

@@ -43,22 +43,28 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	fmt.Printf("Authenticated via: %s\n", resolved.Source)
 
 	switch resolved.Source {
-	case "env:RAILWAY_TOKEN":
+	case auth.SourceEnvToken:
 		fmt.Println("Using RAILWAY_TOKEN environment variable (project access token).")
 		return nil
-	case "env:RAILWAY_API_TOKEN":
+	case auth.SourceEnvAPIToken:
 		fmt.Println("Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
 		return nil
-	case "flag":
+	case auth.SourceFlag:
 		fmt.Println("Using --token flag.")
 		return nil
 	}
 
 	// For stored OAuth tokens, use the refresh-aware transport so
 	// expired tokens get refreshed transparently on 401.
-	oauth := auth.NewOAuthClient()
-	refresher := railway.NewOAuthRefresher(oauth)
+	//
+	// The refresher uses a separate OAuthClient with the default HTTP client
+	// so that token refresh requests don't go through AuthTransport (which
+	// would cause infinite recursion if the token endpoint also returned 401).
+	refreshOAuth := auth.NewOAuthClient()
+	refresher := railway.NewOAuthRefresher(refreshOAuth)
 	transport := railway.NewAuthTransport(resolved, store, refresher)
+
+	oauth := auth.NewOAuthClient()
 	oauth.HTTPClient = &http.Client{Transport: transport}
 
 	info, err := oauth.FetchUserInfo()

@@ -14,12 +14,13 @@ import (
 )
 
 func TestNewClient_WithFlagToken(t *testing.T) {
+	keyring.MockInit()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer my-flag-token" {
 			t.Errorf("Authorization = %q, want %q", got, "Bearer my-flag-token")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// Return a valid GraphQL response.
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
 				"projectToken": map[string]interface{}{
@@ -33,13 +34,11 @@ func TestNewClient_WithFlagToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	keyring.MockInit()
-
 	resolved := &auth.ResolvedAuth{
 		Token:       "my-flag-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer my-flag-token",
-		Source:      "flag",
+		Source:      auth.SourceFlag,
 	}
 	store := auth.NewTokenStore(
 		auth.WithKeyringService("test-client"),
@@ -49,8 +48,53 @@ func TestNewClient_WithFlagToken(t *testing.T) {
 
 	client := railway.NewClient(server.URL, resolved, store, oauth)
 
+	// Exercise the client to verify auth header is injected.
+	resp, err := railway.ProjectToken(context.Background(), client.GQL())
+	if err != nil {
+		t.Fatalf("ProjectToken() error: %v", err)
+	}
+	if resp.ProjectToken.ProjectId != "proj-123" {
+		t.Errorf("ProjectId = %q, want %q", resp.ProjectToken.ProjectId, "proj-123")
+	}
+}
+
+func TestNewClient_NilOAuth(t *testing.T) {
+	keyring.MockInit()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{
+				"projectToken": map[string]interface{}{
+					"projectId":     "proj-123",
+					"environmentId": "env-456",
+				},
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	resolved := &auth.ResolvedAuth{
+		Token:       "test-token",
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer test-token",
+		Source:      auth.SourceFlag,
+	}
+
+	// nil oauth should not panic.
+	client := railway.NewClient(server.URL, resolved, nil, nil)
 	if client == nil {
 		t.Fatal("NewClient returned nil")
+	}
+
+	resp, err := railway.ProjectToken(context.Background(), client.GQL())
+	if err != nil {
+		t.Fatalf("ProjectToken() error: %v", err)
+	}
+	if resp.ProjectToken.ProjectId != "proj-123" {
+		t.Errorf("ProjectId = %q, want %q", resp.ProjectToken.ProjectId, "proj-123")
 	}
 }
 
@@ -89,7 +133,7 @@ func TestClient_ProjectToken_EndToEnd(t *testing.T) {
 		Token:       "test-token",
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer test-token",
-		Source:      "flag",
+		Source:      auth.SourceFlag,
 	}
 	store := auth.NewTokenStore(
 		auth.WithKeyringService("test-e2e"),

@@ -36,8 +36,8 @@ func TestResolveAuth_FlagTakesPrecedence(t *testing.T) {
 	if resolved.HeaderName != "Authorization" {
 		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
 	}
-	if resolved.Source != "flag" {
-		t.Errorf("Source = %q, want %q", resolved.Source, "flag")
+	if resolved.Source != auth.SourceFlag {
+		t.Errorf("Source = %q, want %q", resolved.Source, auth.SourceFlag)
 	}
 }
 
@@ -61,8 +61,8 @@ func TestResolveAuth_APITokenEnvVar(t *testing.T) {
 	if resolved.HeaderName != "Authorization" {
 		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
 	}
-	if resolved.Source != "env:RAILWAY_API_TOKEN" {
-		t.Errorf("Source = %q, want %q", resolved.Source, "env:RAILWAY_API_TOKEN")
+	if resolved.Source != auth.SourceEnvAPIToken {
+		t.Errorf("Source = %q, want %q", resolved.Source, auth.SourceEnvAPIToken)
 	}
 }
 
@@ -86,8 +86,8 @@ func TestResolveAuth_ProjectTokenEnvVar(t *testing.T) {
 	if resolved.HeaderName != "Project-Access-Token" {
 		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Project-Access-Token")
 	}
-	if resolved.Source != "env:RAILWAY_TOKEN" {
-		t.Errorf("Source = %q, want %q", resolved.Source, "env:RAILWAY_TOKEN")
+	if resolved.Source != auth.SourceEnvToken {
+		t.Errorf("Source = %q, want %q", resolved.Source, auth.SourceEnvToken)
 	}
 }
 
@@ -115,8 +115,8 @@ func TestResolveAuth_FallsBackToStore(t *testing.T) {
 	if resolved.HeaderName != "Authorization" {
 		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
 	}
-	if resolved.Source != "stored" {
-		t.Errorf("Source = %q, want %q", resolved.Source, "stored")
+	if resolved.Source != auth.SourceStored {
+		t.Errorf("Source = %q, want %q", resolved.Source, auth.SourceStored)
 	}
 }
 

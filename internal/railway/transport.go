@@ -39,6 +39,7 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.mu.Lock()
 	headerName := t.resolved.HeaderName
 	headerValue := t.resolved.HeaderValue
+	source := t.resolved.Source
 	t.mu.Unlock()
 
 	clone := req.Clone(req.Context())
@@ -49,30 +50,45 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	if resp.StatusCode == http.StatusUnauthorized && t.canRefresh() {
-		newTokens, refreshErr := t.tryRefresh()
-		if refreshErr != nil {
-			return resp, nil
-		}
+	if resp.StatusCode != http.StatusUnauthorized {
+		return resp, nil
+	}
 
+	if !t.canRefresh(source) {
+		return resp, nil
+	}
+
+	// Serialize refresh attempts — only one goroutine refreshes at a time.
+	// If another goroutine already refreshed, we'll pick up the new token.
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Re-check: another goroutine may have refreshed while we waited.
+	if t.resolved.HeaderValue != headerValue {
+		// Token was already refreshed — retry with the new value.
 		resp.Body.Close() //nolint:errcheck
-
-		t.mu.Lock()
-		t.resolved.Token = newTokens.AccessToken
-		t.resolved.HeaderValue = "Bearer " + newTokens.AccessToken
-		headerValue = t.resolved.HeaderValue
-		t.mu.Unlock()
-
 		retry := req.Clone(req.Context())
-		retry.Header.Set(headerName, headerValue)
+		retry.Header.Set(headerName, t.resolved.HeaderValue)
 		return t.base.RoundTrip(retry)
 	}
 
-	return resp, nil
+	newTokens, refreshErr := t.tryRefresh()
+	if refreshErr != nil {
+		return resp, nil
+	}
+
+	resp.Body.Close() //nolint:errcheck
+
+	t.resolved.Token = newTokens.AccessToken
+	t.resolved.HeaderValue = "Bearer " + newTokens.AccessToken
+
+	retry := req.Clone(req.Context())
+	retry.Header.Set(headerName, t.resolved.HeaderValue)
+	return t.base.RoundTrip(retry)
 }
 
-func (t *AuthTransport) canRefresh() bool {
-	return t.resolved.Source == "stored" && t.refresh != nil && t.store != nil
+func (t *AuthTransport) canRefresh(source string) bool {
+	return source == auth.SourceStored && t.refresh != nil && t.store != nil
 }
 
 func (t *AuthTransport) tryRefresh() (*auth.TokenResponse, error) {

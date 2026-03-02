@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -48,5 +49,25 @@ func TestOAuthRefresher_Refresh(t *testing.T) {
 	}
 	if tok.RefreshToken != "new-refresh" {
 		t.Errorf("RefreshToken = %q", tok.RefreshToken)
+	}
+}
+
+func TestOAuthRefresher_RefreshError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	oauth := &auth.OAuthClient{
+		TokenEndpoint: server.URL,
+	}
+	refresher := railway.NewOAuthRefresher(oauth)
+
+	_, err := refresher.Refresh("client-abc", "bad-refresh")
+	if err == nil {
+		t.Fatal("expected error for 400 response")
+	}
+	if !strings.Contains(err.Error(), "400") {
+		t.Errorf("error should mention status 400, got: %s", err)
 	}
 }

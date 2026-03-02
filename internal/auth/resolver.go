@@ -9,12 +9,20 @@ import (
 // ErrNotAuthenticated is returned when no token is available from any source.
 var ErrNotAuthenticated = errors.New("not authenticated: run 'fat-controller auth login' or set RAILWAY_TOKEN")
 
+// Source constants identify how the active token was resolved.
+const (
+	SourceFlag        = "flag"
+	SourceEnvAPIToken = "env:RAILWAY_API_TOKEN"
+	SourceEnvToken    = "env:RAILWAY_TOKEN"
+	SourceStored      = "stored"
+)
+
 // ResolvedAuth contains the resolved token and the HTTP header to use.
 type ResolvedAuth struct {
 	Token       string
 	HeaderName  string
 	HeaderValue string
-	Source      string // "flag", "env:RAILWAY_API_TOKEN", "env:RAILWAY_TOKEN", "stored"
+	Source      string // One of the Source* constants.
 }
 
 // ResolveAuth determines the active auth token using the precedence:
@@ -29,7 +37,7 @@ func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 			Token:       flagToken,
 			HeaderName:  "Authorization",
 			HeaderValue: "Bearer " + flagToken,
-			Source:      "flag",
+			Source:      SourceFlag,
 		}, nil
 	}
 
@@ -39,7 +47,7 @@ func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 			Token:       token,
 			HeaderName:  "Authorization",
 			HeaderValue: "Bearer " + token,
-			Source:      "env:RAILWAY_API_TOKEN",
+			Source:      SourceEnvAPIToken,
 		}, nil
 	}
 
@@ -49,7 +57,7 @@ func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 			Token:       token,
 			HeaderName:  "Project-Access-Token",
 			HeaderValue: token,
-			Source:      "env:RAILWAY_TOKEN",
+			Source:      SourceEnvToken,
 		}, nil
 	}
 
@@ -70,6 +78,6 @@ func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 		Token:       tokens.AccessToken,
 		HeaderName:  "Authorization",
 		HeaderValue: "Bearer " + tokens.AccessToken,
-		Source:      "stored",
+		Source:      SourceStored,
 	}, nil
 }

@@ -32,7 +32,7 @@ func (d *defaultProjectLister) ListProjects(ctx context.Context) ([]ProjectInfo,
 	if err != nil {
 		return nil, err
 	}
-	var projects []ProjectInfo
+	projects := make([]ProjectInfo, 0, len(resp.Projects.Edges))
 	for _, edge := range resp.Projects.Edges {
 		projects = append(projects, ProjectInfo{
 			ID:   edge.Node.Id,

@@ -33,7 +33,7 @@ func (d *defaultEnvironmentLister) ListEnvironments(ctx context.Context, project
 	if err != nil {
 		return nil, err
 	}
-	var envs []EnvironmentInfo
+	envs := make([]EnvironmentInfo, 0, len(resp.Environments.Edges))
 	for _, edge := range resp.Environments.Edges {
 		envs = append(envs, EnvironmentInfo{
 			ID:   edge.Node.Id,

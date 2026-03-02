@@ -19,11 +19,11 @@ only), existing internal/auth package
 
 [genqlient](https://github.com/Khan/genqlient) generates typed Go functions from `.graphql` operation files against a GraphQL schema. Key concepts:
 
-- **`genqlient.yaml`** — config file at repo root. Points to schema, operation globs, output file.
+- **`.config/genqlient.yaml`** — config file. Points to schema, operation globs, output file.
 - **`schema.graphql`** — the Railway API schema in SDL format. Fetched via introspection, checked into git.
 - **`operations.graphql`** — queries and mutations we use. Each becomes a typed Go function.
 - **`generated.go`** — genqlient output. Checked into git (CI doesn't need a Railway token).
-- **`//go:generate go run github.com/Khan/genqlient`** — runs code generation.
+- **`//go:generate go run github.com/Khan/genqlient -config ../../.config/genqlient.yaml`** — runs code generation.
 - Generated function names preserve the query name casing from the
   `.graphql` file. A query named `ProjectToken` generates an exported
   `func ProjectToken(...)`. A query named `projectToken` generates an
@@ -82,7 +82,8 @@ The transport uses `HeaderName` and `HeaderValue` directly — no need to know w
 
 ```text
 fat-controller/
-├── genqlient.yaml                    # genqlient config (points to internal/railway/)
+├── .config/
+│   └── genqlient.yaml                # genqlient config (points to internal/railway/)
 ├── tools.go                          # //go:build tools — blank import keeps genqlient in go.mod
 ├── cmd/fat-controller/main.go        # Entry point
 ├── internal/
@@ -242,7 +243,7 @@ git commit -m "Add Railway GraphQL schema via introspection"
 **Files:**
 
 - Modify: `go.mod`, `go.sum`
-- Create: `genqlient.yaml`
+- Create: `.config/genqlient.yaml`
 - Create: `internal/railway/generate.go`
 - Create: `tools.go`
 
@@ -282,9 +283,9 @@ import _ "github.com/Khan/genqlient"
 
 The `//go:build tools` tag ensures this file is never compiled into the binary, but the blank import keeps genqlient in the module graph so `go mod tidy` won't remove it.
 
-**Step 3: Create genqlient.yaml at repo root**
+**Step 3: Create genqlient.yaml in `.config/`**
 
-Create `genqlient.yaml`:
+Create `.config/genqlient.yaml`:
 
 ```yaml
 schema: internal/railway/schema.graphql
@@ -328,7 +329,7 @@ Expected: `go.mod` and `go.sum` updated with genqlient and its dependencies.
 **Step 5: Commit**
 
 ```bash
-git add genqlient.yaml internal/railway/generate.go tools.go go.mod go.sum
+git add .config/genqlient.yaml internal/railway/generate.go tools.go go.mod go.sum
 git commit -m "Add genqlient config and code generation setup"
 ```
 
@@ -368,7 +369,7 @@ Run:
 go generate ./internal/railway/
 ```
 
-Expected: `internal/railway/generated.go` created. If you see errors about missing types or scalars, check that the `bindings` in `genqlient.yaml` cover all custom scalars used in the schema.
+Expected: `internal/railway/generated.go` created. If you see errors about missing types or scalars, check that the `bindings` in `.config/genqlient.yaml` cover all custom scalars used in the schema.
 
 **Step 3: Verify the generated code compiles**
 

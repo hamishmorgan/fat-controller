@@ -55,7 +55,8 @@ fat-controller/
 │       ├── operations.graphql    # Queries + mutations
 │       ├── generated.go          # genqlient output (checked in)
 │       └── client.go             # Client setup, auth header resolution
-├── genqlient.yaml
+├── .config/
+│   └── genqlient.yaml
 ├── go.mod
 ├── docs/PLAN.md
 └── README.md

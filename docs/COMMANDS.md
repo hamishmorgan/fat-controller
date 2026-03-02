@@ -24,6 +24,10 @@ fat-controller auth login       # Browser-based OAuth login
 fat-controller auth logout      # Clear stored credentials
 fat-controller auth status      # Show current auth state
 
+# Project / environment discovery
+fat-controller project list                       # list available projects
+fat-controller environment list --project my-app  # list environments for a project
+
 # Imperative — read/write live Railway directly
 fat-controller config get                         # all config (pipe to file to bootstrap)
 fat-controller config get api.variables           # all variables for a service
@@ -92,6 +96,18 @@ The full settings table:
 `RAILWAY_TOKEN` env var > stored OAuth credentials (keyring/file).
 `RAILWAY_TOKEN` uses the `Project-Access-Token` header (project-scoped).
 `RAILWAY_API_TOKEN` uses `Authorization: Bearer` (account/workspace-scoped).
+
+## Project and environment resolution
+
+When using an account-level token (`RAILWAY_API_TOKEN` or stored OAuth),
+`config get/set/delete` need a project and environment. Resolution works as:
+
+1. If `--project`/`--environment` flags (or env vars) are set, use them.
+2. If only one project/environment exists, auto-select it.
+3. If a TTY is attached, show an interactive picker.
+4. Otherwise, error with a listing of available options.
+
+Use `project list` and `environment list` to discover available options.
 
 ### Example: global config file
 

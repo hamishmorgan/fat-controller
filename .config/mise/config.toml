@@ -63,6 +63,7 @@ description = "Run all linters"
 depends = [
   "lint:md",
   "lint:json",
+  "lint:graphql",
   "lint:toml",
   "lint:yaml",
   "lint:go",
@@ -78,7 +79,13 @@ depends = ["lint", "test", "build"]
 [tasks.format]
 alias = ["fmt", "f"]
 description = "Run all fixers/formatters"
-depends = ["lint:md:fix", "lint:json:fix", "lint:toml:fix", "lint:yaml:fix"]
+depends = [
+  "lint:md:fix",
+  "lint:json:fix",
+  "lint:graphql:fix",
+  "lint:toml:fix",
+  "lint:yaml:fix",
+]
 
 # ---------------------------------------------------------------------------
 # Markdown
@@ -103,6 +110,18 @@ run = "prettier --check '**/*.{json,jsonc}' --ignore-path .gitignore"
 [tasks."lint:json:fix"]
 description = "Format JSON files"
 run = "prettier --write '**/*.{json,jsonc}' --ignore-path .gitignore"
+
+# ---------------------------------------------------------------------------
+# GraphQL
+# ---------------------------------------------------------------------------
+
+[tasks."lint:graphql"]
+description = "Check GraphQL formatting"
+run = "prettier --check '**/*.{graphql,gql}' --ignore-path .gitignore"
+
+[tasks."lint:graphql:fix"]
+description = "Format GraphQL files"
+run = "prettier --write '**/*.{graphql,gql}' --ignore-path .gitignore"
 
 # ---------------------------------------------------------------------------
 # TOML

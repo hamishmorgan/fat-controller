@@ -16,5 +16,6 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: mise run lint:md
       - run: mise run lint:json
+      - run: mise run lint:graphql
       - run: mise run lint:toml
       - run: mise run lint:yaml

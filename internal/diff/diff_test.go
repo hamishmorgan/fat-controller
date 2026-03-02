@@ -86,8 +86,9 @@ func TestComputeDiff_NoOp(t *testing.T) {
 		},
 	}
 	result := diff.Compute(desired, live)
-	if len(result.Services["api"].Variables) != 0 {
-		t.Errorf("expected no changes, got %d", len(result.Services["api"].Variables))
+	if svc, ok := result.Services["api"]; ok {
+		t.Errorf("expected api to be omitted from results (no changes), got %d variable changes",
+			len(svc.Variables))
 	}
 }
 
@@ -106,9 +107,9 @@ func TestComputeDiff_IgnoresUnmentioned(t *testing.T) {
 		},
 	}
 	result := diff.Compute(desired, live)
-	if len(result.Services["api"].Variables) != 0 {
-		t.Errorf("expected 0 changes (PORT matches, SECRET unmentioned), got %d",
-			len(result.Services["api"].Variables))
+	if svc, ok := result.Services["api"]; ok {
+		t.Errorf("expected api to be omitted (PORT matches, SECRET unmentioned), got %d changes",
+			len(svc.Variables))
 	}
 }
 
@@ -161,9 +162,9 @@ func TestComputeDiff_DeleteEmptyStringNotInLive(t *testing.T) {
 		},
 	}
 	result := diff.Compute(desired, live)
-	if len(result.Services["api"].Variables) != 0 {
-		t.Errorf("expected no changes for deleting non-existent var, got %d",
-			len(result.Services["api"].Variables))
+	if svc, ok := result.Services["api"]; ok {
+		t.Errorf("expected api to be omitted (can't delete non-existent var), got %d changes",
+			len(svc.Variables))
 	}
 }
 

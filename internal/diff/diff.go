@@ -88,7 +88,9 @@ func Compute(desired *config.DesiredConfig, live *config.LiveConfig) *Result {
 	for svcName, desiredSvc := range desired.Services {
 		liveSvc := findLiveService(live, svcName)
 		sectionDiff := diffService(desiredSvc, liveSvc)
-		result.Services[svcName] = sectionDiff
+		if len(sectionDiff.Variables) > 0 || len(sectionDiff.Settings) > 0 {
+			result.Services[svcName] = sectionDiff
+		}
 	}
 
 	return result

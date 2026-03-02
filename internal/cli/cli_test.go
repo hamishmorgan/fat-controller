@@ -14,27 +14,8 @@ import (
 )
 
 // ---------- Config stub tests ----------
-
-func TestConfigGetCmd_Run(t *testing.T) {
-	cmd := &cli.ConfigGetCmd{}
-	if err := cmd.Run(&cli.Globals{}); err != nil {
-		t.Fatalf("ConfigGetCmd.Run() returned error: %v", err)
-	}
-}
-
-func TestConfigSetCmd_Run(t *testing.T) {
-	cmd := &cli.ConfigSetCmd{}
-	if err := cmd.Run(&cli.Globals{}); err != nil {
-		t.Fatalf("ConfigSetCmd.Run() returned error: %v", err)
-	}
-}
-
-func TestConfigDeleteCmd_Run(t *testing.T) {
-	cmd := &cli.ConfigDeleteCmd{}
-	if err := cmd.Run(&cli.Globals{}); err != nil {
-		t.Fatalf("ConfigDeleteCmd.Run() returned error: %v", err)
-	}
-}
+// Note: ConfigGetCmd, ConfigSetCmd, ConfigDeleteCmd tests moved to
+// config_get_test.go, config_set_test.go, config_delete_test.go respectively.
 
 func TestConfigDiffCmd_Run(t *testing.T) {
 	cmd := &cli.ConfigDiffCmd{}
@@ -65,9 +46,6 @@ func TestConfigStubs_OutputMessages(t *testing.T) {
 		run  func(*cli.Globals) error
 		want string
 	}{
-		{"Get", (&cli.ConfigGetCmd{}).Run, "config get: not yet implemented"},
-		{"Set", (&cli.ConfigSetCmd{}).Run, "config set: not yet implemented"},
-		{"Delete", (&cli.ConfigDeleteCmd{}).Run, "config delete: not yet implemented"},
 		{"Diff", (&cli.ConfigDiffCmd{}).Run, "config diff: not yet implemented"},
 		{"Apply", (&cli.ConfigApplyCmd{}).Run, "config apply: not yet implemented"},
 		{"Validate", (&cli.ConfigValidateCmd{}).Run, "config validate: not yet implemented"},

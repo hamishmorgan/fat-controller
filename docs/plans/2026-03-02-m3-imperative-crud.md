@@ -474,11 +474,8 @@ query ServiceInstance($environmentId: String!, $serviceId: String!) {
   }
 }
 
-# Resource limit overrides — returns a scalar (ServiceInstanceLimit maps to
-# map[string]interface{} via genqlient binding), not a structured type.
-query ServiceInstanceLimitOverride($environmentId: String!, $serviceId: String!) {
-  serviceInstanceLimitOverride(environmentId: $environmentId, serviceId: $serviceId)
-}
+# Note: ServiceInstanceLimitOverride query is deferred — the ServiceInstanceLimit
+# scalar has no genqlient binding yet, and M3 only does variable CRUD.
 
 # Mutations for set/delete
 mutation VariableUpsert($input: VariableUpsertInput!) {
@@ -1020,9 +1017,14 @@ git commit -m "Add service settings update mutations"
 
 ## Task 8: Implement config get in CLI
 
+**Note:** Existing stub tests in `cli_test.go` (`TestConfigGetCmd_Run`,
+`TestConfigStubs_OutputMessages`) assert "not yet implemented" output. Update
+these tests alongside each `Run` method replacement (Tasks 8-9).
+
 **Files:**
 
 - Modify: `internal/cli/cli.go`
+- Modify: `internal/cli/cli_test.go`
 - Create: `internal/cli/config_get.go`
 - Test: `internal/cli/config_get_test.go`
 

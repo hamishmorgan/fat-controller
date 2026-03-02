@@ -7,9 +7,13 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
+// Endpoint is the Railway GraphQL API URL.
+const Endpoint = "https://backboard.railway.com/graphql/v2"
+
 // Client wraps the genqlient GraphQL client with Railway-specific auth.
 type Client struct {
-	gql graphql.Client
+	gql  graphql.Client
+	auth *auth.ResolvedAuth
 }
 
 // NewClient creates a Railway GraphQL client with authenticated transport.
@@ -29,7 +33,12 @@ func NewClient(endpoint string, resolved *auth.ResolvedAuth, store *auth.TokenSt
 	httpClient := &http.Client{Transport: transport}
 	gql := graphql.NewClient(endpoint, httpClient)
 
-	return &Client{gql: gql}
+	return &Client{gql: gql, auth: resolved}
+}
+
+// Auth returns the resolved auth info (used by resolve.go to branch on token type).
+func (c *Client) Auth() *auth.ResolvedAuth {
+	return c.auth
 }
 
 // GQL returns the underlying genqlient client for making queries.

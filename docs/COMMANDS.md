@@ -31,6 +31,8 @@ fat-controller config get api.variables.PORT      # one specific value
 fat-controller config get --full                  # everything including IDs and read-only fields
 fat-controller config set api.variables.PORT 8080 # set a value
 fat-controller config delete api.variables.OLD    # delete a value
+# Note: In M3, config set/delete supports variables only (*.variables.KEY).
+# Other sections (resources, deploy settings) will be added in later milestones.
 
 # Declarative — config file driven
 fat-controller config diff      # compare fat-controller.toml against live state

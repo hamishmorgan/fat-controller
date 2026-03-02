@@ -1,0 +1,53 @@
+package railway
+
+import "context"
+
+// UpsertVariable sets a single variable for shared or service scope.
+func UpsertVariable(ctx context.Context, client *Client, projectID, environmentID, serviceID, name, value string, skipDeploys bool) error {
+	input := VariableUpsertInput{
+		ProjectId:     projectID,
+		EnvironmentId: environmentID,
+		Name:          name,
+		Value:         value,
+		SkipDeploys:   &skipDeploys,
+	}
+	if serviceID != "" {
+		input.ServiceId = &serviceID
+	}
+	_, err := VariableUpsert(ctx, client.GQL(), input)
+	return err
+}
+
+// DeleteVariable deletes a single variable.
+func DeleteVariable(ctx context.Context, client *Client, projectID, environmentID, serviceID, name string) error {
+	input := VariableDeleteInput{
+		ProjectId:     projectID,
+		EnvironmentId: environmentID,
+		Name:          name,
+	}
+	if serviceID != "" {
+		input.ServiceId = &serviceID
+	}
+	_, err := VariableDelete(ctx, client.GQL(), input)
+	return err
+}
+
+// UpdateServiceLimits updates vCPU and memory limits.
+func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, serviceID string, vcpus, memoryGB float64) error {
+	input := ServiceInstanceLimitsUpdateInput{
+		EnvironmentId: environmentID,
+		ServiceId:     serviceID,
+		VCPUs:         &vcpus,
+		MemoryGB:      &memoryGB,
+	}
+	_, err := ServiceInstanceLimitsUpdate(ctx, client.GQL(), input)
+	return err
+}
+
+// UpdateServiceSettings updates deploy/build settings.
+// The generated ServiceInstanceUpdate function takes serviceId as a separate
+// argument (matching the GraphQL schema where it's a top-level mutation arg).
+func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string, input ServiceInstanceUpdateInput) error {
+	_, err := ServiceInstanceUpdate(ctx, client.GQL(), serviceID, input)
+	return err
+}

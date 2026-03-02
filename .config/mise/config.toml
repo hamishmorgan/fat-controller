@@ -12,6 +12,8 @@ apollo-rover = "latest"
 
 [settings]
 experimental = true
+task.output = "keep-order"
+task.source_freshness_hash_contents = true
 
 [hooks]
 postinstall = "mise run setup"

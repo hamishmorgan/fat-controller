@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"time"
 )
 
@@ -62,9 +63,10 @@ type ConfigCmd struct {
 	Validate ConfigValidateCmd `cmd:"" help:"Check config file for warnings (no API calls)."`
 }
 
-// Config subcommand stubs — implemented in M3+.
+// ConfigGetCmd implements `config get`.
 type ConfigGetCmd struct {
-	Path string `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	Path   string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	output io.Writer `kong:"-"`
 }
 
 type ConfigSetCmd struct {
@@ -80,20 +82,10 @@ type ConfigDiffCmd struct{}
 type ConfigApplyCmd struct{}
 type ConfigValidateCmd struct{}
 
-func (c *ConfigGetCmd) Run(globals *Globals) error {
-	fmt.Println("config get: not yet implemented")
-	return nil
-}
-
-func (c *ConfigSetCmd) Run(globals *Globals) error {
-	fmt.Println("config set: not yet implemented")
-	return nil
-}
-
-func (c *ConfigDeleteCmd) Run(globals *Globals) error {
-	fmt.Println("config delete: not yet implemented")
-	return nil
-}
+// Run methods:
+// - ConfigGetCmd.Run    → config_get.go
+// - ConfigSetCmd.Run    → config_set.go
+// - ConfigDeleteCmd.Run → config_delete.go
 
 func (c *ConfigDiffCmd) Run(globals *Globals) error {
 	fmt.Println("config diff: not yet implemented")

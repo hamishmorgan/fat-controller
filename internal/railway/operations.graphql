@@ -6,3 +6,90 @@ query ProjectToken {
     environmentId
   }
 }
+
+# Project and environment resolution
+query Projects {
+  projects(first: 100) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+
+query Environments($projectId: String!) {
+  environments(projectId: $projectId, first: 100) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+
+# Service list for a project
+query ProjectServices($projectId: String!) {
+  project(id: $projectId) {
+    services(first: 200) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+
+# Variables (shared + service).
+# With serviceId=nil returns shared variables; with serviceId returns service variables.
+# unrendered=true returns source values (not interpolated).
+query Variables(
+  $projectId: String!
+  $environmentId: String!
+  $serviceId: String
+) {
+  variables(
+    projectId: $projectId
+    environmentId: $environmentId
+    serviceId: $serviceId
+    unrendered: true
+  )
+}
+
+# Service deploy settings
+query ServiceInstance($environmentId: String!, $serviceId: String!) {
+  serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
+    builder
+    dockerfilePath
+    rootDirectory
+    startCommand
+    healthcheckPath
+  }
+}
+
+# Mutations for set/delete
+mutation VariableUpsert($input: VariableUpsertInput!) {
+  variableUpsert(input: $input)
+}
+
+mutation VariableDelete($input: VariableDeleteInput!) {
+  variableDelete(input: $input)
+}
+
+# serviceInstanceUpdate takes serviceId as a top-level argument, not inside the input.
+mutation ServiceInstanceUpdate(
+  $serviceId: String!
+  $input: ServiceInstanceUpdateInput!
+) {
+  serviceInstanceUpdate(serviceId: $serviceId, input: $input)
+}
+
+mutation ServiceInstanceLimitsUpdate(
+  $input: ServiceInstanceLimitsUpdateInput!
+) {
+  serviceInstanceLimitsUpdate(input: $input)
+}

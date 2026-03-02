@@ -48,8 +48,18 @@ func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extr
 		return err
 	}
 
+	// 2b. Use config-file project/environment as fallback for resolution.
+	project := globals.Project
+	if project == "" {
+		project = desired.Project
+	}
+	environment := globals.Environment
+	if environment == "" {
+		environment = desired.Environment
+	}
+
 	// 3. Fetch live state.
-	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, project, environment)
 	if err != nil {
 		return err
 	}

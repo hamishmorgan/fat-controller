@@ -186,3 +186,86 @@ QUEUE = "high"
 		t.Errorf("worker should be filtered out:\n%s", got)
 	}
 }
+
+// capturingFetcher records the project/environment passed to Resolve.
+type capturingFetcher struct {
+	cfg         *config.LiveConfig
+	project     string
+	environment string
+}
+
+func (f *capturingFetcher) Resolve(_ context.Context, _, project, environment string) (string, string, error) {
+	f.project = project
+	f.environment = environment
+	return "proj-1", "env-1", nil
+}
+
+func (f *capturingFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
+	return f.cfg, nil
+}
+
+func TestRunConfigDiff_UsesConfigFileProject(t *testing.T) {
+	dir := t.TempDir()
+	writeTOMLFile(t, dir, "fat-controller.toml", `
+project = "my-app"
+environment = "production"
+
+[api.variables]
+PORT = "9090"
+`)
+	// fakeFetcher doesn't validate project/environment args, but we
+	// verify via a capturing fetcher that the config-file values are used.
+	captureFetcher := &capturingFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID: "proj-1", EnvironmentID: "env-1",
+			Services: map[string]*config.ServiceConfig{
+				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	// Globals with empty Project/Environment — should fall back to config file.
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigDiff(context.Background(), globals, dir, nil, captureFetcher, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigDiff() error: %v", err)
+	}
+	if captureFetcher.project != "my-app" {
+		t.Errorf("project passed to Resolve = %q, want %q", captureFetcher.project, "my-app")
+	}
+	if captureFetcher.environment != "production" {
+		t.Errorf("environment passed to Resolve = %q, want %q", captureFetcher.environment, "production")
+	}
+}
+
+func TestRunConfigDiff_FlagOverridesConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	writeTOMLFile(t, dir, "fat-controller.toml", `
+project = "my-app"
+environment = "production"
+
+[api.variables]
+PORT = "9090"
+`)
+	captureFetcher := &capturingFetcher{
+		cfg: &config.LiveConfig{
+			ProjectID: "proj-1", EnvironmentID: "env-1",
+			Services: map[string]*config.ServiceConfig{
+				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	// Flag values should override config file.
+	globals := &cli.Globals{Project: "other-project", Environment: "staging", Output: "text"}
+	err := cli.RunConfigDiff(context.Background(), globals, dir, nil, captureFetcher, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigDiff() error: %v", err)
+	}
+	if captureFetcher.project != "other-project" {
+		t.Errorf("project = %q, want %q (flag should override)", captureFetcher.project, "other-project")
+	}
+	if captureFetcher.environment != "staging" {
+		t.Errorf("environment = %q, want %q (flag should override)", captureFetcher.environment, "staging")
+	}
+}

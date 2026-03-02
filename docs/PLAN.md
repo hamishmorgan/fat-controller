@@ -1,26 +1,5 @@
 # Fat Controller — Project Plan
 
-A CLI for managing [Railway](https://railway.com) projects. The initial
-focus is declarative configuration management — pull live state, diff
-against a desired-state config, apply the difference — but the tool is
-designed to grow into a comprehensive Railway CLI over time.
-
-## Motivation
-
-Railway's `railway.toml` files cover build and deploy settings (Dockerfile
-path, watch patterns, healthchecks, restart policy), but a large portion of
-project configuration lives only in the dashboard: environment variables,
-resource limits, regions, replicas, domains, volumes, and TCP proxies. For
-multi-service projects this means:
-
-- No version control or audit trail for env var changes
-- No way to review configuration changes in a PR
-- Manual, error-prone setup when recreating or cloning a project
-- No mechanism to detect configuration drift
-
-Fat Controller treats Railway project configuration as code: pull the live
-state, declare the desired state in a TOML file, diff, and apply.
-
 ## Scope and command structure
 
 See [docs/COMMANDS.md](COMMANDS.md) — command groups (`auth`, `config`),

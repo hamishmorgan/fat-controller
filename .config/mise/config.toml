@@ -62,6 +62,7 @@ depends = ["check"]
 description = "Run all linters"
 depends = [
   "lint:md",
+  "lint:json",
   "lint:toml",
   "lint:yaml",
   "lint:go",
@@ -77,7 +78,7 @@ depends = ["lint", "test", "build"]
 [tasks.format]
 alias = ["fmt", "f"]
 description = "Run all fixers/formatters"
-depends = ["lint:md:fix", "lint:toml:fix", "lint:yaml:fix"]
+depends = ["lint:md:fix", "lint:json:fix", "lint:toml:fix", "lint:yaml:fix"]
 
 # ---------------------------------------------------------------------------
 # Markdown
@@ -90,6 +91,18 @@ run = "markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc '**/*.md' '#n
 [tasks."lint:md:fix"]
 description = "Format markdown files"
 run = "markdownlint-cli2 --config .config/.markdownlint-cli2.jsonc --fix '**/*.md' '#node_modules'"
+
+# ---------------------------------------------------------------------------
+# JSON
+# ---------------------------------------------------------------------------
+
+[tasks."lint:json"]
+description = "Check JSON formatting"
+run = "prettier --check '**/*.{json,jsonc}' --ignore-path .gitignore"
+
+[tasks."lint:json:fix"]
+description = "Format JSON files"
+run = "prettier --write '**/*.{json,jsonc}' --ignore-path .gitignore"
 
 # ---------------------------------------------------------------------------
 # TOML

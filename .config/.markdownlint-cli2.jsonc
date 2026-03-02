@@ -1,5 +1,7 @@
 {
   "config": {
+    // Allow hard tabs in code blocks (Go uses tabs)
+    "MD010": { "code_blocks": false },
     // Allow long lines — plan docs have wide tables
     "MD013": false,
     // Allow duplicate headings in different sections

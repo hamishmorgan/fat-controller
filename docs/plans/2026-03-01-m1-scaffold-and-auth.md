@@ -2,11 +2,11 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Bootstrap the fat-controller CLI with cobra, XDG-compliant config/token storage, and a working `auth login/logout/status` flow using Railway's OAuth 2.0 + PKCE.
+**Goal:** Bootstrap the fat-controller CLI with kong (struct-based CLI), XDG-compliant config/token storage, and a working `auth login/logout/status` flow using Railway's OAuth 2.0 + PKCE.
 
-**Architecture:** Cobra for CLI dispatch with two subcommand groups (`auth`, `config` stub). Token storage uses OS keyring (go-keyring) with XDG file fallback. OAuth uses Railway's dynamic client registration + PKCE authorization code flow. Tool config uses koanf for layered loading.
+**Architecture:** Kong struct-based CLI with two subcommand groups (`auth`, `config` stubs). Global flags (token, project, environment, output, etc.) on root struct, passed to commands via a `Globals` type. Token storage uses OS keyring (go-keyring) with XDG file fallback. OAuth uses Railway's dynamic client registration + PKCE authorization code flow. Config stubs are wired up but return "not yet implemented" — implementation is M3+.
 
-**Tech Stack:** Go, cobra, adrg/xdg, zalando/go-keyring, knadh/koanf, BurntSushi/toml
+**Tech Stack:** Go, alecthomas/kong, adrg/xdg, zalando/go-keyring
 
 ---
 
@@ -29,11 +29,24 @@ Railway exposes a standard OAuth 2.0 + OIDC system. Key details:
 
 ## Background: Token Resolution Order
 
-1. `RAILWAY_TOKEN` env var (project access token or account token) — for CI
-2. OS keyring via go-keyring — primary interactive storage
-3. Fallback file at `$XDG_CONFIG_HOME/fat-controller/auth.json` (mode 0600) — headless/SSH
+1. `--token` flag — highest priority, one-off use
+2. `RAILWAY_API_TOKEN` env var — account/workspace-scoped, `Authorization: Bearer` header
+3. `RAILWAY_TOKEN` env var — project-scoped, `Project-Access-Token` header
+4. OS keyring / fallback file — stored OAuth credentials from `auth login`
 
 Project access tokens use `Project-Access-Token` header. Account-level tokens use `Authorization: Bearer`.
+
+## Background: Kong CLI Framework
+
+Kong is a struct-based CLI parser. Key patterns:
+
+- Root CLI struct: global flags as fields, subcommands as `cmd:""` tagged struct fields
+- Leaf commands implement `Run(globals *Globals) error`
+- `ctx.Run(&globals)` dispatches to the selected command's `Run()` method
+- `env:"VAR"` tag binds a flag to an environment variable
+- Slice fields (`[]string`) create repeatable flags
+- Boolean flags: `--flag` sets true, `--flag=false` sets false, `negatable:""` creates `--no-flag`
+- Field name `DryRun` becomes `--dry-run` on the CLI
 
 ---
 
@@ -52,61 +65,136 @@ Run:
 go mod init github.com/hamishmorgan/fat-controller
 ```
 
-Expected: `go.mod` created
+Expected: `go.mod` created.
 
 **Step 2: Add dependencies**
 
 Run:
 
 ```bash
-go get github.com/spf13/cobra@latest
+go get github.com/alecthomas/kong@latest
 go get github.com/adrg/xdg@latest
 go get github.com/zalando/go-keyring@latest
-go get github.com/knadh/koanf/v2@latest
-go get github.com/knadh/koanf/providers/file@latest
-go get github.com/knadh/koanf/providers/env/v2@latest
-go get github.com/knadh/koanf/providers/structs@latest
-go get github.com/knadh/koanf/parsers/toml/v2@latest
-go get github.com/BurntSushi/toml@latest
 ```
 
 **Step 3: Commit**
 
 ```bash
 git add go.mod go.sum
-git commit -m "feat: initialize Go module with CLI and config dependencies"
+git commit -m "Initialize Go module with CLI and auth dependencies"
 ```
 
 ---
 
-### Task 2: Cobra root command + main.go
+### Task 2: Kong root CLI struct + main.go
 
 **Files:**
 
 - Create: `main.go`
-- Create: `cmd/root.go`
+- Create: `cmd/cli.go`
 
-**Step 1: Write root command**
+This task sets up the CLI skeleton with global flags and empty command
+groups. All global flags from the settings table in `docs/COMMANDS.md` are
+defined here. Subcommand structs are stubs (no `Run()` methods yet).
 
-`cmd/root.go`:
+**Step 1: Write cmd/cli.go**
+
+`cmd/cli.go`:
 
 ```go
 package cmd
 
-import (
- "github.com/spf13/cobra"
-)
+import "github.com/alecthomas/kong"
 
-var rootCmd = &cobra.Command{
- Use:   "fat-controller",
- Short: "CLI for managing Railway projects",
- Long:  "Fat Controller is a CLI for managing Railway projects. Pull live config, diff against a desired state, apply the difference.",
- SilenceUsage: true,
+// Globals holds values that are available to every command's Run() method.
+type Globals struct {
+	Token       string
+	Project     string
+	Environment string
+	Output      string
+	Color       string
+	Timeout     string
+	Confirm     bool
+	DryRun      bool
+	ShowSecrets bool
+	SkipDeploys bool
+	FailFast    bool
+	Config      []string
+	Service     string
+	Full        bool
+	Verbose     bool
+	Quiet       bool
 }
 
-func Execute() error {
- return rootCmd.Execute()
+// CLI is the root struct for the kong CLI parser.
+// Global flags are defined here; subcommand groups are nested structs.
+type CLI struct {
+	// Global flags
+	Token       string   `help:"Auth token (overrides all other auth)." env:"RAILWAY_TOKEN"`
+	Project     string   `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
+	Environment string   `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
+	Output      string   `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
+	Color       string   `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
+	Timeout     string   `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
+	Confirm     bool     `help:"Auto-execute mutations (skip confirmation)." env:"FAT_CONTROLLER_CONFIRM"`
+	DryRun      bool     `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
+	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"config" short:"c" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
+	Service     string   `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
+	SkipDeploys bool     `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	FailFast    bool     `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
+	ShowSecrets bool     `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	Full        bool     `help:"Include IDs and read-only fields (get only)."`
+	Verbose     bool     `help:"Debug output (HTTP requests, timing)." short:"v"`
+	Quiet       bool     `help:"Suppress informational output." short:"q"`
+
+	// Subcommand groups
+	Auth   AuthCmd   `cmd:"" help:"Manage authentication."`
+	Config ConfigCmd `cmd:"" name:"config" help:"Declarative configuration management."`
 }
+
+// AuthCmd is the `auth` command group.
+type AuthCmd struct {
+	Login  AuthLoginCmd  `cmd:"" help:"Log in to Railway via browser-based OAuth."`
+	Logout AuthLogoutCmd `cmd:"" help:"Clear stored credentials."`
+	Status AuthStatusCmd `cmd:"" help:"Show current authentication status."`
+}
+
+// AuthLoginCmd implements `auth login`.
+type AuthLoginCmd struct{}
+
+// AuthLogoutCmd implements `auth logout`.
+type AuthLogoutCmd struct{}
+
+// AuthStatusCmd implements `auth status`.
+type AuthStatusCmd struct{}
+
+// ConfigCmd is the `config` command group.
+type ConfigCmd struct {
+	Get      ConfigGetCmd      `cmd:"" help:"Fetch live config from Railway."`
+	Set      ConfigSetCmd      `cmd:"" help:"Set a single value by dot-path."`
+	Delete   ConfigDeleteCmd   `cmd:"" help:"Delete a single value by dot-path."`
+	Diff     ConfigDiffCmd     `cmd:"" help:"Compare local config against live state."`
+	Apply    ConfigApplyCmd    `cmd:"" help:"Push configuration changes to Railway."`
+	Validate ConfigValidateCmd `cmd:"" help:"Check config file for warnings (no API calls)."`
+}
+
+// Config subcommand stubs — implemented in M3+.
+type ConfigGetCmd struct {
+	Path string `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+}
+
+type ConfigSetCmd struct {
+	Path  string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
+	Value string `arg:"" required:"" help:"Value to set."`
+}
+
+type ConfigDeleteCmd struct {
+	Path string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
+}
+
+type ConfigDiffCmd struct{}
+type ConfigApplyCmd struct{}
+type ConfigValidateCmd struct{}
 ```
 
 **Step 2: Write main.go**
@@ -117,29 +205,101 @@ func Execute() error {
 package main
 
 import (
- "fmt"
- "os"
+	"fmt"
+	"os"
 
- "github.com/hamishmorgan/fat-controller/cmd"
+	"github.com/alecthomas/kong"
+	"github.com/hamishmorgan/fat-controller/cmd"
 )
 
 func main() {
- if err := cmd.Execute(); err != nil {
-  fmt.Fprintln(os.Stderr, err)
-  os.Exit(1)
- }
+	var cli cmd.CLI
+	ctx := kong.Parse(&cli,
+		kong.Name("fat-controller"),
+		kong.Description("CLI for managing Railway projects. Pull live config, diff against desired state, apply the difference."),
+		kong.UsageOnError(),
+	)
+
+	globals := &cmd.Globals{
+		Token:       cli.Token,
+		Project:     cli.Project,
+		Environment: cli.Environment,
+		Output:      cli.Output,
+		Color:       cli.Color,
+		Timeout:     cli.Timeout,
+		Confirm:     cli.Confirm,
+		DryRun:      cli.DryRun,
+		ShowSecrets: cli.ShowSecrets,
+		SkipDeploys: cli.SkipDeploys,
+		FailFast:    cli.FailFast,
+		Config:      cli.ConfigFiles,
+		Service:     cli.Service,
+		Full:        cli.Full,
+		Verbose:     cli.Verbose,
+		Quiet:       cli.Quiet,
+	}
+
+	if err := ctx.Run(globals); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
 }
 ```
 
-**Step 3: Verify it builds and runs**
+**Step 3: Add stub Run() methods for all leaf commands**
 
-Run:
+Still in `cmd/cli.go`, add at the bottom:
 
-```bash
-go build -o fat-controller . && ./fat-controller
+```go
+func (c *AuthLoginCmd) Run(globals *Globals) error {
+	fmt.Println("auth login: not yet implemented")
+	return nil
+}
+
+func (c *AuthLogoutCmd) Run(globals *Globals) error {
+	fmt.Println("auth logout: not yet implemented")
+	return nil
+}
+
+func (c *AuthStatusCmd) Run(globals *Globals) error {
+	fmt.Println("auth status: not yet implemented")
+	return nil
+}
+
+func (c *ConfigGetCmd) Run(globals *Globals) error {
+	fmt.Println("config get: not yet implemented")
+	return nil
+}
+
+func (c *ConfigSetCmd) Run(globals *Globals) error {
+	fmt.Println("config set: not yet implemented")
+	return nil
+}
+
+func (c *ConfigDeleteCmd) Run(globals *Globals) error {
+	fmt.Println("config delete: not yet implemented")
+	return nil
+}
+
+func (c *ConfigDiffCmd) Run(globals *Globals) error {
+	fmt.Println("config diff: not yet implemented")
+	return nil
+}
+
+func (c *ConfigApplyCmd) Run(globals *Globals) error {
+	fmt.Println("config apply: not yet implemented")
+	return nil
+}
+
+func (c *ConfigValidateCmd) Run(globals *Globals) error {
+	fmt.Println("config validate: not yet implemented")
+	return nil
+}
 ```
 
-Expected: Help output showing "CLI for managing Railway projects"
+Note: also add `"fmt"` to the imports in `cmd/cli.go`.
+
+**Step 4: Verify it builds and runs**
 
 Run:
 
@@ -147,142 +307,23 @@ Run:
 go build -o fat-controller . && ./fat-controller --help
 ```
 
-Expected: Same help output
-
-**Step 4: Commit**
-
-```bash
-git add main.go cmd/root.go
-git commit -m "feat: add cobra root command and main entrypoint"
-```
-
----
-
-### Task 3: Auth subcommand group with login/logout/status stubs
-
-**Files:**
-
-- Create: `cmd/auth/auth.go`
-- Create: `cmd/auth/login.go`
-- Create: `cmd/auth/logout.go`
-- Create: `cmd/auth/status.go`
-- Modify: `cmd/root.go`
-
-**Step 1: Create the auth group command**
-
-`cmd/auth/auth.go`:
-
-```go
-package auth
-
-import "github.com/spf13/cobra"
-
-// Cmd is the `fat-controller auth` parent command.
-// It has no RunE — invoking it without a subcommand shows help.
-var Cmd = &cobra.Command{
- Use:   "auth",
- Short: "Manage authentication",
-}
-
-func init() {
- Cmd.AddCommand(loginCmd)
- Cmd.AddCommand(logoutCmd)
- Cmd.AddCommand(statusCmd)
-}
-```
-
-**Step 2: Create stub subcommands**
-
-`cmd/auth/login.go`:
-
-```go
-package auth
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var loginCmd = &cobra.Command{
- Use:   "login",
- Short: "Log in to Railway via browser-based OAuth",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("login: not yet implemented")
-  return nil
- },
-}
-```
-
-`cmd/auth/logout.go`:
-
-```go
-package auth
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var logoutCmd = &cobra.Command{
- Use:   "logout",
- Short: "Clear stored credentials",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("logout: not yet implemented")
-  return nil
- },
-}
-```
-
-`cmd/auth/status.go`:
-
-```go
-package auth
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var statusCmd = &cobra.Command{
- Use:   "status",
- Short: "Show current authentication status",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("status: not yet implemented")
-  return nil
- },
-}
-```
-
-**Step 3: Wire auth group into root**
-
-Add to `cmd/root.go`:
-
-```go
-import (
- "github.com/hamishmorgan/fat-controller/cmd/auth"
- "github.com/spf13/cobra"
-)
-
-func init() {
- rootCmd.AddCommand(auth.Cmd)
-}
-```
-
-**Step 4: Verify the command tree works**
+Expected: Help output showing global flags and `auth`, `config` subcommand groups.
 
 Run:
 
 ```bash
-go build -o fat-controller . && ./fat-controller auth
+./fat-controller auth --help
 ```
 
-Expected: Help showing login, logout, status subcommands
+Expected: Help showing `login`, `logout`, `status` subcommands.
+
+Run:
+
+```bash
+./fat-controller config --help
+```
+
+Expected: Help showing `get`, `set`, `delete`, `diff`, `apply`, `validate` subcommands.
 
 Run:
 
@@ -290,178 +331,36 @@ Run:
 ./fat-controller auth login
 ```
 
-Expected: "login: not yet implemented"
+Expected: "auth login: not yet implemented"
 
 Run:
 
 ```bash
-./fat-controller auth logout
+./fat-controller config get
 ```
 
-Expected: "logout: not yet implemented"
+Expected: "config get: not yet implemented"
+
+**Step 5: Run mise check**
 
 Run:
 
 ```bash
-./fat-controller auth status
+mise run check
 ```
 
-Expected: "status: not yet implemented"
+Expected: All checks pass (golangci-lint may flag unused params — suppress with `//nolint` or fix).
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
-git add cmd/auth/ cmd/root.go
-git commit -m "feat: add auth subcommand group with login/logout/status stubs"
+git add main.go cmd/cli.go
+git commit -m "Add kong CLI skeleton with global flags and command stubs"
 ```
 
 ---
 
-### Task 4: Config subcommand group stubs
-
-**Files:**
-
-- Create: `cmd/config/config.go`
-- Create: `cmd/config/pull.go`
-- Create: `cmd/config/diff.go`
-- Create: `cmd/config/apply.go`
-- Modify: `cmd/root.go`
-
-**Step 1: Create config group and stub subcommands**
-
-`cmd/config/config.go`:
-
-```go
-package config
-
-import "github.com/spf13/cobra"
-
-// Cmd is the `fat-controller config` parent command.
-var Cmd = &cobra.Command{
- Use:   "config",
- Short: "Declarative configuration management",
-}
-
-func init() {
- Cmd.AddCommand(pullCmd)
- Cmd.AddCommand(diffCmd)
- Cmd.AddCommand(applyCmd)
-}
-```
-
-`cmd/config/pull.go`:
-
-```go
-package config
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var pullCmd = &cobra.Command{
- Use:   "pull",
- Short: "Fetch live state from Railway",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("config pull: not yet implemented")
-  return nil
- },
-}
-```
-
-`cmd/config/diff.go`:
-
-```go
-package config
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var diffCmd = &cobra.Command{
- Use:   "diff",
- Short: "Compare local config against live state",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("config diff: not yet implemented")
-  return nil
- },
-}
-```
-
-`cmd/config/apply.go`:
-
-```go
-package config
-
-import (
- "fmt"
-
- "github.com/spf13/cobra"
-)
-
-var applyCmd = &cobra.Command{
- Use:   "apply",
- Short: "Push configuration changes to Railway",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  fmt.Println("config apply: not yet implemented")
-  return nil
- },
-}
-```
-
-**Step 2: Wire config group into root**
-
-Update `cmd/root.go` to add:
-
-```go
-import (
- "github.com/hamishmorgan/fat-controller/cmd/auth"
- cmdconfig "github.com/hamishmorgan/fat-controller/cmd/config"
- "github.com/spf13/cobra"
-)
-
-func init() {
- rootCmd.AddCommand(auth.Cmd)
- rootCmd.AddCommand(cmdconfig.Cmd)
-}
-```
-
-Note: import alias `cmdconfig` avoids collision with any `config` package.
-
-**Step 3: Verify**
-
-Run:
-
-```bash
-go build -o fat-controller . && ./fat-controller config
-```
-
-Expected: Help showing pull, diff, apply subcommands
-
-Run:
-
-```bash
-./fat-controller config pull
-```
-
-Expected: "config pull: not yet implemented"
-
-**Step 4: Commit**
-
-```bash
-git add cmd/config/ cmd/root.go
-git commit -m "feat: add config subcommand group with pull/diff/apply stubs"
-```
-
----
-
-### Task 5: XDG paths module
+### Task 3: XDG paths module
 
 **Files:**
 
@@ -477,63 +376,65 @@ change the app name.
 `internal/platform/paths_test.go`:
 
 ```go
-package platform
+package platform_test
 
 import (
- "os"
- "path/filepath"
- "testing"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/platform"
 )
 
 func TestConfigDir(t *testing.T) {
- tmp := t.TempDir()
- t.Setenv("XDG_CONFIG_HOME", tmp)
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
 
- dir := ConfigDir()
- want := filepath.Join(tmp, "fat-controller")
- if dir != want {
-  t.Errorf("ConfigDir() = %q, want %q", dir, want)
- }
+	dir := platform.ConfigDir()
+	want := filepath.Join(tmp, "fat-controller")
+	if dir != want {
+		t.Errorf("ConfigDir() = %q, want %q", dir, want)
+	}
 }
 
 func TestAuthFilePath(t *testing.T) {
- tmp := t.TempDir()
- t.Setenv("XDG_CONFIG_HOME", tmp)
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
 
- path := AuthFilePath()
- want := filepath.Join(tmp, "fat-controller", "auth.json")
- if path != want {
-  t.Errorf("AuthFilePath() = %q, want %q", path, want)
- }
+	path := platform.AuthFilePath()
+	want := filepath.Join(tmp, "fat-controller", "auth.json")
+	if path != want {
+		t.Errorf("AuthFilePath() = %q, want %q", path, want)
+	}
 }
 
 func TestConfigFilePath(t *testing.T) {
- tmp := t.TempDir()
- t.Setenv("XDG_CONFIG_HOME", tmp)
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
 
- path := ConfigFilePath()
- want := filepath.Join(tmp, "fat-controller", "config.toml")
- if path != want {
-  t.Errorf("ConfigFilePath() = %q, want %q", path, want)
- }
+	path := platform.ConfigFilePath()
+	want := filepath.Join(tmp, "fat-controller", "config.toml")
+	if path != want {
+		t.Errorf("ConfigFilePath() = %q, want %q", path, want)
+	}
 }
 
 func TestEnsureConfigDir(t *testing.T) {
- tmp := t.TempDir()
- t.Setenv("XDG_CONFIG_HOME", tmp)
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
 
- dir, err := EnsureConfigDir()
- if err != nil {
-  t.Fatal(err)
- }
+	dir, err := platform.EnsureConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
 
- info, err := os.Stat(dir)
- if err != nil {
-  t.Fatalf("directory not created: %v", err)
- }
- if !info.IsDir() {
-  t.Fatalf("%q is not a directory", dir)
- }
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("directory not created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("%q is not a directory", dir)
+	}
 }
 ```
 
@@ -555,10 +456,10 @@ Expected: Compilation error — package doesn't exist yet.
 package platform
 
 import (
- "os"
- "path/filepath"
+	"os"
+	"path/filepath"
 
- "github.com/adrg/xdg"
+	"github.com/adrg/xdg"
 )
 
 const appName = "fat-controller"
@@ -566,29 +467,29 @@ const appName = "fat-controller"
 // ConfigDir returns the path to the app's config directory.
 // Does NOT create the directory.
 func ConfigDir() string {
- return filepath.Join(xdg.ConfigHome, appName)
+	return filepath.Join(xdg.ConfigHome, appName)
 }
 
 // AuthFilePath returns the path to the auth token fallback file.
 // Does NOT create the file or its parent directory.
 func AuthFilePath() string {
- return filepath.Join(xdg.ConfigHome, appName, "auth.json")
+	return filepath.Join(xdg.ConfigHome, appName, "auth.json")
 }
 
 // ConfigFilePath returns the path to the user config file.
 // Does NOT create the file or its parent directory.
 func ConfigFilePath() string {
- return filepath.Join(xdg.ConfigHome, appName, "config.toml")
+	return filepath.Join(xdg.ConfigHome, appName, "config.toml")
 }
 
 // EnsureConfigDir creates the config directory if it doesn't exist
 // and returns its path.
 func EnsureConfigDir() (string, error) {
- dir := ConfigDir()
- if err := os.MkdirAll(dir, 0700); err != nil {
-  return "", err
- }
- return dir, nil
+	dir := ConfigDir()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 ```
 
@@ -602,26 +503,24 @@ go test ./internal/platform/ -v
 
 Expected: All 4 tests pass.
 
-**Note:** `adrg/xdg` reads `XDG_CONFIG_HOME` at init time. The `t.Setenv`
-approach sets the env var before the test function runs, but xdg may have
-already cached the value. If tests fail because xdg cached the original
-value, the paths module should use `xdg.ConfigHome` (which is a mutable
-package-level variable that can be reassigned in tests) or we should
-construct paths from the env var directly. Verify this works; if not,
-adjust the implementation to read `os.Getenv("XDG_CONFIG_HOME")` with
-a fallback to `~/.config` instead of using the xdg library for this
-specific case.
+**Note:** `adrg/xdg` reads `XDG_CONFIG_HOME` at init time and caches it
+in `xdg.ConfigHome`. The `t.Setenv` call sets the env var before the test
+function runs, but xdg may have already cached the value from process
+start. If tests fail for this reason, change the implementation to read
+`os.Getenv("XDG_CONFIG_HOME")` directly with a fallback to
+`~/.config` instead of using the xdg library variable. Verify and adjust
+if needed.
 
 **Step 5: Commit**
 
 ```bash
 git add internal/platform/
-git commit -m "feat: add XDG-compliant path helpers for config and auth files"
+git commit -m "Add XDG-compliant path helpers for config and auth files"
 ```
 
 ---
 
-### Task 6: Token store — keyring with file fallback
+### Task 4: Token store — keyring with file fallback
 
 **Files:**
 
@@ -636,157 +535,153 @@ OS keyring first, falls back to a JSON file.
 `internal/auth/store_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "encoding/json"
- "os"
- "path/filepath"
- "testing"
+	"os"
+	"path/filepath"
+	"testing"
 
- "github.com/zalando/go-keyring"
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/zalando/go-keyring"
 )
 
 func TestTokenStore_SaveAndLoad_Keyring(t *testing.T) {
- keyring.MockInit()
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
 
- tokens := &StoredTokens{
-  AccessToken:  "access-123",
-  RefreshToken: "refresh-456",
-  ClientID:     "client-789",
- }
+	tokens := &auth.StoredTokens{
+		AccessToken:  "access-123",
+		RefreshToken: "refresh-456",
+		ClientID:     "client-789",
+	}
 
- if err := store.Save(tokens); err != nil {
-  t.Fatal(err)
- }
+	if err := store.Save(tokens); err != nil {
+		t.Fatal(err)
+	}
 
- loaded, err := store.Load()
- if err != nil {
-  t.Fatal(err)
- }
+	loaded, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 
- if loaded.AccessToken != tokens.AccessToken {
-  t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, tokens.AccessToken)
- }
- if loaded.RefreshToken != tokens.RefreshToken {
-  t.Errorf("RefreshToken = %q, want %q", loaded.RefreshToken, tokens.RefreshToken)
- }
- if loaded.ClientID != tokens.ClientID {
-  t.Errorf("ClientID = %q, want %q", loaded.ClientID, tokens.ClientID)
- }
+	if loaded.AccessToken != tokens.AccessToken {
+		t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, tokens.AccessToken)
+	}
+	if loaded.RefreshToken != tokens.RefreshToken {
+		t.Errorf("RefreshToken = %q, want %q", loaded.RefreshToken, tokens.RefreshToken)
+	}
+	if loaded.ClientID != tokens.ClientID {
+		t.Errorf("ClientID = %q, want %q", loaded.ClientID, tokens.ClientID)
+	}
 }
 
 func TestTokenStore_SaveAndLoad_FileFallback(t *testing.T) {
- // Simulate broken keyring
- keyring.MockInitWithError(errKeyringUnavailable)
+	keyring.MockInitWithError(os.ErrPermission)
 
- fallbackPath := filepath.Join(t.TempDir(), "auth.json")
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   fallbackPath,
- }
+	fallbackPath := filepath.Join(t.TempDir(), "auth.json")
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(fallbackPath),
+	)
 
- tokens := &StoredTokens{
-  AccessToken:  "access-abc",
-  RefreshToken: "refresh-def",
-  ClientID:     "client-ghi",
- }
+	tokens := &auth.StoredTokens{
+		AccessToken:  "access-abc",
+		RefreshToken: "refresh-def",
+		ClientID:     "client-ghi",
+	}
 
- if err := store.Save(tokens); err != nil {
-  t.Fatal(err)
- }
+	if err := store.Save(tokens); err != nil {
+		t.Fatal(err)
+	}
 
- // Verify file was created with correct permissions
- info, err := os.Stat(fallbackPath)
- if err != nil {
-  t.Fatalf("fallback file not created: %v", err)
- }
- if perm := info.Mode().Perm(); perm != 0600 {
-  t.Errorf("file permissions = %o, want 0600", perm)
- }
+	// Verify file was created with correct permissions.
+	info, err := os.Stat(fallbackPath)
+	if err != nil {
+		t.Fatalf("fallback file not created: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("file permissions = %o, want 0600", perm)
+	}
 
- loaded, err := store.Load()
- if err != nil {
-  t.Fatal(err)
- }
+	loaded, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 
- if loaded.AccessToken != tokens.AccessToken {
-  t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, tokens.AccessToken)
- }
+	if loaded.AccessToken != tokens.AccessToken {
+		t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, tokens.AccessToken)
+	}
 }
 
 func TestTokenStore_Delete_Keyring(t *testing.T) {
- keyring.MockInit()
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
 
- tokens := &StoredTokens{
-  AccessToken:  "access-123",
-  RefreshToken: "refresh-456",
-  ClientID:     "client-789",
- }
- store.Save(tokens)
+	tokens := &auth.StoredTokens{
+		AccessToken: "access-123",
+		ClientID:    "client-789",
+	}
+	if err := store.Save(tokens); err != nil {
+		t.Fatal(err)
+	}
 
- if err := store.Delete(); err != nil {
-  t.Fatal(err)
- }
+	if err := store.Delete(); err != nil {
+		t.Fatal(err)
+	}
 
- _, err := store.Load()
- if err != ErrNoStoredTokens {
-  t.Errorf("expected ErrNoStoredTokens, got %v", err)
- }
+	_, err := store.Load()
+	if err != auth.ErrNoStoredTokens {
+		t.Errorf("expected ErrNoStoredTokens, got %v", err)
+	}
 }
 
 func TestTokenStore_Delete_FileFallback(t *testing.T) {
- keyring.MockInitWithError(errKeyringUnavailable)
+	keyring.MockInitWithError(os.ErrPermission)
 
- fallbackPath := filepath.Join(t.TempDir(), "auth.json")
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   fallbackPath,
- }
+	fallbackPath := filepath.Join(t.TempDir(), "auth.json")
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(fallbackPath),
+	)
 
- tokens := &StoredTokens{
-  AccessToken:  "access-abc",
-  RefreshToken: "refresh-def",
-  ClientID:     "client-ghi",
- }
- store.Save(tokens)
+	tokens := &auth.StoredTokens{
+		AccessToken: "access-abc",
+		ClientID:    "client-ghi",
+	}
+	if err := store.Save(tokens); err != nil {
+		t.Fatal(err)
+	}
 
- if err := store.Delete(); err != nil {
-  t.Fatal(err)
- }
+	if err := store.Delete(); err != nil {
+		t.Fatal(err)
+	}
 
- if _, err := os.Stat(fallbackPath); !os.IsNotExist(err) {
-  t.Errorf("fallback file should be deleted")
- }
+	if _, err := os.Stat(fallbackPath); !os.IsNotExist(err) {
+		t.Errorf("fallback file should be deleted")
+	}
 }
 
 func TestTokenStore_Load_Empty(t *testing.T) {
- keyring.MockInit()
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
 
- _, err := store.Load()
- if err != ErrNoStoredTokens {
-  t.Errorf("expected ErrNoStoredTokens, got %v", err)
- }
+	_, err := store.Load()
+	if err != auth.ErrNoStoredTokens {
+		t.Errorf("expected ErrNoStoredTokens, got %v", err)
+	}
 }
 ```
 
@@ -808,121 +703,141 @@ Expected: Compilation error — types don't exist yet.
 package auth
 
 import (
- "encoding/json"
- "errors"
- "fmt"
- "os"
- "path/filepath"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 
- "github.com/zalando/go-keyring"
+	"github.com/zalando/go-keyring"
 )
 
-var (
- // ErrNoStoredTokens is returned when no tokens are found in keyring or file.
- ErrNoStoredTokens = errors.New("no stored tokens found")
-
- // errKeyringUnavailable is an internal sentinel for keyring failures.
- errKeyringUnavailable = errors.New("keyring unavailable")
-)
+// ErrNoStoredTokens is returned when no tokens are found in keyring or file.
+var ErrNoStoredTokens = errors.New("no stored tokens found")
 
 // StoredTokens holds the persisted OAuth tokens and client registration.
 type StoredTokens struct {
- AccessToken  string `json:"access_token"`
- RefreshToken string `json:"refresh_token"`
- ClientID     string `json:"client_id"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ClientID     string `json:"client_id"`
 }
 
 // TokenStore handles persisting OAuth tokens to OS keyring with file fallback.
 type TokenStore struct {
- keyringService string
- keyringUser    string
- fallbackPath   string
+	keyringService string
+	keyringUser    string
+	fallbackPath   string
 }
 
-// NewTokenStore creates a TokenStore with the default app-specific settings.
-func NewTokenStore(fallbackPath string) *TokenStore {
- return &TokenStore{
-  keyringService: "fat-controller",
-  keyringUser:    "oauth-token",
-  fallbackPath:   fallbackPath,
- }
+// TokenStoreOption configures a TokenStore.
+type TokenStoreOption func(*TokenStore)
+
+// WithKeyringService sets a custom keyring service name (useful for tests).
+func WithKeyringService(service string) TokenStoreOption {
+	return func(s *TokenStore) { s.keyringService = service }
+}
+
+// WithFallbackPath sets a custom fallback file path (useful for tests).
+func WithFallbackPath(path string) TokenStoreOption {
+	return func(s *TokenStore) { s.fallbackPath = path }
+}
+
+// NewTokenStore creates a TokenStore with default settings.
+// Pass options to override keyring service or fallback path.
+func NewTokenStore(opts ...TokenStoreOption) *TokenStore {
+	s := &TokenStore{
+		keyringService: "fat-controller",
+		keyringUser:    "oauth-token",
+		// fallbackPath should be set by caller or via option.
+		// Default empty — Load/Save will skip file fallback if unset.
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Save persists tokens. Tries keyring first, falls back to file.
 func (s *TokenStore) Save(tokens *StoredTokens) error {
- data, err := json.Marshal(tokens)
- if err != nil {
-  return fmt.Errorf("marshalling tokens: %w", err)
- }
+	data, err := json.Marshal(tokens)
+	if err != nil {
+		return fmt.Errorf("marshalling tokens: %w", err)
+	}
 
- if err := keyring.Set(s.keyringService, s.keyringUser, string(data)); err != nil {
-  // Keyring unavailable — fall back to file
-  return s.saveToFile(data)
- }
- return nil
+	if err := keyring.Set(s.keyringService, s.keyringUser, string(data)); err != nil {
+		// Keyring unavailable — fall back to file.
+		return s.saveToFile(data)
+	}
+	return nil
 }
 
 // Load retrieves stored tokens. Tries keyring first, then file.
 // Returns ErrNoStoredTokens if nothing is stored anywhere.
 func (s *TokenStore) Load() (*StoredTokens, error) {
- // Try keyring
- data, err := keyring.Get(s.keyringService, s.keyringUser)
- if err == nil {
-  var tokens StoredTokens
-  if err := json.Unmarshal([]byte(data), &tokens); err != nil {
-   return nil, fmt.Errorf("unmarshalling keyring data: %w", err)
-  }
-  return &tokens, nil
- }
+	// Try keyring.
+	data, err := keyring.Get(s.keyringService, s.keyringUser)
+	if err == nil {
+		var tokens StoredTokens
+		if err := json.Unmarshal([]byte(data), &tokens); err != nil {
+			return nil, fmt.Errorf("unmarshalling keyring data: %w", err)
+		}
+		return &tokens, nil
+	}
 
- if !errors.Is(err, keyring.ErrNotFound) {
-  // Keyring error (not "not found") — try file fallback
- }
-
- // Try file
- return s.loadFromFile()
+	// Keyring miss — try file fallback.
+	return s.loadFromFile()
 }
 
 // Delete removes stored tokens from both keyring and file.
 func (s *TokenStore) Delete() error {
- // Delete from keyring (ignore ErrNotFound)
- if err := keyring.Delete(s.keyringService, s.keyringUser); err != nil && !errors.Is(err, keyring.ErrNotFound) {
-  // Keyring error — not fatal, continue to file cleanup
- }
+	// Delete from keyring (ignore ErrNotFound).
+	if err := keyring.Delete(s.keyringService, s.keyringUser); err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		// Keyring error — not fatal, continue to file cleanup.
+	}
 
- // Delete file if it exists
- if err := os.Remove(s.fallbackPath); err != nil && !os.IsNotExist(err) {
-  return fmt.Errorf("removing fallback file: %w", err)
- }
- return nil
+	// Delete file if it exists.
+	if s.fallbackPath != "" {
+		if err := os.Remove(s.fallbackPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing fallback file: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *TokenStore) saveToFile(data []byte) error {
- dir := filepath.Dir(s.fallbackPath)
- if err := os.MkdirAll(dir, 0700); err != nil {
-  return fmt.Errorf("creating config directory: %w", err)
- }
+	if s.fallbackPath == "" {
+		return fmt.Errorf("keyring unavailable and no fallback path configured")
+	}
 
- if err := os.WriteFile(s.fallbackPath, data, 0600); err != nil {
-  return fmt.Errorf("writing fallback file: %w", err)
- }
- return nil
+	dir := filepath.Dir(s.fallbackPath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+
+	if err := os.WriteFile(s.fallbackPath, data, 0o600); err != nil {
+		return fmt.Errorf("writing fallback file: %w", err)
+	}
+	return nil
 }
 
 func (s *TokenStore) loadFromFile() (*StoredTokens, error) {
- data, err := os.ReadFile(s.fallbackPath)
- if err != nil {
-  if os.IsNotExist(err) {
-   return nil, ErrNoStoredTokens
-  }
-  return nil, fmt.Errorf("reading fallback file: %w", err)
- }
+	if s.fallbackPath == "" {
+		return nil, ErrNoStoredTokens
+	}
 
- var tokens StoredTokens
- if err := json.Unmarshal(data, &tokens); err != nil {
-  return nil, fmt.Errorf("unmarshalling fallback file: %w", err)
- }
- return &tokens, nil
+	data, err := os.ReadFile(s.fallbackPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrNoStoredTokens
+		}
+		return nil, fmt.Errorf("reading fallback file: %w", err)
+	}
+
+	var tokens StoredTokens
+	if err := json.Unmarshal(data, &tokens); err != nil {
+		return nil, fmt.Errorf("unmarshalling fallback file: %w", err)
+	}
+	return &tokens, nil
 }
 ```
 
@@ -940,105 +855,158 @@ Expected: All 5 tests pass.
 
 ```bash
 git add internal/auth/
-git commit -m "feat: add token store with OS keyring and JSON file fallback"
+git commit -m "Add token store with OS keyring and JSON file fallback"
 ```
 
 ---
 
-### Task 7: Token resolver — env var > keyring > file
+### Task 5: Token resolver — flag > env vars > keyring/file
 
 **Files:**
 
 - Create: `internal/auth/resolver.go`
 - Create: `internal/auth/resolver_test.go`
 
-This module determines which token to use and what auth header to send.
-Project access tokens use `Project-Access-Token`, account-level tokens
-use `Authorization: Bearer`.
+This module determines which token to use and what auth header to send,
+following the 4-level precedence: `--token` flag > `RAILWAY_API_TOKEN` >
+`RAILWAY_TOKEN` > stored OAuth credentials.
 
 **Step 1: Write the test**
 
 `internal/auth/resolver_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "path/filepath"
- "testing"
+	"path/filepath"
+	"testing"
 
- "github.com/zalando/go-keyring"
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/zalando/go-keyring"
 )
 
-func TestResolveToken_EnvVarTakesPrecedence(t *testing.T) {
- keyring.MockInit()
+func TestResolveAuth_FlagTakesPrecedence(t *testing.T) {
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
- // Store an OAuth token
- store.Save(&StoredTokens{AccessToken: "stored-token"})
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	// Store an OAuth token.
+	store.Save(&auth.StoredTokens{AccessToken: "stored-token"})
+	// Set env vars too.
+	t.Setenv("RAILWAY_API_TOKEN", "api-token")
+	t.Setenv("RAILWAY_TOKEN", "project-token")
 
- // Env var should win
- t.Setenv("RAILWAY_TOKEN", "env-token")
-
- resolved, err := ResolveAuth(store)
- if err != nil {
-  t.Fatal(err)
- }
- if resolved.Token != "env-token" {
-  t.Errorf("Token = %q, want %q", resolved.Token, "env-token")
- }
- if resolved.HeaderName != "Project-Access-Token" {
-  t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Project-Access-Token")
- }
+	// Flag should win.
+	resolved, err := auth.ResolveAuth("flag-token", store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Token != "flag-token" {
+		t.Errorf("Token = %q, want %q", resolved.Token, "flag-token")
+	}
+	if resolved.HeaderName != "Authorization" {
+		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
+	}
+	if resolved.Source != "flag" {
+		t.Errorf("Source = %q, want %q", resolved.Source, "flag")
+	}
 }
 
-func TestResolveToken_FallsBackToStore(t *testing.T) {
- keyring.MockInit()
+func TestResolveAuth_APITokenEnvVar(t *testing.T) {
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
- store.Save(&StoredTokens{AccessToken: "stored-token"})
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	t.Setenv("RAILWAY_API_TOKEN", "api-token")
+	t.Setenv("RAILWAY_TOKEN", "project-token")
 
- // No env var set
- t.Setenv("RAILWAY_TOKEN", "")
-
- resolved, err := ResolveAuth(store)
- if err != nil {
-  t.Fatal(err)
- }
- if resolved.Token != "stored-token" {
-  t.Errorf("Token = %q, want %q", resolved.Token, "stored-token")
- }
- if resolved.HeaderName != "Authorization" {
-  t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
- }
- if resolved.HeaderValue != "Bearer stored-token" {
-  t.Errorf("HeaderValue = %q, want %q", resolved.HeaderValue, "Bearer stored-token")
- }
+	resolved, err := auth.ResolveAuth("", store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Token != "api-token" {
+		t.Errorf("Token = %q, want %q", resolved.Token, "api-token")
+	}
+	if resolved.HeaderName != "Authorization" {
+		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
+	}
+	if resolved.Source != "env:RAILWAY_API_TOKEN" {
+		t.Errorf("Source = %q, want %q", resolved.Source, "env:RAILWAY_API_TOKEN")
+	}
 }
 
-func TestResolveToken_NothingAvailable(t *testing.T) {
- keyring.MockInit()
+func TestResolveAuth_ProjectTokenEnvVar(t *testing.T) {
+	keyring.MockInit()
 
- store := &TokenStore{
-  keyringService: "fat-controller-test",
-  keyringUser:    "oauth-token",
-  fallbackPath:   filepath.Join(t.TempDir(), "auth.json"),
- }
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	t.Setenv("RAILWAY_API_TOKEN", "")
+	t.Setenv("RAILWAY_TOKEN", "project-token")
 
- t.Setenv("RAILWAY_TOKEN", "")
+	resolved, err := auth.ResolveAuth("", store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Token != "project-token" {
+		t.Errorf("Token = %q, want %q", resolved.Token, "project-token")
+	}
+	if resolved.HeaderName != "Project-Access-Token" {
+		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Project-Access-Token")
+	}
+	if resolved.Source != "env:RAILWAY_TOKEN" {
+		t.Errorf("Source = %q, want %q", resolved.Source, "env:RAILWAY_TOKEN")
+	}
+}
 
- _, err := ResolveAuth(store)
- if err != ErrNotAuthenticated {
-  t.Errorf("expected ErrNotAuthenticated, got %v", err)
- }
+func TestResolveAuth_FallsBackToStore(t *testing.T) {
+	keyring.MockInit()
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+	store.Save(&auth.StoredTokens{AccessToken: "stored-token"})
+
+	t.Setenv("RAILWAY_API_TOKEN", "")
+	t.Setenv("RAILWAY_TOKEN", "")
+
+	resolved, err := auth.ResolveAuth("", store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Token != "stored-token" {
+		t.Errorf("Token = %q, want %q", resolved.Token, "stored-token")
+	}
+	if resolved.HeaderName != "Authorization" {
+		t.Errorf("HeaderName = %q, want %q", resolved.HeaderName, "Authorization")
+	}
+	if resolved.Source != "stored" {
+		t.Errorf("Source = %q, want %q", resolved.Source, "stored")
+	}
+}
+
+func TestResolveAuth_NothingAvailable(t *testing.T) {
+	keyring.MockInit()
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+
+	t.Setenv("RAILWAY_API_TOKEN", "")
+	t.Setenv("RAILWAY_TOKEN", "")
+
+	_, err := auth.ResolveAuth("", store)
+	if err != auth.ErrNotAuthenticated {
+		t.Errorf("expected ErrNotAuthenticated, got %v", err)
+	}
 }
 ```
 
@@ -1047,7 +1015,7 @@ func TestResolveToken_NothingAvailable(t *testing.T) {
 Run:
 
 ```bash
-go test ./internal/auth/ -v -run TestResolve
+go test ./internal/auth/ -v -run TestResolveAuth
 ```
 
 Expected: Compilation error — `ResolveAuth` doesn't exist.
@@ -1060,54 +1028,77 @@ Expected: Compilation error — `ResolveAuth` doesn't exist.
 package auth
 
 import (
- "errors"
- "fmt"
- "os"
+	"errors"
+	"fmt"
+	"os"
 )
 
+// ErrNotAuthenticated is returned when no token is available from any source.
 var ErrNotAuthenticated = errors.New("not authenticated: run 'fat-controller auth login' or set RAILWAY_TOKEN")
 
 // ResolvedAuth contains the resolved token and the HTTP header to use.
 type ResolvedAuth struct {
- Token       string
- HeaderName  string
- HeaderValue string
- Source      string // "env", "keyring", "file" — for diagnostics
+	Token       string
+	HeaderName  string
+	HeaderValue string
+	Source      string // "flag", "env:RAILWAY_API_TOKEN", "env:RAILWAY_TOKEN", "stored"
 }
 
 // ResolveAuth determines the active auth token using the precedence:
-// 1. RAILWAY_TOKEN env var (project access token assumed)
-// 2. Stored OAuth token (from keyring or file)
-func ResolveAuth(store *TokenStore) (*ResolvedAuth, error) {
- // 1. Environment variable
- if token := os.Getenv("RAILWAY_TOKEN"); token != "" {
-  return &ResolvedAuth{
-   Token:       token,
-   HeaderName:  "Project-Access-Token",
-   HeaderValue: token,
-   Source:      "env",
-  }, nil
- }
+//  1. flagToken (from --token flag)
+//  2. RAILWAY_API_TOKEN env var (account/workspace-scoped)
+//  3. RAILWAY_TOKEN env var (project-scoped)
+//  4. Stored OAuth token (from keyring or file)
+func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
+	// 1. --token flag
+	if flagToken != "" {
+		return &ResolvedAuth{
+			Token:       flagToken,
+			HeaderName:  "Authorization",
+			HeaderValue: "Bearer " + flagToken,
+			Source:      "flag",
+		}, nil
+	}
 
- // 2. Stored OAuth token
- tokens, err := store.Load()
- if err != nil {
-  if errors.Is(err, ErrNoStoredTokens) {
-   return nil, ErrNotAuthenticated
-  }
-  return nil, fmt.Errorf("loading stored tokens: %w", err)
- }
+	// 2. RAILWAY_API_TOKEN env var
+	if token := os.Getenv("RAILWAY_API_TOKEN"); token != "" {
+		return &ResolvedAuth{
+			Token:       token,
+			HeaderName:  "Authorization",
+			HeaderValue: "Bearer " + token,
+			Source:      "env:RAILWAY_API_TOKEN",
+		}, nil
+	}
 
- if tokens.AccessToken == "" {
-  return nil, ErrNotAuthenticated
- }
+	// 3. RAILWAY_TOKEN env var (project-scoped)
+	if token := os.Getenv("RAILWAY_TOKEN"); token != "" {
+		return &ResolvedAuth{
+			Token:       token,
+			HeaderName:  "Project-Access-Token",
+			HeaderValue: token,
+			Source:      "env:RAILWAY_TOKEN",
+		}, nil
+	}
 
- return &ResolvedAuth{
-  Token:       tokens.AccessToken,
-  HeaderName:  "Authorization",
-  HeaderValue: "Bearer " + tokens.AccessToken,
-  Source:      "stored",
- }, nil
+	// 4. Stored OAuth token
+	tokens, err := store.Load()
+	if err != nil {
+		if errors.Is(err, ErrNoStoredTokens) {
+			return nil, ErrNotAuthenticated
+		}
+		return nil, fmt.Errorf("loading stored tokens: %w", err)
+	}
+
+	if tokens.AccessToken == "" {
+		return nil, ErrNotAuthenticated
+	}
+
+	return &ResolvedAuth{
+		Token:       tokens.AccessToken,
+		HeaderName:  "Authorization",
+		HeaderValue: "Bearer " + tokens.AccessToken,
+		Source:      "stored",
+	}, nil
 }
 ```
 
@@ -1116,21 +1107,21 @@ func ResolveAuth(store *TokenStore) (*ResolvedAuth, error) {
 Run:
 
 ```bash
-go test ./internal/auth/ -v -run TestResolve
+go test ./internal/auth/ -v -run TestResolveAuth
 ```
 
-Expected: All 3 tests pass.
+Expected: All 5 tests pass.
 
 **Step 5: Commit**
 
 ```bash
 git add internal/auth/resolver.go internal/auth/resolver_test.go
-git commit -m "feat: add token resolver with env var > keyring > file precedence"
+git commit -m "Add token resolver with flag > env vars > keyring/file precedence"
 ```
 
 ---
 
-### Task 8: PKCE helpers
+### Task 6: PKCE helpers
 
 **Files:**
 
@@ -1142,65 +1133,67 @@ git commit -m "feat: add token resolver with env var > keyring > file precedence
 `internal/auth/pkce_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "crypto/sha256"
- "encoding/base64"
- "testing"
+	"crypto/sha256"
+	"encoding/base64"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
 func TestGenerateCodeVerifier(t *testing.T) {
- v1, err := GenerateCodeVerifier()
- if err != nil {
-  t.Fatal(err)
- }
+	v1, err := auth.GenerateCodeVerifier()
+	if err != nil {
+		t.Fatal(err)
+	}
 
- // Must be at least 43 characters (RFC 7636)
- if len(v1) < 43 {
-  t.Errorf("verifier too short: %d chars", len(v1))
- }
+	// Must be at least 43 characters (RFC 7636).
+	if len(v1) < 43 {
+		t.Errorf("verifier too short: %d chars", len(v1))
+	}
 
- // Must be different each time
- v2, err := GenerateCodeVerifier()
- if err != nil {
-  t.Fatal(err)
- }
- if v1 == v2 {
-  t.Error("two verifiers should not be identical")
- }
+	// Must be different each time.
+	v2, err := auth.GenerateCodeVerifier()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v1 == v2 {
+		t.Error("two verifiers should not be identical")
+	}
 }
 
 func TestCodeChallenge(t *testing.T) {
- verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
- challenge := CodeChallenge(verifier)
+	challenge := auth.CodeChallenge(verifier)
 
- // Manually compute expected value
- h := sha256.Sum256([]byte(verifier))
- want := base64.RawURLEncoding.EncodeToString(h[:])
+	// Manually compute expected value.
+	h := sha256.Sum256([]byte(verifier))
+	want := base64.RawURLEncoding.EncodeToString(h[:])
 
- if challenge != want {
-  t.Errorf("CodeChallenge() = %q, want %q", challenge, want)
- }
+	if challenge != want {
+		t.Errorf("CodeChallenge() = %q, want %q", challenge, want)
+	}
 }
 
 func TestGenerateState(t *testing.T) {
- s1, err := GenerateState()
- if err != nil {
-  t.Fatal(err)
- }
- if len(s1) == 0 {
-  t.Error("state should not be empty")
- }
+	s1, err := auth.GenerateState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s1) == 0 {
+		t.Error("state should not be empty")
+	}
 
- s2, err := GenerateState()
- if err != nil {
-  t.Fatal(err)
- }
- if s1 == s2 {
-  t.Error("two states should not be identical")
- }
+	s2, err := auth.GenerateState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s1 == s2 {
+		t.Error("two states should not be identical")
+	}
 }
 ```
 
@@ -1222,34 +1215,34 @@ Expected: Compilation error.
 package auth
 
 import (
- "crypto/rand"
- "crypto/sha256"
- "encoding/base64"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 )
 
 // GenerateCodeVerifier creates a cryptographically random PKCE code verifier.
 // Returns a 43-character base64url-encoded string (32 random bytes).
 func GenerateCodeVerifier() (string, error) {
- b := make([]byte, 32)
- if _, err := rand.Read(b); err != nil {
-  return "", err
- }
- return base64.RawURLEncoding.EncodeToString(b), nil
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // CodeChallenge computes the S256 PKCE code challenge for a verifier.
 func CodeChallenge(verifier string) string {
- h := sha256.Sum256([]byte(verifier))
- return base64.RawURLEncoding.EncodeToString(h[:])
+	h := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(h[:])
 }
 
 // GenerateState creates a random state parameter for CSRF protection.
 func GenerateState() (string, error) {
- b := make([]byte, 16)
- if _, err := rand.Read(b); err != nil {
-  return "", err
- }
- return base64.RawURLEncoding.EncodeToString(b), nil
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 ```
 
@@ -1267,12 +1260,12 @@ Expected: All 3 tests pass.
 
 ```bash
 git add internal/auth/pkce.go internal/auth/pkce_test.go
-git commit -m "feat: add PKCE code verifier, challenge, and state helpers"
+git commit -m "Add PKCE code verifier, challenge, and state helpers"
 ```
 
 ---
 
-### Task 9: OAuth client — registration, auth URL, token exchange
+### Task 7: OAuth client — registration, auth URL, token exchange
 
 **Files:**
 
@@ -1281,205 +1274,185 @@ git commit -m "feat: add PKCE code verifier, challenge, and state helpers"
 
 This is the core OAuth client. It handles dynamic client registration,
 building the authorization URL, exchanging codes for tokens, and refreshing.
-The actual HTTP calls use `net/http` — tests use `httptest.NewServer`.
+Tests use `httptest.NewServer` to mock Railway's endpoints.
 
 **Step 1: Write the test**
 
 `internal/auth/oauth_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "encoding/json"
- "net/http"
- "net/http/httptest"
- "net/url"
- "testing"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
 func TestOAuthClient_RegisterClient(t *testing.T) {
- server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  if r.Method != "POST" {
-   t.Errorf("expected POST, got %s", r.Method)
-  }
-  if r.Header.Get("Content-Type") != "application/json" {
-   t.Errorf("expected application/json content type")
-  }
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("expected application/json content type")
+		}
 
-  var req RegistrationRequest
-  if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-   t.Fatal(err)
-  }
-  if req.ClientName != "Fat Controller CLI" {
-   t.Errorf("ClientName = %q, want %q", req.ClientName, "Fat Controller CLI")
-  }
-  if req.TokenEndpointAuthMethod != "none" {
-   t.Errorf("TokenEndpointAuthMethod = %q, want %q", req.TokenEndpointAuthMethod, "none")
-  }
-  if req.ApplicationType != "native" {
-   t.Errorf("ApplicationType = %q, want %q", req.ApplicationType, "native")
-  }
+		var req auth.RegistrationRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatal(err)
+		}
+		if req.ClientName != "Fat Controller CLI" {
+			t.Errorf("ClientName = %q", req.ClientName)
+		}
+		if req.TokenEndpointAuthMethod != "none" {
+			t.Errorf("TokenEndpointAuthMethod = %q", req.TokenEndpointAuthMethod)
+		}
+		if req.ApplicationType != "native" {
+			t.Errorf("ApplicationType = %q", req.ApplicationType)
+		}
 
-  json.NewEncoder(w).Encode(RegistrationResponse{
-   ClientID:   "test-client-id",
-   ClientName: "Fat Controller CLI",
-  })
- }))
- defer server.Close()
+		json.NewEncoder(w).Encode(auth.RegistrationResponse{
+			ClientID:   "test-client-id",
+			ClientName: "Fat Controller CLI",
+		})
+	}))
+	defer server.Close()
 
- client := &OAuthClient{
-  RegistrationURL: server.URL,
- }
- resp, err := client.RegisterClient("http://127.0.0.1:12345/callback")
- if err != nil {
-  t.Fatal(err)
- }
- if resp.ClientID != "test-client-id" {
-  t.Errorf("ClientID = %q, want %q", resp.ClientID, "test-client-id")
- }
+	client := &auth.OAuthClient{
+		RegistrationURL: server.URL,
+	}
+	resp, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.ClientID != "test-client-id" {
+		t.Errorf("ClientID = %q", resp.ClientID)
+	}
 }
 
 func TestOAuthClient_AuthorizationURL(t *testing.T) {
- client := &OAuthClient{
-  AuthEndpoint: "https://example.com/oauth/auth",
- }
+	client := &auth.OAuthClient{
+		AuthEndpoint: "https://example.com/oauth/auth",
+	}
 
- authURL := client.AuthorizationURL("client-123", "http://127.0.0.1:8080/callback", "state-abc", "challenge-xyz")
+	authURL := client.AuthorizationURL("client-123", "http://127.0.0.1:8080/callback", "state-abc", "challenge-xyz")
 
- parsed, err := url.Parse(authURL)
- if err != nil {
-  t.Fatal(err)
- }
+	parsed, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatal(err)
+	}
 
- tests := map[string]string{
-  "response_type":         "code",
-  "client_id":             "client-123",
-  "redirect_uri":          "http://127.0.0.1:8080/callback",
-  "state":                 "state-abc",
-  "code_challenge":        "challenge-xyz",
-  "code_challenge_method": "S256",
-  "prompt":                "consent",
- }
- for key, want := range tests {
-  got := parsed.Query().Get(key)
-  if got != want {
-   t.Errorf("param %q = %q, want %q", key, got, want)
-  }
- }
+	tests := map[string]string{
+		"response_type":         "code",
+		"client_id":             "client-123",
+		"redirect_uri":          "http://127.0.0.1:8080/callback",
+		"state":                 "state-abc",
+		"code_challenge":        "challenge-xyz",
+		"code_challenge_method": "S256",
+		"prompt":                "consent",
+	}
+	for key, want := range tests {
+		got := parsed.Query().Get(key)
+		if got != want {
+			t.Errorf("param %q = %q, want %q", key, got, want)
+		}
+	}
 
- // Verify scope contains required values
- scope := parsed.Query().Get("scope")
- for _, required := range []string{"openid", "offline_access"} {
-  found := false
-  for _, s := range splitScope(scope) {
-   if s == required {
-    found = true
-    break
-   }
-  }
-  if !found {
-   t.Errorf("scope missing %q, got %q", required, scope)
-  }
- }
+	// Verify scope contains required values.
+	scope := parsed.Query().Get("scope")
+	for _, required := range []string{"openid", "offline_access"} {
+		if !strings.Contains(scope, required) {
+			t.Errorf("scope missing %q, got %q", required, scope)
+		}
+	}
 }
 
 func TestOAuthClient_ExchangeCode(t *testing.T) {
- server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  if r.Method != "POST" {
-   t.Errorf("expected POST, got %s", r.Method)
-  }
-  if err := r.ParseForm(); err != nil {
-   t.Fatal(err)
-  }
-  if r.Form.Get("grant_type") != "authorization_code" {
-   t.Errorf("grant_type = %q", r.Form.Get("grant_type"))
-  }
-  if r.Form.Get("code") != "auth-code-123" {
-   t.Errorf("code = %q", r.Form.Get("code"))
-  }
-  if r.Form.Get("code_verifier") != "verifier-abc" {
-   t.Errorf("code_verifier = %q", r.Form.Get("code_verifier"))
-  }
-  // Native client: client_id in body, no secret
-  if r.Form.Get("client_id") != "client-123" {
-   t.Errorf("client_id = %q", r.Form.Get("client_id"))
-  }
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if r.Form.Get("grant_type") != "authorization_code" {
+			t.Errorf("grant_type = %q", r.Form.Get("grant_type"))
+		}
+		if r.Form.Get("code") != "auth-code-123" {
+			t.Errorf("code = %q", r.Form.Get("code"))
+		}
+		if r.Form.Get("code_verifier") != "verifier-abc" {
+			t.Errorf("code_verifier = %q", r.Form.Get("code_verifier"))
+		}
+		// Native client: client_id in body, no secret.
+		if r.Form.Get("client_id") != "client-123" {
+			t.Errorf("client_id = %q", r.Form.Get("client_id"))
+		}
 
-  json.NewEncoder(w).Encode(TokenResponse{
-   AccessToken:  "new-access-token",
-   RefreshToken: "new-refresh-token",
-   ExpiresIn:    3600,
-   TokenType:    "Bearer",
-  })
- }))
- defer server.Close()
+		json.NewEncoder(w).Encode(auth.TokenResponse{
+			AccessToken:  "new-access-token",
+			RefreshToken: "new-refresh-token",
+			ExpiresIn:    3600,
+			TokenType:    "Bearer",
+		})
+	}))
+	defer server.Close()
 
- client := &OAuthClient{TokenEndpoint: server.URL}
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
 
- resp, err := client.ExchangeCode("client-123", "auth-code-123", "http://127.0.0.1:8080/callback", "verifier-abc")
- if err != nil {
-  t.Fatal(err)
- }
- if resp.AccessToken != "new-access-token" {
-  t.Errorf("AccessToken = %q", resp.AccessToken)
- }
- if resp.RefreshToken != "new-refresh-token" {
-  t.Errorf("RefreshToken = %q", resp.RefreshToken)
- }
+	resp, err := client.ExchangeCode("client-123", "auth-code-123", "http://127.0.0.1:8080/callback", "verifier-abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.AccessToken != "new-access-token" {
+		t.Errorf("AccessToken = %q", resp.AccessToken)
+	}
+	if resp.RefreshToken != "new-refresh-token" {
+		t.Errorf("RefreshToken = %q", resp.RefreshToken)
+	}
 }
 
 func TestOAuthClient_RefreshToken(t *testing.T) {
- server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  r.ParseForm()
-  if r.Form.Get("grant_type") != "refresh_token" {
-   t.Errorf("grant_type = %q", r.Form.Get("grant_type"))
-  }
-  if r.Form.Get("refresh_token") != "old-refresh" {
-   t.Errorf("refresh_token = %q", r.Form.Get("refresh_token"))
-  }
-  if r.Form.Get("client_id") != "client-123" {
-   t.Errorf("client_id = %q", r.Form.Get("client_id"))
-  }
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if r.Form.Get("grant_type") != "refresh_token" {
+			t.Errorf("grant_type = %q", r.Form.Get("grant_type"))
+		}
+		if r.Form.Get("refresh_token") != "old-refresh" {
+			t.Errorf("refresh_token = %q", r.Form.Get("refresh_token"))
+		}
+		if r.Form.Get("client_id") != "client-123" {
+			t.Errorf("client_id = %q", r.Form.Get("client_id"))
+		}
 
-  json.NewEncoder(w).Encode(TokenResponse{
-   AccessToken:  "refreshed-access",
-   RefreshToken: "rotated-refresh",
-   ExpiresIn:    3600,
-  })
- }))
- defer server.Close()
+		json.NewEncoder(w).Encode(auth.TokenResponse{
+			AccessToken:  "refreshed-access",
+			RefreshToken: "rotated-refresh",
+			ExpiresIn:    3600,
+		})
+	}))
+	defer server.Close()
 
- client := &OAuthClient{TokenEndpoint: server.URL}
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
 
- resp, err := client.RefreshToken("client-123", "old-refresh")
- if err != nil {
-  t.Fatal(err)
- }
- if resp.AccessToken != "refreshed-access" {
-  t.Errorf("AccessToken = %q", resp.AccessToken)
- }
- if resp.RefreshToken != "rotated-refresh" {
-  t.Errorf("RefreshToken = %q, want rotated token", resp.RefreshToken)
- }
-}
-
-func splitScope(s string) []string {
- var result []string
- for _, part := range []byte(s) {
-  _ = part
- }
- // Simple split by space
- start := 0
- for i := 0; i <= len(s); i++ {
-  if i == len(s) || s[i] == ' ' {
-   if i > start {
-    result = append(result, s[start:i])
-   }
-   start = i + 1
-  }
- }
- return result
+	resp, err := client.RefreshToken("client-123", "old-refresh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.AccessToken != "refreshed-access" {
+		t.Errorf("AccessToken = %q", resp.AccessToken)
+	}
+	if resp.RefreshToken != "rotated-refresh" {
+		t.Errorf("RefreshToken = %q", resp.RefreshToken)
+	}
 }
 ```
 
@@ -1501,180 +1474,180 @@ Expected: Compilation error.
 package auth
 
 import (
- "bytes"
- "encoding/json"
- "fmt"
- "net/http"
- "net/url"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 )
 
 const (
- DefaultAuthEndpoint    = "https://backboard.railway.com/oauth/auth"
- DefaultTokenEndpoint   = "https://backboard.railway.com/oauth/token"
- DefaultRegistrationURL = "https://backboard.railway.com/oauth/register"
- DefaultUserinfoURL     = "https://backboard.railway.com/oauth/me"
- DefaultGraphQLURL      = "https://backboard.railway.com/graphql/v2"
+	DefaultAuthEndpoint    = "https://backboard.railway.com/oauth/auth"
+	DefaultTokenEndpoint   = "https://backboard.railway.com/oauth/token"
+	DefaultRegistrationURL = "https://backboard.railway.com/oauth/register"
+	DefaultUserinfoURL     = "https://backboard.railway.com/oauth/me"
+	DefaultGraphQLURL      = "https://backboard.railway.com/graphql/v2"
 
- defaultScope = "openid email profile offline_access"
+	defaultScope = "openid email profile offline_access"
 )
 
 // OAuthClient handles Railway OAuth 2.0 operations.
 // Endpoints are configurable for testing.
 type OAuthClient struct {
- AuthEndpoint    string
- TokenEndpoint   string
- RegistrationURL string
- UserinfoURL     string
+	AuthEndpoint    string
+	TokenEndpoint   string
+	RegistrationURL string
+	UserinfoURL     string
 
- HTTPClient *http.Client
+	HTTPClient *http.Client
 }
 
 // NewOAuthClient creates an OAuthClient with Railway's production endpoints.
 func NewOAuthClient() *OAuthClient {
- return &OAuthClient{
-  AuthEndpoint:    DefaultAuthEndpoint,
-  TokenEndpoint:   DefaultTokenEndpoint,
-  RegistrationURL: DefaultRegistrationURL,
-  UserinfoURL:     DefaultUserinfoURL,
-  HTTPClient:      http.DefaultClient,
- }
+	return &OAuthClient{
+		AuthEndpoint:    DefaultAuthEndpoint,
+		TokenEndpoint:   DefaultTokenEndpoint,
+		RegistrationURL: DefaultRegistrationURL,
+		UserinfoURL:     DefaultUserinfoURL,
+		HTTPClient:      http.DefaultClient,
+	}
 }
 
 // RegistrationRequest is the body for dynamic client registration (RFC 7591).
 type RegistrationRequest struct {
- ClientName              string   `json:"client_name"`
- RedirectURIs            []string `json:"redirect_uris"`
- TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
- GrantTypes              []string `json:"grant_types"`
- ResponseTypes           []string `json:"response_types"`
- ApplicationType         string   `json:"application_type"`
+	ClientName              string   `json:"client_name"`
+	RedirectURIs            []string `json:"redirect_uris"`
+	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
+	GrantTypes              []string `json:"grant_types"`
+	ResponseTypes           []string `json:"response_types"`
+	ApplicationType         string   `json:"application_type"`
 }
 
 // RegistrationResponse is returned by the registration endpoint.
 type RegistrationResponse struct {
- ClientID                string `json:"client_id"`
- ClientName              string `json:"client_name"`
- RegistrationAccessToken string `json:"registration_access_token"`
- RegistrationClientURI   string `json:"registration_client_uri"`
+	ClientID                string `json:"client_id"`
+	ClientName              string `json:"client_name"`
+	RegistrationAccessToken string `json:"registration_access_token"`
+	RegistrationClientURI   string `json:"registration_client_uri"`
 }
 
 // TokenResponse is returned by the token endpoint.
 type TokenResponse struct {
- AccessToken  string `json:"access_token"`
- TokenType    string `json:"token_type"`
- ExpiresIn    int    `json:"expires_in"`
- RefreshToken string `json:"refresh_token"`
- IDToken      string `json:"id_token"`
- Scope        string `json:"scope"`
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+	Scope        string `json:"scope"`
 }
 
 // RegisterClient performs dynamic client registration for a native (public) app.
 func (c *OAuthClient) RegisterClient(redirectURI string) (*RegistrationResponse, error) {
- reqBody := RegistrationRequest{
-  ClientName:              "Fat Controller CLI",
-  RedirectURIs:            []string{redirectURI},
-  TokenEndpointAuthMethod: "none",
-  GrantTypes:              []string{"authorization_code", "refresh_token"},
-  ResponseTypes:           []string{"code"},
-  ApplicationType:         "native",
- }
+	reqBody := RegistrationRequest{
+		ClientName:              "Fat Controller CLI",
+		RedirectURIs:            []string{redirectURI},
+		TokenEndpointAuthMethod: "none",
+		GrantTypes:              []string{"authorization_code", "refresh_token"},
+		ResponseTypes:           []string{"code"},
+		ApplicationType:         "native",
+	}
 
- body, err := json.Marshal(reqBody)
- if err != nil {
-  return nil, fmt.Errorf("marshalling registration request: %w", err)
- }
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling registration request: %w", err)
+	}
 
- resp, err := c.httpClient().Post(c.RegistrationURL, "application/json", bytes.NewReader(body))
- if err != nil {
-  return nil, fmt.Errorf("registration request failed: %w", err)
- }
- defer resp.Body.Close()
+	resp, err := c.httpClient().Post(c.RegistrationURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("registration request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
- if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-  return nil, fmt.Errorf("registration failed with status %d", resp.StatusCode)
- }
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("registration failed with status %d", resp.StatusCode)
+	}
 
- var reg RegistrationResponse
- if err := json.NewDecoder(resp.Body).Decode(&reg); err != nil {
-  return nil, fmt.Errorf("decoding registration response: %w", err)
- }
- return &reg, nil
+	var reg RegistrationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&reg); err != nil {
+		return nil, fmt.Errorf("decoding registration response: %w", err)
+	}
+	return &reg, nil
 }
 
 // AuthorizationURL builds the URL the user should visit to authorize.
 func (c *OAuthClient) AuthorizationURL(clientID, redirectURI, state, codeChallenge string) string {
- v := url.Values{
-  "response_type":         {"code"},
-  "client_id":             {clientID},
-  "redirect_uri":          {redirectURI},
-  "scope":                 {defaultScope},
-  "state":                 {state},
-  "code_challenge":        {codeChallenge},
-  "code_challenge_method": {"S256"},
-  "prompt":                {"consent"},
- }
- return c.AuthEndpoint + "?" + v.Encode()
+	v := url.Values{
+		"response_type":         {"code"},
+		"client_id":             {clientID},
+		"redirect_uri":          {redirectURI},
+		"scope":                 {defaultScope},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
+		"code_challenge_method": {"S256"},
+		"prompt":                {"consent"},
+	}
+	return c.AuthEndpoint + "?" + v.Encode()
 }
 
 // ExchangeCode exchanges an authorization code for tokens.
 // Uses PKCE — no client secret (native client).
 func (c *OAuthClient) ExchangeCode(clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error) {
- data := url.Values{
-  "grant_type":    {"authorization_code"},
-  "code":          {code},
-  "redirect_uri":  {redirectURI},
-  "client_id":     {clientID},
-  "code_verifier": {codeVerifier},
- }
+	data := url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {redirectURI},
+		"client_id":     {clientID},
+		"code_verifier": {codeVerifier},
+	}
 
- resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
- if err != nil {
-  return nil, fmt.Errorf("token exchange request failed: %w", err)
- }
- defer resp.Body.Close()
+	resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
+	if err != nil {
+		return nil, fmt.Errorf("token exchange request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
- if resp.StatusCode != http.StatusOK {
-  return nil, fmt.Errorf("token exchange failed with status %d", resp.StatusCode)
- }
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token exchange failed with status %d", resp.StatusCode)
+	}
 
- var tok TokenResponse
- if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
-  return nil, fmt.Errorf("decoding token response: %w", err)
- }
- return &tok, nil
+	var tok TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return nil, fmt.Errorf("decoding token response: %w", err)
+	}
+	return &tok, nil
 }
 
 // RefreshToken exchanges a refresh token for a new access + refresh token pair.
 // Important: Railway rotates refresh tokens. Always store the new one.
 func (c *OAuthClient) RefreshToken(clientID, refreshToken string) (*TokenResponse, error) {
- data := url.Values{
-  "grant_type":    {"refresh_token"},
-  "refresh_token": {refreshToken},
-  "client_id":     {clientID},
- }
+	data := url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+		"client_id":     {clientID},
+	}
 
- resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
- if err != nil {
-  return nil, fmt.Errorf("refresh request failed: %w", err)
- }
- defer resp.Body.Close()
+	resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
+	if err != nil {
+		return nil, fmt.Errorf("refresh request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
- if resp.StatusCode != http.StatusOK {
-  return nil, fmt.Errorf("refresh failed with status %d", resp.StatusCode)
- }
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("refresh failed with status %d", resp.StatusCode)
+	}
 
- var tok TokenResponse
- if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
-  return nil, fmt.Errorf("decoding refresh response: %w", err)
- }
- return &tok, nil
+	var tok TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+		return nil, fmt.Errorf("decoding refresh response: %w", err)
+	}
+	return &tok, nil
 }
 
 func (c *OAuthClient) httpClient() *http.Client {
- if c.HTTPClient != nil {
-  return c.HTTPClient
- }
- return http.DefaultClient
+	if c.HTTPClient != nil {
+		return c.HTTPClient
+	}
+	return http.DefaultClient
 }
 ```
 
@@ -1692,12 +1665,12 @@ Expected: All 4 tests pass.
 
 ```bash
 git add internal/auth/oauth.go internal/auth/oauth_test.go
-git commit -m "feat: add OAuth client with registration, auth URL, code exchange, and refresh"
+git commit -m "Add OAuth client with registration, auth URL, code exchange, and refresh"
 ```
 
 ---
 
-### Task 10: Callback server
+### Task 8: Callback server
 
 **Files:**
 
@@ -1711,85 +1684,87 @@ The local HTTP server that receives the OAuth redirect.
 `internal/auth/callback_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "fmt"
- "net/http"
- "testing"
- "time"
+	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
 func TestCallbackServer_ReceivesCode(t *testing.T) {
- srv, err := StartCallbackServer()
- if err != nil {
-  t.Fatal(err)
- }
- defer srv.Shutdown()
+	srv, err := auth.StartCallbackServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Shutdown()
 
- if srv.Port == 0 {
-  t.Fatal("port should be non-zero")
- }
+	if srv.Port == 0 {
+		t.Fatal("port should be non-zero")
+	}
 
- // Simulate browser redirect
- go func() {
-  url := fmt.Sprintf("http://127.0.0.1:%d/callback?code=test-auth-code&state=test-state", srv.Port)
-  http.Get(url)
- }()
+	// Simulate browser redirect.
+	go func() {
+		url := fmt.Sprintf("http://127.0.0.1:%d/callback?code=test-auth-code&state=test-state", srv.Port)
+		http.Get(url) //nolint:errcheck
+	}()
 
- select {
- case result := <-srv.Result:
-  if result.Code != "test-auth-code" {
-   t.Errorf("Code = %q, want %q", result.Code, "test-auth-code")
-  }
-  if result.State != "test-state" {
-   t.Errorf("State = %q, want %q", result.State, "test-state")
-  }
-  if result.Error != "" {
-   t.Errorf("unexpected error: %s", result.Error)
-  }
- case <-time.After(2 * time.Second):
-  t.Fatal("timed out waiting for callback")
- }
+	select {
+	case result := <-srv.Result:
+		if result.Code != "test-auth-code" {
+			t.Errorf("Code = %q, want %q", result.Code, "test-auth-code")
+		}
+		if result.State != "test-state" {
+			t.Errorf("State = %q, want %q", result.State, "test-state")
+		}
+		if result.Error != "" {
+			t.Errorf("unexpected error: %s", result.Error)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for callback")
+	}
 }
 
 func TestCallbackServer_ReceivesError(t *testing.T) {
- srv, err := StartCallbackServer()
- if err != nil {
-  t.Fatal(err)
- }
- defer srv.Shutdown()
+	srv, err := auth.StartCallbackServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Shutdown()
 
- go func() {
-  url := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied&error_description=User+denied+access", srv.Port)
-  http.Get(url)
- }()
+	go func() {
+		url := fmt.Sprintf("http://127.0.0.1:%d/callback?error=access_denied&error_description=User+denied+access", srv.Port)
+		http.Get(url) //nolint:errcheck
+	}()
 
- select {
- case result := <-srv.Result:
-  if result.Error != "access_denied" {
-   t.Errorf("Error = %q, want %q", result.Error, "access_denied")
-  }
-  if result.ErrorDescription != "User denied access" {
-   t.Errorf("ErrorDescription = %q", result.ErrorDescription)
-  }
- case <-time.After(2 * time.Second):
-  t.Fatal("timed out waiting for callback")
- }
+	select {
+	case result := <-srv.Result:
+		if result.Error != "access_denied" {
+			t.Errorf("Error = %q, want %q", result.Error, "access_denied")
+		}
+		if result.ErrorDescription != "User denied access" {
+			t.Errorf("ErrorDescription = %q", result.ErrorDescription)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for callback")
+	}
 }
 
 func TestCallbackServer_RedirectURI(t *testing.T) {
- srv, err := StartCallbackServer()
- if err != nil {
-  t.Fatal(err)
- }
- defer srv.Shutdown()
+	srv, err := auth.StartCallbackServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Shutdown()
 
- uri := srv.RedirectURI()
- want := fmt.Sprintf("http://127.0.0.1:%d/callback", srv.Port)
- if uri != want {
-  t.Errorf("RedirectURI() = %q, want %q", uri, want)
- }
+	uri := srv.RedirectURI()
+	want := fmt.Sprintf("http://127.0.0.1:%d/callback", srv.Port)
+	if uri != want {
+		t.Errorf("RedirectURI() = %q, want %q", uri, want)
+	}
 }
 ```
 
@@ -1811,77 +1786,77 @@ Expected: Compilation error.
 package auth
 
 import (
- "context"
- "fmt"
- "net"
- "net/http"
+	"context"
+	"fmt"
+	"net"
+	"net/http"
 )
 
 // CallbackResult holds the data received from the OAuth redirect.
 type CallbackResult struct {
- Code             string
- State            string
- Error            string
- ErrorDescription string
+	Code             string
+	State            string
+	Error            string
+	ErrorDescription string
 }
 
 // CallbackServer is a temporary local HTTP server for receiving OAuth redirects.
 type CallbackServer struct {
- Port   int
- Result chan CallbackResult
- server *http.Server
+	Port   int
+	Result chan CallbackResult
+	server *http.Server
 }
 
 // StartCallbackServer starts an HTTP server on a random available port.
 // It listens for a single OAuth callback, sends the result on the Result channel,
 // then the caller should Shutdown().
 func StartCallbackServer() (*CallbackServer, error) {
- listener, err := net.Listen("tcp", "127.0.0.1:0")
- if err != nil {
-  return nil, fmt.Errorf("starting callback listener: %w", err)
- }
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("starting callback listener: %w", err)
+	}
 
- port := listener.Addr().(*net.TCPAddr).Port
- result := make(chan CallbackResult, 1)
+	port := listener.Addr().(*net.TCPAddr).Port
+	result := make(chan CallbackResult, 1)
 
- mux := http.NewServeMux()
- mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-  q := r.URL.Query()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
 
-  if e := q.Get("error"); e != "" {
-   result <- CallbackResult{
-    Error:            e,
-    ErrorDescription: q.Get("error_description"),
-   }
-   fmt.Fprint(w, "Authorization failed. You can close this tab.")
-   return
-  }
+		if e := q.Get("error"); e != "" {
+			result <- CallbackResult{
+				Error:            e,
+				ErrorDescription: q.Get("error_description"),
+			}
+			fmt.Fprint(w, "Authorization failed. You can close this tab.")
+			return
+		}
 
-  result <- CallbackResult{
-   Code:  q.Get("code"),
-   State: q.Get("state"),
-  }
-  fmt.Fprint(w, "Authorization successful! You can close this tab.")
- })
+		result <- CallbackResult{
+			Code:  q.Get("code"),
+			State: q.Get("state"),
+		}
+		fmt.Fprint(w, "Authorization successful! You can close this tab.")
+	})
 
- srv := &http.Server{Handler: mux}
- go srv.Serve(listener)
+	srv := &http.Server{Handler: mux}
+	go srv.Serve(listener) //nolint:errcheck
 
- return &CallbackServer{
-  Port:   port,
-  Result: result,
-  server: srv,
- }, nil
+	return &CallbackServer{
+		Port:   port,
+		Result: result,
+		server: srv,
+	}, nil
 }
 
 // RedirectURI returns the redirect URI for this server.
 func (s *CallbackServer) RedirectURI() string {
- return fmt.Sprintf("http://127.0.0.1:%d/callback", s.Port)
+	return fmt.Sprintf("http://127.0.0.1:%d/callback", s.Port)
 }
 
 // Shutdown gracefully stops the callback server.
 func (s *CallbackServer) Shutdown() {
- s.server.Shutdown(context.Background())
+	s.server.Shutdown(context.Background()) //nolint:errcheck
 }
 ```
 
@@ -1899,293 +1874,63 @@ Expected: All 3 tests pass.
 
 ```bash
 git add internal/auth/callback.go internal/auth/callback_test.go
-git commit -m "feat: add local callback server for OAuth redirect handling"
+git commit -m "Add local callback server for OAuth redirect handling"
 ```
 
 ---
 
-### Task 11: Wire up `auth login` command
-
-**Files:**
-
-- Create: `internal/auth/login.go`
-- Modify: `cmd/auth/login.go`
-
-This orchestrates the full login flow: start callback server → register
-client (if needed) → generate PKCE → open browser → wait for callback →
-exchange code → store tokens.
-
-**Step 1: Write the login orchestrator**
-
-`internal/auth/login.go`:
-
-```go
-package auth
-
-import (
- "fmt"
- "os/exec"
- "runtime"
-)
-
-// Login performs the full OAuth login flow:
-// 1. Start callback server
-// 2. Register client if no client ID stored
-// 3. Generate PKCE verifier + state
-// 4. Open browser to authorization URL
-// 5. Wait for callback
-// 6. Exchange code for tokens
-// 7. Store tokens
-func Login(oauth *OAuthClient, store *TokenStore) error {
- // Start callback server
- srv, err := StartCallbackServer()
- if err != nil {
-  return fmt.Errorf("starting callback server: %w", err)
- }
- defer srv.Shutdown()
-
- redirectURI := srv.RedirectURI()
-
- // Check for existing client registration
- clientID, err := loadOrRegisterClient(oauth, store, redirectURI)
- if err != nil {
-  return fmt.Errorf("client registration: %w", err)
- }
-
- // Generate PKCE
- verifier, err := GenerateCodeVerifier()
- if err != nil {
-  return fmt.Errorf("generating code verifier: %w", err)
- }
- challenge := CodeChallenge(verifier)
-
- state, err := GenerateState()
- if err != nil {
-  return fmt.Errorf("generating state: %w", err)
- }
-
- // Build authorization URL and open browser
- authURL := oauth.AuthorizationURL(clientID, redirectURI, state, challenge)
- fmt.Println("Opening browser to log in...")
- fmt.Printf("If the browser doesn't open, visit:\n%s\n\n", authURL)
-
- if err := openBrowser(authURL); err != nil {
-  // Non-fatal — user can copy the URL
-  fmt.Printf("Could not open browser: %v\n", err)
- }
-
- // Wait for callback
- fmt.Println("Waiting for authorization...")
- result := <-srv.Result
-
- if result.Error != "" {
-  return fmt.Errorf("authorization failed: %s: %s", result.Error, result.ErrorDescription)
- }
-
- if result.State != state {
-  return fmt.Errorf("state mismatch: possible CSRF attack")
- }
-
- // Exchange code for tokens
- tokenResp, err := oauth.ExchangeCode(clientID, result.Code, redirectURI, verifier)
- if err != nil {
-  return fmt.Errorf("exchanging authorization code: %w", err)
- }
-
- // Store tokens
- if err := store.Save(&StoredTokens{
-  AccessToken:  tokenResp.AccessToken,
-  RefreshToken: tokenResp.RefreshToken,
-  ClientID:     clientID,
- }); err != nil {
-  return fmt.Errorf("storing tokens: %w", err)
- }
-
- fmt.Println("Login successful!")
- return nil
-}
-
-// loadOrRegisterClient returns a client ID, registering a new client if needed.
-func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI string) (string, error) {
- // Check if we already have a client ID from a previous login
- existing, err := store.Load()
- if err == nil && existing.ClientID != "" {
-  return existing.ClientID, nil
- }
-
- // Register a new client
- reg, err := oauth.RegisterClient(redirectURI)
- if err != nil {
-  return "", err
- }
- return reg.ClientID, nil
-}
-
-// openBrowser opens the given URL in the user's default browser.
-func openBrowser(url string) error {
- var cmd *exec.Cmd
- switch runtime.GOOS {
- case "darwin":
-  cmd = exec.Command("open", url)
- case "windows":
-  cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
- default: // linux, freebsd, etc.
-  cmd = exec.Command("xdg-open", url)
- }
- return cmd.Start()
-}
-```
-
-**Step 2: Update the login command to call the orchestrator**
-
-`cmd/auth/login.go`:
-
-```go
-package auth
-
-import (
- internalauth "github.com/hamishmorgan/fat-controller/internal/auth"
- "github.com/hamishmorgan/fat-controller/internal/platform"
- "github.com/spf13/cobra"
-)
-
-var loginCmd = &cobra.Command{
- Use:   "login",
- Short: "Log in to Railway via browser-based OAuth",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  oauth := internalauth.NewOAuthClient()
-  store := internalauth.NewTokenStore(platform.AuthFilePath())
-  return internalauth.Login(oauth, store)
- },
-}
-```
-
-**Step 3: Verify it builds**
-
-Run:
-
-```bash
-go build -o fat-controller .
-```
-
-Expected: Compiles without errors.
-
-**Step 4: Commit**
-
-```bash
-git add internal/auth/login.go cmd/auth/login.go
-git commit -m "feat: wire up auth login with full OAuth + PKCE flow"
-```
-
----
-
-### Task 12: Wire up `auth logout` command
-
-**Files:**
-
-- Modify: `cmd/auth/logout.go`
-
-**Step 1: Update logout to clear tokens**
-
-`cmd/auth/logout.go`:
-
-```go
-package auth
-
-import (
- "fmt"
-
- internalauth "github.com/hamishmorgan/fat-controller/internal/auth"
- "github.com/hamishmorgan/fat-controller/internal/platform"
- "github.com/spf13/cobra"
-)
-
-var logoutCmd = &cobra.Command{
- Use:   "logout",
- Short: "Clear stored credentials",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  store := internalauth.NewTokenStore(platform.AuthFilePath())
-  if err := store.Delete(); err != nil {
-   return fmt.Errorf("clearing credentials: %w", err)
-  }
-  fmt.Println("Logged out successfully.")
-  return nil
- },
-}
-```
-
-**Step 2: Verify it builds**
-
-Run:
-
-```bash
-go build -o fat-controller .
-```
-
-Expected: Compiles without errors.
-
-**Step 3: Commit**
-
-```bash
-git add cmd/auth/logout.go
-git commit -m "feat: wire up auth logout to clear stored tokens"
-```
-
----
-
-### Task 13: Wire up `auth status` command
+### Task 9: Userinfo fetcher
 
 **Files:**
 
 - Create: `internal/auth/userinfo.go`
 - Create: `internal/auth/userinfo_test.go`
-- Modify: `cmd/auth/status.go`
 
-**Step 1: Write the test for userinfo**
+**Step 1: Write the test**
 
 `internal/auth/userinfo_test.go`:
 
 ```go
-package auth
+package auth_test
 
 import (
- "encoding/json"
- "net/http"
- "net/http/httptest"
- "testing"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
 func TestFetchUserInfo(t *testing.T) {
- server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  if r.Header.Get("Authorization") != "Bearer test-token" {
-   t.Errorf("Authorization = %q", r.Header.Get("Authorization"))
-  }
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer test-token" {
+			t.Errorf("Authorization = %q", r.Header.Get("Authorization"))
+		}
 
-  json.NewEncoder(w).Encode(UserInfo{
-   Sub:   "user_abc123",
-   Email: "test@example.com",
-   Name:  "Test User",
-  })
- }))
- defer server.Close()
+		json.NewEncoder(w).Encode(auth.UserInfo{
+			Sub:   "user_abc123",
+			Email: "test@example.com",
+			Name:  "Test User",
+		})
+	}))
+	defer server.Close()
 
- client := &OAuthClient{
-  UserinfoURL: server.URL,
-  HTTPClient:  http.DefaultClient,
- }
+	client := &auth.OAuthClient{
+		UserinfoURL: server.URL,
+		HTTPClient:  http.DefaultClient,
+	}
 
- info, err := client.FetchUserInfo("test-token")
- if err != nil {
-  t.Fatal(err)
- }
- if info.Email != "test@example.com" {
-  t.Errorf("Email = %q", info.Email)
- }
- if info.Name != "Test User" {
-  t.Errorf("Name = %q", info.Name)
- }
+	info, err := client.FetchUserInfo("test-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Email != "test@example.com" {
+		t.Errorf("Email = %q", info.Email)
+	}
+	if info.Name != "Test User" {
+		t.Errorf("Name = %q", info.Name)
+	}
 }
 ```
 
@@ -2207,42 +1952,42 @@ Expected: Compilation error.
 package auth
 
 import (
- "encoding/json"
- "fmt"
- "net/http"
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
 // UserInfo represents the OIDC userinfo response.
 type UserInfo struct {
- Sub     string `json:"sub"`
- Email   string `json:"email"`
- Name    string `json:"name"`
- Picture string `json:"picture"`
+	Sub     string `json:"sub"`
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
 }
 
 // FetchUserInfo calls the OIDC userinfo endpoint.
 func (c *OAuthClient) FetchUserInfo(accessToken string) (*UserInfo, error) {
- req, err := http.NewRequest("GET", c.UserinfoURL, nil)
- if err != nil {
-  return nil, err
- }
- req.Header.Set("Authorization", "Bearer "+accessToken)
+	req, err := http.NewRequest(http.MethodGet, c.UserinfoURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 
- resp, err := c.httpClient().Do(req)
- if err != nil {
-  return nil, fmt.Errorf("userinfo request failed: %w", err)
- }
- defer resp.Body.Close()
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("userinfo request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
- if resp.StatusCode != http.StatusOK {
-  return nil, fmt.Errorf("userinfo failed with status %d", resp.StatusCode)
- }
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("userinfo failed with status %d", resp.StatusCode)
+	}
 
- var info UserInfo
- if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-  return nil, fmt.Errorf("decoding userinfo: %w", err)
- }
- return &info, nil
+	var info UserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("decoding userinfo: %w", err)
+	}
+	return &info, nil
 }
 ```
 
@@ -2256,58 +2001,262 @@ go test ./internal/auth/ -v -run TestFetchUserInfo
 
 Expected: PASS.
 
-**Step 5: Update the status command**
+**Step 5: Commit**
 
-`cmd/auth/status.go`:
+```bash
+git add internal/auth/userinfo.go internal/auth/userinfo_test.go
+git commit -m "Add userinfo fetcher for auth status display"
+```
+
+---
+
+### Task 10: Login orchestrator
+
+**Files:**
+
+- Create: `internal/auth/login.go`
+
+This function orchestrates the full login flow: start callback server →
+register client (if needed) → generate PKCE → open browser → wait for
+callback → exchange code → store tokens.
+
+No test for this — it's pure orchestration of already-tested components,
+and it opens a browser + waits for user interaction. Integration testing
+happens manually.
+
+**Step 1: Write the implementation**
+
+`internal/auth/login.go`:
 
 ```go
 package auth
 
 import (
- "fmt"
-
- internalauth "github.com/hamishmorgan/fat-controller/internal/auth"
- "github.com/hamishmorgan/fat-controller/internal/platform"
- "github.com/spf13/cobra"
+	"fmt"
+	"os/exec"
+	"runtime"
 )
 
-var statusCmd = &cobra.Command{
- Use:   "status",
- Short: "Show current authentication status",
- Args:  cobra.NoArgs,
- RunE: func(cmd *cobra.Command, args []string) error {
-  store := internalauth.NewTokenStore(platform.AuthFilePath())
+// Login performs the full OAuth login flow:
+//  1. Start callback server
+//  2. Register client if no client ID stored
+//  3. Generate PKCE verifier + state
+//  4. Open browser to authorization URL
+//  5. Wait for callback
+//  6. Exchange code for tokens
+//  7. Store tokens
+func Login(oauth *OAuthClient, store *TokenStore) error {
+	// Start callback server.
+	srv, err := StartCallbackServer()
+	if err != nil {
+		return fmt.Errorf("starting callback server: %w", err)
+	}
+	defer srv.Shutdown()
 
-  resolved, err := internalauth.ResolveAuth(store)
-  if err != nil {
-   fmt.Println("Not authenticated.")
-   fmt.Println("Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
-   return nil
-  }
+	redirectURI := srv.RedirectURI()
 
-  fmt.Printf("Authenticated via: %s\n", resolved.Source)
+	// Check for existing client registration.
+	clientID, err := loadOrRegisterClient(oauth, store, redirectURI)
+	if err != nil {
+		return fmt.Errorf("client registration: %w", err)
+	}
 
-  if resolved.Source == "env" {
-   fmt.Println("Using RAILWAY_TOKEN environment variable (project access token).")
-   return nil
-  }
+	// Generate PKCE.
+	verifier, err := GenerateCodeVerifier()
+	if err != nil {
+		return fmt.Errorf("generating code verifier: %w", err)
+	}
+	challenge := CodeChallenge(verifier)
 
-  // For OAuth tokens, fetch user info
-  oauth := internalauth.NewOAuthClient()
-  info, err := oauth.FetchUserInfo(resolved.Token)
-  if err != nil {
-   fmt.Printf("Authenticated (could not fetch user info: %v)\n", err)
-   return nil
-  }
+	state, err := GenerateState()
+	if err != nil {
+		return fmt.Errorf("generating state: %w", err)
+	}
 
-  fmt.Printf("User: %s\n", info.Name)
-  fmt.Printf("Email: %s\n", info.Email)
-  return nil
- },
+	// Build authorization URL and open browser.
+	authURL := oauth.AuthorizationURL(clientID, redirectURI, state, challenge)
+	fmt.Println("Opening browser to log in...")
+	fmt.Printf("If the browser doesn't open, visit:\n%s\n\n", authURL)
+
+	if err := openBrowser(authURL); err != nil {
+		// Non-fatal — user can copy the URL.
+		fmt.Printf("Could not open browser: %v\n", err)
+	}
+
+	// Wait for callback.
+	fmt.Println("Waiting for authorization...")
+	result := <-srv.Result
+
+	if result.Error != "" {
+		return fmt.Errorf("authorization failed: %s: %s", result.Error, result.ErrorDescription)
+	}
+
+	if result.State != state {
+		return fmt.Errorf("state mismatch: possible CSRF attack")
+	}
+
+	// Exchange code for tokens.
+	tokenResp, err := oauth.ExchangeCode(clientID, result.Code, redirectURI, verifier)
+	if err != nil {
+		return fmt.Errorf("exchanging authorization code: %w", err)
+	}
+
+	// Store tokens.
+	if err := store.Save(&StoredTokens{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		ClientID:     clientID,
+	}); err != nil {
+		return fmt.Errorf("storing tokens: %w", err)
+	}
+
+	fmt.Println("Login successful!")
+	return nil
+}
+
+// loadOrRegisterClient returns a client ID, registering a new client if needed.
+func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI string) (string, error) {
+	// Check if we already have a client ID from a previous login.
+	existing, err := store.Load()
+	if err == nil && existing.ClientID != "" {
+		return existing.ClientID, nil
+	}
+
+	// Register a new client.
+	reg, err := oauth.RegisterClient(redirectURI)
+	if err != nil {
+		return "", err
+	}
+	return reg.ClientID, nil
+}
+
+// openBrowser opens the given URL in the user's default browser.
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
 }
 ```
 
-**Step 6: Verify it builds**
+**Step 2: Verify it compiles**
+
+Run:
+
+```bash
+go build ./internal/auth/
+```
+
+Expected: Compiles without errors.
+
+**Step 3: Commit**
+
+```bash
+git add internal/auth/login.go
+git commit -m "Add login orchestrator for full OAuth + PKCE flow"
+```
+
+---
+
+### Task 11: Wire up auth commands to real implementations
+
+**Files:**
+
+- Modify: `cmd/cli.go`
+
+Replace the stub `Run()` methods for `AuthLoginCmd`, `AuthLogoutCmd`, and
+`AuthStatusCmd` with real implementations that call the `internal/auth`
+and `internal/platform` packages.
+
+**Step 1: Update the Run() methods**
+
+Replace the three auth stub methods in `cmd/cli.go`:
+
+```go
+func (c *AuthLoginCmd) Run(globals *Globals) error {
+	oauth := auth.NewOAuthClient()
+	store := auth.NewTokenStore(
+		auth.WithFallbackPath(platform.AuthFilePath()),
+	)
+	return auth.Login(oauth, store)
+}
+
+func (c *AuthLogoutCmd) Run(globals *Globals) error {
+	store := auth.NewTokenStore(
+		auth.WithFallbackPath(platform.AuthFilePath()),
+	)
+	if err := store.Delete(); err != nil {
+		return fmt.Errorf("clearing credentials: %w", err)
+	}
+	fmt.Println("Logged out successfully.")
+	return nil
+}
+
+func (c *AuthStatusCmd) Run(globals *Globals) error {
+	store := auth.NewTokenStore(
+		auth.WithFallbackPath(platform.AuthFilePath()),
+	)
+
+	resolved, err := auth.ResolveAuth(globals.Token, store)
+	if err != nil {
+		fmt.Println("Not authenticated.")
+		fmt.Println("Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
+		return nil
+	}
+
+	fmt.Printf("Authenticated via: %s\n", resolved.Source)
+
+	if resolved.Source == "env:RAILWAY_TOKEN" {
+		fmt.Println("Using RAILWAY_TOKEN environment variable (project access token).")
+		return nil
+	}
+	if resolved.Source == "env:RAILWAY_API_TOKEN" {
+		fmt.Println("Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
+		return nil
+	}
+	if resolved.Source == "flag" {
+		fmt.Println("Using --token flag.")
+		return nil
+	}
+
+	// For stored OAuth tokens, fetch user info.
+	oauth := auth.NewOAuthClient()
+	info, err := oauth.FetchUserInfo(resolved.Token)
+	if err != nil {
+		fmt.Printf("Authenticated (could not fetch user info: %v)\n", err)
+		return nil
+	}
+
+	fmt.Printf("User: %s\n", info.Name)
+	fmt.Printf("Email: %s\n", info.Email)
+	return nil
+}
+```
+
+Update the imports at the top of `cmd/cli.go` to include:
+
+```go
+import (
+	"fmt"
+
+	"github.com/alecthomas/kong"
+	"github.com/hamishmorgan/fat-controller/internal/auth"
+	"github.com/hamishmorgan/fat-controller/internal/platform"
+)
+```
+
+Note: the `kong` import may show as unused at this point — it was already
+imported for the type definitions. Remove it if the linter complains
+(it's only needed if `kong` types are referenced in the structs, which
+they aren't in the current design).
+
+**Step 2: Verify it builds**
 
 Run:
 
@@ -2317,16 +2266,26 @@ go build -o fat-controller .
 
 Expected: Compiles without errors.
 
-**Step 7: Commit**
+**Step 3: Run mise check**
+
+Run:
 
 ```bash
-git add internal/auth/userinfo.go internal/auth/userinfo_test.go cmd/auth/status.go
-git commit -m "feat: wire up auth status with userinfo display"
+mise run check
+```
+
+Expected: All checks pass.
+
+**Step 4: Commit**
+
+```bash
+git add cmd/cli.go
+git commit -m "Wire up auth login/logout/status with real implementations"
 ```
 
 ---
 
-### Task 14: Run full test suite and verify build
+### Task 12: Run full test suite and smoke test
 
 **Step 1: Run all tests**
 
@@ -2338,49 +2297,48 @@ go test ./... -v
 
 Expected: All tests pass.
 
-**Step 2: Run vet and check for issues**
+**Step 2: Run mise check (linter + build)**
 
 Run:
 
 ```bash
-go vet ./...
+mise run check
 ```
 
-Expected: No issues.
+Expected: All checks pass.
 
-**Step 3: Build the binary**
+**Step 3: Smoke test the CLI**
 
 Run:
 
 ```bash
 go build -o fat-controller .
-```
-
-Expected: Clean build.
-
-**Step 4: Smoke test the CLI**
-
-Run:
-
-```bash
 ./fat-controller --help
 ./fat-controller auth --help
 ./fat-controller auth login --help
 ./fat-controller auth status
 ./fat-controller auth logout
 ./fat-controller config --help
-./fat-controller config pull
+./fat-controller config get --help
+./fat-controller config diff
 ```
 
-Expected: Each shows appropriate help or stub output.
+Expected:
 
-**Step 5: Commit any fixes**
+- `--help` shows global flags and command groups
+- `auth --help` shows login, logout, status
+- `auth status` shows "Not authenticated" (since we haven't logged in)
+- `auth logout` shows "Logged out successfully."
+- `config --help` shows get, set, delete, diff, apply, validate
+- `config diff` shows "config diff: not yet implemented"
+
+**Step 4: Commit any fixes**
 
 If any issues were found, fix and commit:
 
 ```bash
 git add -A
-git commit -m "fix: address issues found during final verification"
+git commit -m "Fix issues found during final verification"
 ```
 
 ---
@@ -2392,12 +2350,10 @@ After completing all tasks, the project will have:
 | Component | Location |
 |-----------|----------|
 | CLI entrypoint | `main.go` |
-| Root command | `cmd/root.go` |
-| Auth commands | `cmd/auth/{auth,login,logout,status}.go` |
-| Config command stubs | `cmd/config/{config,pull,diff,apply}.go` |
+| CLI struct + commands | `cmd/cli.go` |
 | XDG path helpers | `internal/platform/paths.go` |
 | Token store (keyring + file) | `internal/auth/store.go` |
-| Token resolver (env > keyring > file) | `internal/auth/resolver.go` |
+| Token resolver (flag > env > keyring/file) | `internal/auth/resolver.go` |
 | PKCE helpers | `internal/auth/pkce.go` |
 | OAuth client | `internal/auth/oauth.go` |
 | Callback server | `internal/auth/callback.go` |
@@ -2408,10 +2364,22 @@ After completing all tasks, the project will have:
 
 - genqlient / GraphQL schema
 - koanf config loading (no tool config to load yet — auth doesn't need it)
-- `config pull/diff/apply` implementations
+- BurntSushi/toml (no config parsing yet)
+- `config get/set/delete/diff/apply/validate` implementations
 
 **Testing approach:**
 
-- Unit tests with `go-keyring` `MockInit()` for token store
+- Unit tests with `go-keyring` `MockInit()` / `MockInitWithError()` for token store
 - `httptest.NewServer` for OAuth endpoint mocking
 - `t.TempDir()` + `t.Setenv("XDG_CONFIG_HOME", ...)` for file path tests
+- Login orchestrator tested manually (browser interaction)
+
+**Key differences from old plan (cobra → kong):**
+
+- All commands in a single `cmd/cli.go` file (kong's struct nesting means no separate files per command group)
+- No `cmd/root.go`, no `init()` wiring — kong discovers commands from struct tags
+- `Globals` struct passed to `Run()` methods instead of cobra's `cmd.Flags()` API
+- `--token` flag resolves through `Globals`, not just `RAILWAY_TOKEN` env var
+- Token resolver has 4 levels (flag > `RAILWAY_API_TOKEN` > `RAILWAY_TOKEN` > stored) instead of 2
+- Config command stubs include all 6 subcommands (get/set/delete/diff/apply/validate) not just 3 (pull/diff/apply)
+- `TokenStore` uses functional options pattern for test configurability

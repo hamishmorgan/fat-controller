@@ -69,3 +69,22 @@ func TestEnsureConfigDir(t *testing.T) {
 		t.Fatalf("%q is not a directory", dir)
 	}
 }
+
+func TestEnsureConfigDir_MkdirAllError(t *testing.T) {
+	tmp := t.TempDir()
+
+	// Create a regular file where XDG_CONFIG_HOME points, so that
+	// os.MkdirAll will fail when it tries to create a subdirectory
+	// under a non-directory path.
+	blocker := filepath.Join(tmp, "not-a-dir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	setXDGConfigHome(t, blocker)
+
+	_, err := platform.EnsureConfigDir()
+	if err == nil {
+		t.Fatal("expected error when MkdirAll cannot create dir under a file, got nil")
+	}
+}

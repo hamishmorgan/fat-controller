@@ -62,3 +62,54 @@ func TestFetchUserInfo_Unauthorized(t *testing.T) {
 		t.Errorf("error should mention status 401, got: %s", err)
 	}
 }
+
+func TestFetchUserInfo_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+
+	client := &auth.OAuthClient{
+		UserinfoURL: serverURL,
+		HTTPClient:  http.DefaultClient,
+	}
+
+	_, err := client.FetchUserInfo("test-token")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	if !strings.Contains(err.Error(), "userinfo request failed") {
+		t.Errorf("error should mention userinfo request failed, got: %s", err)
+	}
+}
+
+func TestFetchUserInfo_InvalidURL(t *testing.T) {
+	client := &auth.OAuthClient{
+		UserinfoURL: "://invalid-url",
+		HTTPClient:  http.DefaultClient,
+	}
+
+	_, err := client.FetchUserInfo("test-token")
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestFetchUserInfo_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("not valid json"))
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{
+		UserinfoURL: server.URL,
+		HTTPClient:  http.DefaultClient,
+	}
+
+	_, err := client.FetchUserInfo("test-token")
+	if err == nil {
+		t.Fatal("expected JSON decode error")
+	}
+	if !strings.Contains(err.Error(), "decoding userinfo") {
+		t.Errorf("error should mention decoding userinfo, got: %s", err)
+	}
+}

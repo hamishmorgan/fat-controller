@@ -1,7 +1,9 @@
 package auth_test
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -125,6 +127,60 @@ func TestResolveAuth_NothingAvailable(t *testing.T) {
 		auth.WithKeyringService("fat-controller-test"),
 		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
 	)
+
+	t.Setenv("RAILWAY_API_TOKEN", "")
+	t.Setenv("RAILWAY_TOKEN", "")
+
+	_, err := auth.ResolveAuth("", store)
+	if err != auth.ErrNotAuthenticated {
+		t.Errorf("expected ErrNotAuthenticated, got %v", err)
+	}
+}
+
+func TestResolveAuth_LoadError(t *testing.T) {
+	// Trigger a non-ErrNoStoredTokens error from store.Load.
+	// Use a keyring error + a fallback file that's a directory (causes read error).
+	keyring.MockInitWithError(os.ErrPermission)
+
+	tmpDir := t.TempDir()
+	fallbackPath := filepath.Join(tmpDir, "auth.json")
+	// Create a directory where the file should be — ReadFile will fail.
+	if err := os.Mkdir(fallbackPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(fallbackPath),
+	)
+
+	t.Setenv("RAILWAY_API_TOKEN", "")
+	t.Setenv("RAILWAY_TOKEN", "")
+
+	_, err := auth.ResolveAuth("", store)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "loading stored tokens") {
+		t.Errorf("error should mention loading stored tokens, got: %s", err)
+	}
+}
+
+func TestResolveAuth_EmptyAccessToken(t *testing.T) {
+	keyring.MockInit()
+
+	store := auth.NewTokenStore(
+		auth.WithKeyringService("fat-controller-test"),
+		auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")),
+	)
+
+	// Store tokens with empty access token but non-empty client ID.
+	if err := store.Save(&auth.StoredTokens{
+		AccessToken: "",
+		ClientID:    "client-123",
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "")

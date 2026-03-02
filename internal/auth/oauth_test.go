@@ -225,3 +225,117 @@ func TestOAuthClient_RefreshToken_ErrorStatus(t *testing.T) {
 		t.Errorf("error should mention status 401, got: %s", err)
 	}
 }
+
+func TestNewOAuthClient(t *testing.T) {
+	client := auth.NewOAuthClient()
+	if client.AuthEndpoint == "" {
+		t.Error("AuthEndpoint should be set")
+	}
+	if client.TokenEndpoint == "" {
+		t.Error("TokenEndpoint should be set")
+	}
+	if client.RegistrationURL == "" {
+		t.Error("RegistrationURL should be set")
+	}
+	if client.UserinfoURL == "" {
+		t.Error("UserinfoURL should be set")
+	}
+	if client.HTTPClient == nil {
+		t.Error("HTTPClient should be set")
+	}
+}
+
+func TestOAuthClient_RegisterClient_NetworkError(t *testing.T) {
+	// Use a server that's been closed to trigger a network error.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+
+	client := &auth.OAuthClient{RegistrationURL: serverURL}
+	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	if !strings.Contains(err.Error(), "registration request failed") {
+		t.Errorf("error should mention registration request failed, got: %s", err)
+	}
+}
+
+func TestOAuthClient_RegisterClient_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not valid json"))
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{RegistrationURL: server.URL}
+	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	if err == nil {
+		t.Fatal("expected JSON decode error")
+	}
+	if !strings.Contains(err.Error(), "decoding registration response") {
+		t.Errorf("error should mention decoding, got: %s", err)
+	}
+}
+
+func TestOAuthClient_ExchangeCode_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: serverURL}
+	_, err := client.ExchangeCode("client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	if !strings.Contains(err.Error(), "token exchange request failed") {
+		t.Errorf("error should mention token exchange request failed, got: %s", err)
+	}
+}
+
+func TestOAuthClient_ExchangeCode_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("not valid json"))
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
+	_, err := client.ExchangeCode("client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
+	if err == nil {
+		t.Fatal("expected JSON decode error")
+	}
+	if !strings.Contains(err.Error(), "decoding token response") {
+		t.Errorf("error should mention decoding token response, got: %s", err)
+	}
+}
+
+func TestOAuthClient_RefreshToken_NetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: serverURL}
+	_, err := client.RefreshToken("client-123", "refresh-token")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	if !strings.Contains(err.Error(), "refresh request failed") {
+		t.Errorf("error should mention refresh request failed, got: %s", err)
+	}
+}
+
+func TestOAuthClient_RefreshToken_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("not valid json"))
+	}))
+	defer server.Close()
+
+	client := &auth.OAuthClient{TokenEndpoint: server.URL}
+	_, err := client.RefreshToken("client-123", "refresh-token")
+	if err == nil {
+		t.Fatal("expected JSON decode error")
+	}
+	if !strings.Contains(err.Error(), "decoding refresh response") {
+		t.Errorf("error should mention decoding refresh response, got: %s", err)
+	}
+}

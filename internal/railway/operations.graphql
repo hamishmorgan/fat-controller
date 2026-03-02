@@ -1,0 +1,8 @@
+# ProjectToken resolves a project-scoped token to its project and environment IDs.
+# Used by auth status and as a basic connectivity check.
+query ProjectToken {
+  projectToken {
+    projectId
+    environmentId
+  }
+}

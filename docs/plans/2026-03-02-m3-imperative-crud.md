@@ -4,7 +4,7 @@
 
 **Architecture:** Add GraphQL operations plus a small Railway fetch/mutate layer to resolve project/environment, load live config, and apply single-field updates. Build a minimal config model and dot-path parser in `internal/config`, then wire CLI commands to render output and enforce confirm/dry-run semantics.
 
-**Tech Stack:** Go, genqlient, kong, httptest, BurntSushi/toml
+**Tech Stack:** Go, genqlient, kong, httptest
 
 ---
 
@@ -101,17 +101,11 @@ type ServiceConfig struct {
 	ID        string
 	Name      string
 	Variables map[string]string
-	Resources Resources
 	Deploy    Deploy
 }
 
-type Resources struct {
-	VCPUs    *float64
-	MemoryGB *float64
-}
-
 type Deploy struct {
-	Builder         *string
+	Builder         string  // Railway Builder enum: NIXPACKS, RAILPACK, etc.
 	DockerfilePath  *string
 	RootDirectory   *string
 	StartCommand    *string
@@ -176,7 +170,7 @@ git commit -m "Add live config model and dot-path parser"
 
 ---
 
-### Task 2: Add output rendering for config get
+## Task 2: Add output rendering for config get
 
 **Files:**
 
@@ -233,35 +227,71 @@ Create `internal/config/render.go`:
 package config
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 )
 
 // Render renders the live config in the requested output format.
 func Render(cfg LiveConfig, format string, full bool) (string, error) {
 	switch format {
 	case "json":
-		buf, err := json.MarshalIndent(cfg, "", "  ")
+		buf, err := json.MarshalIndent(toJSONMap(cfg), "", "  ")
 		if err != nil {
 			return "", err
 		}
 		return string(buf), nil
 	case "toml":
-		var buf bytes.Buffer
-		if err := toml.NewEncoder(&buf).Encode(cfg); err != nil {
-			return "", err
-		}
-		return buf.String(), nil
+		// Hand-rolled TOML with clean [section] headers matching text output.
+		return renderTOML(cfg), nil
 	case "text", "":
 		return renderText(cfg, full), nil
 	default:
 		return "", errors.New("unsupported output format")
 	}
+}
+
+// toJSONMap builds a clean map for JSON output (no Go struct field names).
+func toJSONMap(cfg LiveConfig) map[string]any {
+	m := map[string]any{}
+	if len(cfg.Shared) > 0 {
+		m["shared_variables"] = cfg.Shared
+	}
+	for name, svc := range cfg.Services {
+		m[name] = map[string]any{"variables": svc.Variables}
+	}
+	return m
+}
+
+// renderTOML builds TOML-style output using the same section structure as text.
+func renderTOML(cfg LiveConfig) string {
+	var out strings.Builder
+	if len(cfg.Shared) > 0 {
+		out.WriteString("[shared_variables]\n")
+		keys := sortedKeys(cfg.Shared)
+		for _, k := range keys {
+			out.WriteString(k + " = \"" + cfg.Shared[k] + "\"\n")
+		}
+		out.WriteString("\n")
+	}
+	serviceNames := make([]string, 0, len(cfg.Services))
+	for name := range cfg.Services {
+		serviceNames = append(serviceNames, name)
+	}
+	sort.Strings(serviceNames)
+	for _, name := range serviceNames {
+		svc := cfg.Services[name]
+		if len(svc.Variables) > 0 {
+			out.WriteString("[" + svc.Name + ".variables]\n")
+			keys := sortedKeys(svc.Variables)
+			for _, k := range keys {
+				out.WriteString(k + " = \"" + svc.Variables[k] + "\"\n")
+			}
+			out.WriteString("\n")
+		}
+	}
+	return strings.TrimRight(out.String(), "\n")
 }
 
 func renderText(cfg LiveConfig, full bool) string {
@@ -321,7 +351,7 @@ git commit -m "Add output renderer for config get"
 
 ---
 
-### Task 3: Add GraphQL operations for M3 and regenerate
+## Task 3: Add GraphQL operations for M3 and regenerate
 
 **Files:**
 
@@ -379,6 +409,13 @@ Expected: FAIL with `undefined: railway.Projects`.
 
 **Step 3: Write minimal implementation**
 
+Add `Endpoint` constant to `internal/railway/client.go`:
+
+```go
+// Endpoint is the Railway GraphQL API URL.
+const Endpoint = "https://backboard.railway.com/graphql/v2"
+```
+
 Update `internal/railway/operations.graphql` by appending:
 
 ```graphql
@@ -419,12 +456,14 @@ query ProjectServices($projectId: String!) {
   }
 }
 
-# Variables (shared + service)
+# Variables (shared + service).
+# With serviceId=nil returns shared variables; with serviceId returns service variables.
+# unrendered=true returns source values (not interpolated).
 query Variables($projectId: String!, $environmentId: String!, $serviceId: String) {
   variables(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId, unrendered: true)
 }
 
-# Service settings
+# Service deploy settings
 query ServiceInstance($environmentId: String!, $serviceId: String!) {
   serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
     builder
@@ -435,11 +474,10 @@ query ServiceInstance($environmentId: String!, $serviceId: String!) {
   }
 }
 
+# Resource limit overrides — returns a scalar (ServiceInstanceLimit maps to
+# map[string]interface{} via genqlient binding), not a structured type.
 query ServiceInstanceLimitOverride($environmentId: String!, $serviceId: String!) {
-  serviceInstanceLimitOverride(environmentId: $environmentId, serviceId: $serviceId) {
-    vCPUs
-    memoryGB
-  }
+  serviceInstanceLimitOverride(environmentId: $environmentId, serviceId: $serviceId)
 }
 
 # Mutations for set/delete
@@ -451,8 +489,9 @@ mutation VariableDelete($input: VariableDeleteInput!) {
   variableDelete(input: $input)
 }
 
-mutation ServiceInstanceUpdate($input: ServiceInstanceUpdateInput!) {
-  serviceInstanceUpdate(input: $input)
+# serviceInstanceUpdate takes serviceId as a top-level argument, not inside the input.
+mutation ServiceInstanceUpdate($serviceId: String!, $input: ServiceInstanceUpdateInput!) {
+  serviceInstanceUpdate(serviceId: $serviceId, input: $input)
 }
 
 mutation ServiceInstanceLimitsUpdate($input: ServiceInstanceLimitsUpdateInput!) {
@@ -460,7 +499,7 @@ mutation ServiceInstanceLimitsUpdate($input: ServiceInstanceLimitsUpdateInput!) 
 }
 ```
 
-Run: `go generate ./internal/railway/`
+Run: `mise run generate`
 
 **Step 4: Run the test to verify it passes**
 
@@ -471,13 +510,13 @@ Expected: PASS.
 **Step 5: Commit**
 
 ```bash
-git add internal/railway/operations.graphql internal/railway/generated.go internal/railway/queries_test.go
+git add internal/railway/operations.graphql internal/railway/generated.go internal/railway/queries_test.go internal/railway/client.go
 git commit -m "Add M3 GraphQL operations and generation"
 ```
 
 ---
 
-### Task 4: Resolve project/environment IDs
+## Task 4: Resolve project/environment IDs
 
 **Files:**
 
@@ -543,18 +582,22 @@ package railway
 import (
 	"context"
 	"errors"
+	"regexp"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
 
+// uuidPattern matches Railway-style UUIDs (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
+var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 // ResolveProjectEnvironment returns project/environment IDs for the active auth.
-// For project tokens, it uses ProjectToken query. For account tokens, it uses
-// the provided project/environment names or IDs and resolves names via queries.
+// For project tokens, it uses the ProjectToken query. For account tokens, it
+// resolves the provided project/environment names (or passes through IDs).
 func ResolveProjectEnvironment(ctx context.Context, client *Client, project, environment string) (string, string, error) {
-	if client == nil || client.auth == nil {
+	if client == nil || client.Auth() == nil {
 		return "", "", errors.New("missing auth")
 	}
-	if client.auth.Source == auth.SourceEnvToken {
+	if client.Auth().Source == auth.SourceEnvToken {
 		resp, err := ProjectToken(ctx, client.GQL())
 		if err != nil {
 			return "", "", err
@@ -562,7 +605,7 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, project, env
 		return resp.ProjectToken.ProjectId, resp.ProjectToken.EnvironmentId, nil
 	}
 	if project == "" || environment == "" {
-		return "", "", errors.New("project and environment required")
+		return "", "", errors.New("project and environment required for account tokens")
 	}
 	projID, err := resolveProjectID(ctx, client, project)
 	if err != nil {
@@ -576,8 +619,7 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, project, env
 }
 
 func resolveProjectID(ctx context.Context, client *Client, project string) (string, error) {
-	// If it looks like an ID, pass through (simple heuristic).
-	if project != "" && project != "-" && len(project) > 8 {
+	if uuidPattern.MatchString(project) {
 		return project, nil
 	}
 	resp, err := Projects(ctx, client.GQL())
@@ -589,10 +631,13 @@ func resolveProjectID(ctx context.Context, client *Client, project string) (stri
 			return edge.Node.Id, nil
 		}
 	}
-	return "", errors.New("project not found")
+	return "", errors.New("project not found: " + project)
 }
 
 func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string) (string, error) {
+	if uuidPattern.MatchString(env) {
+		return env, nil
+	}
 	resp, err := Environments(ctx, client.GQL(), projectID)
 	if err != nil {
 		return "", err
@@ -602,20 +647,35 @@ func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env st
 			return edge.Node.Id, nil
 		}
 	}
-	return "", errors.New("environment not found")
+	return "", errors.New("environment not found: " + env)
 }
 ```
 
-Update `internal/railway/client.go` to store resolved auth for resolvers:
+Update `internal/railway/client.go` to store resolved auth and expose it for resolvers:
 
 ```go
+// Client wraps the genqlient GraphQL client with Railway-specific auth.
 type Client struct {
 	gql  graphql.Client
 	auth *auth.ResolvedAuth
 }
 
-// In NewClient:
-return &Client{gql: gql, auth: resolved}
+// NewClient creates a Railway GraphQL client with authenticated transport.
+func NewClient(endpoint string, resolved *auth.ResolvedAuth, store *auth.TokenStore, oauth *auth.OAuthClient) *Client {
+	var refresher Refresher
+	if oauth != nil {
+		refresher = NewOAuthRefresher(oauth)
+	}
+	transport := NewAuthTransport(resolved, store, refresher)
+	httpClient := &http.Client{Transport: transport}
+	gql := graphql.NewClient(endpoint, httpClient)
+	return &Client{gql: gql, auth: resolved}
+}
+
+// Auth returns the resolved auth info (used by resolve.go to branch on token type).
+func (c *Client) Auth() *auth.ResolvedAuth {
+	return c.auth
+}
 ```
 
 **Step 4: Run the test to verify it passes**
@@ -633,7 +693,7 @@ git commit -m "Add project/environment resolution for config commands"
 
 ---
 
-### Task 5: Fetch live config snapshot
+## Task 5: Fetch live config snapshot
 
 **Files:**
 
@@ -652,24 +712,37 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
-	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		// Minimal dispatcher based on query name
 		var body struct{ Query string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
-        switch {
-        case strings.Contains(body.Query, "project(id"):
-            _ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"project": map[string]any{"services": map[string]any{"edges": []map[string]any{{"node": map[string]any{"id": "svc-1", "name": "api"}}}}}}})
-        case strings.Contains(body.Query, "variables("):
-            _ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"variables": map[string]any{"FOO": "bar"}}})
+		switch {
+		case strings.Contains(body.Query, "project(id"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"project": map[string]any{
+						"services": map[string]any{
+							"edges": []map[string]any{{
+								"node": map[string]any{"id": "svc-1", "name": "api"},
+							}},
+						},
+					},
+				},
+			})
+		case strings.Contains(body.Query, "variables("):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"variables": map[string]any{"FOO": "bar"},
+				},
+			})
 		default:
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}})
 		}
@@ -687,7 +760,6 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 	if cfg.Services["api"].Variables["FOO"] != "bar" {
 		t.Fatalf("service FOO = %q", cfg.Services["api"].Variables["FOO"])
 	}
-    _ = config.LiveConfig{} // keep compile reference
 }
 ```
 
@@ -706,6 +778,7 @@ package railway
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
@@ -723,8 +796,10 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	if err != nil {
 		return nil, err
 	}
+	// Variables returns EnvironmentVariables which genqlient maps to
+	// map[string]interface{} — convert values to strings.
 	for k, v := range shared.Variables {
-		cfg.Shared[k] = v
+		cfg.Shared[k] = fmt.Sprint(v)
 	}
 
 	services, err := ProjectServices(ctx, client.GQL(), projectID)
@@ -745,7 +820,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			return nil, err
 		}
 		for k, v := range vars.Variables {
-			svc.Variables[k] = v
+			svc.Variables[k] = fmt.Sprint(v)
 		}
 		cfg.Services[edge.Node.Name] = svc
 	}
@@ -753,8 +828,6 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	return cfg, nil
 }
 ```
-
-Note: this test already uses `strings.Contains`; no extra helper is needed.
 
 **Step 4: Run the test to verify it passes**
 
@@ -771,7 +844,7 @@ git commit -m "Add live config fetcher for config get"
 
 ---
 
-### Task 6: Add mutations for set/delete variables
+## Task 6: Add mutations for set/delete variables
 
 **Files:**
 
@@ -871,7 +944,7 @@ git commit -m "Add variable upsert/delete mutations"
 
 ---
 
-### Task 7: Add mutations for service settings updates
+## Task 7: Add mutations for service settings updates
 
 **Files:**
 
@@ -922,9 +995,10 @@ func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, ser
 }
 
 // UpdateServiceSettings updates deploy/build settings.
+// The generated ServiceInstanceUpdate function takes serviceId as a separate
+// argument (matching the GraphQL schema where it's a top-level mutation arg).
 func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string, input ServiceInstanceUpdateInput) error {
-	input.ServiceId = serviceID
-	_, err := ServiceInstanceUpdate(ctx, client.GQL(), input)
+	_, err := ServiceInstanceUpdate(ctx, client.GQL(), serviceID, input)
 	return err
 }
 ```
@@ -944,7 +1018,7 @@ git commit -m "Add service settings update mutations"
 
 ---
 
-### Task 8: Implement config get in CLI
+## Task 8: Implement config get in CLI
 
 **Files:**
 
@@ -990,11 +1064,11 @@ Create `internal/cli/config_get.go`:
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -1002,7 +1076,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
-// allow injection for tests
+// configFetcher allows injection for tests.
 type configFetcher interface {
 	Resolve(ctx context.Context, project, environment string) (string, string, error)
 	Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error)
@@ -1020,14 +1094,9 @@ func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environment
 	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, service)
 }
 
-type outputSink interface{
-	WriteString(string) (int, error)
-}
-
+// SetOutput overrides the output writer (for testing).
 func (c *ConfigGetCmd) SetOutput(w io.Writer) {
-	if c.output == nil {
-		c.output = w
-	}
+	c.output = w
 }
 
 func (c *ConfigGetCmd) Run(globals *Globals) error {
@@ -1043,7 +1112,7 @@ func (c *ConfigGetCmd) Run(globals *Globals) error {
 
 func runConfigGet(ctx context.Context, globals *Globals, path string, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
-		out = &bytes.Buffer{}
+		out = os.Stdout
 	}
 	projID, envID, err := fetcher.Resolve(ctx, globals.Project, globals.Environment)
 	if err != nil {
@@ -1064,7 +1133,7 @@ func runConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 		return err
 	}
 	if cfg == nil {
-		return errors.New("no config")
+		return errors.New("no config returned")
 	}
 	output, err := config.Render(*cfg, globals.Output, globals.Full)
 	if err != nil {
@@ -1075,7 +1144,14 @@ func runConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 }
 ```
 
-Update `internal/cli/cli.go` to add a `output io.Writer` field to `ConfigGetCmd` and remove stub Run body.
+Update `internal/cli/cli.go`: add an `output io.Writer` field to `ConfigGetCmd` (unexported, hidden from kong) and remove the stub `Run` method (it moves to `config_get.go`):
+
+```go
+type ConfigGetCmd struct {
+	Path   string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	output io.Writer `kong:"-"` // hidden from kong; set via SetOutput for tests
+}
+```
 
 **Step 4: Run the test to verify it passes**
 
@@ -1092,7 +1168,7 @@ git commit -m "Implement config get command"
 
 ---
 
-### Task 9: Implement config set/delete with confirm/dry-run
+## Task 9: Implement config set/delete with confirm/dry-run
 
 **Files:**
 
@@ -1111,7 +1187,6 @@ package cli_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
@@ -1119,23 +1194,30 @@ import (
 
 type fakeSetter struct{ called bool }
 
-func (f *fakeSetter) SetVar(ctx context.Context, service, key, value string, confirm bool) error {
+func (f *fakeSetter) SetVar(ctx context.Context, service, key, value string) error {
 	f.called = true
-	if !confirm {
-		return errors.New("dry run")
-	}
 	return nil
 }
 
 func TestConfigSet_DryRunByDefault(t *testing.T) {
-	cmd := &cli.ConfigSetCmd{Path: "api.variables.PORT", Value: "8080"}
 	setter := &fakeSetter{}
-	err := cli.RunConfigSet(context.Background(), &cli.Globals{}, cmd.Path, cmd.Value, setter)
+	err := cli.RunConfigSet(context.Background(), &cli.Globals{}, "api.variables.PORT", "8080", setter)
 	if err == nil {
 		t.Fatal("expected dry run error")
 	}
+	if setter.called {
+		t.Fatal("setter should not be called in dry-run mode")
+	}
+}
+
+func TestConfigSet_ExecutesWithConfirm(t *testing.T) {
+	setter := &fakeSetter{}
+	err := cli.RunConfigSet(context.Background(), &cli.Globals{Confirm: true}, "api.variables.PORT", "8080", setter)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !setter.called {
-		t.Fatal("expected setter to be called")
+		t.Fatal("expected setter to be called with --confirm")
 	}
 }
 ```
@@ -1147,7 +1229,6 @@ package cli_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
@@ -1155,23 +1236,30 @@ import (
 
 type fakeDeleter struct{ called bool }
 
-func (f *fakeDeleter) DeleteVar(ctx context.Context, service, key string, confirm bool) error {
+func (f *fakeDeleter) DeleteVar(ctx context.Context, service, key string) error {
 	f.called = true
-	if !confirm {
-		return errors.New("dry run")
-	}
 	return nil
 }
 
 func TestConfigDelete_DryRunByDefault(t *testing.T) {
-	cmd := &cli.ConfigDeleteCmd{Path: "api.variables.OLD"}
 	deleter := &fakeDeleter{}
-	err := cli.RunConfigDelete(context.Background(), &cli.Globals{}, cmd.Path, deleter)
+	err := cli.RunConfigDelete(context.Background(), &cli.Globals{}, "api.variables.OLD", deleter)
 	if err == nil {
 		t.Fatal("expected dry run error")
 	}
+	if deleter.called {
+		t.Fatal("deleter should not be called in dry-run mode")
+	}
+}
+
+func TestConfigDelete_ExecutesWithConfirm(t *testing.T) {
+	deleter := &fakeDeleter{}
+	err := cli.RunConfigDelete(context.Background(), &cli.Globals{Confirm: true}, "api.variables.OLD", deleter)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !deleter.called {
-		t.Fatal("expected deleter to be called")
+		t.Fatal("expected deleter to be called with --confirm")
 	}
 }
 ```
@@ -1198,9 +1286,10 @@ import (
 )
 
 type setRunner interface {
-	SetVar(ctx context.Context, service, key, value string, confirm bool) error
+	SetVar(ctx context.Context, service, key, value string) error
 }
 
+// RunConfigSet validates the path, checks confirm/dry-run, and calls the runner.
 func RunConfigSet(ctx context.Context, globals *Globals, path, value string, runner setRunner) error {
 	parsed, err := config.ParsePath(path)
 	if err != nil {
@@ -1209,14 +1298,10 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, run
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config set currently supports only variables")
 	}
-	confirm := globals.Confirm && !globals.DryRun
-	if err := runner.SetVar(ctx, parsed.Service, parsed.Key, value, confirm); err != nil {
-		return err
+	if !globals.Confirm || globals.DryRun {
+		return fmt.Errorf("dry run: would set %s = %q (use --confirm to apply)", path, value)
 	}
-	if !confirm {
-		return fmt.Errorf("dry run: use --confirm to apply")
-	}
-	return nil
+	return runner.SetVar(ctx, parsed.Service, parsed.Key, value)
 }
 ```
 
@@ -1234,9 +1319,10 @@ import (
 )
 
 type deleteRunner interface {
-	DeleteVar(ctx context.Context, service, key string, confirm bool) error
+	DeleteVar(ctx context.Context, service, key string) error
 }
 
+// RunConfigDelete validates the path, checks confirm/dry-run, and calls the runner.
 func RunConfigDelete(ctx context.Context, globals *Globals, path string, runner deleteRunner) error {
 	parsed, err := config.ParsePath(path)
 	if err != nil {
@@ -1245,14 +1331,10 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, runner 
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config delete currently supports only variables")
 	}
-	confirm := globals.Confirm && !globals.DryRun
-	if err := runner.DeleteVar(ctx, parsed.Service, parsed.Key, confirm); err != nil {
-		return err
+	if !globals.Confirm || globals.DryRun {
+		return fmt.Errorf("dry run: would delete %s (use --confirm to apply)", path)
 	}
-	if !confirm {
-		return fmt.Errorf("dry run: use --confirm to apply")
-	}
-	return nil
+	return runner.DeleteVar(ctx, parsed.Service, parsed.Key)
 }
 ```
 
@@ -1273,7 +1355,7 @@ git commit -m "Implement config set/delete with confirm gating"
 
 ---
 
-### Task 10: Wire CLI set/delete to Railway mutations
+## Task 10: Wire CLI set/delete to Railway mutations
 
 **Files:**
 
@@ -1295,11 +1377,11 @@ func TestConfigSet_RejectsNonVariablePath(t *testing.T) {
 }
 ```
 
-**Step 2: Run the test to verify it fails**
+**Step 2: Run the test to verify it passes**
 
 Run: `go test ./internal/cli -run TestConfigSet_RejectsNonVariablePath -v`
 
-Expected: FAIL until CLI wiring is complete.
+Expected: PASS — `RunConfigSet` already rejects non-variable paths (from Task 9).
 
 **Step 3: Write minimal implementation**
 
@@ -1307,22 +1389,23 @@ In `internal/cli/config_set.go`, add a concrete runner that wraps railway mutati
 
 ```go
 type railwaySetter struct {
-	client       *railway.Client
-	projectID    string
+	client        *railway.Client
+	projectID     string
 	environmentID string
-	skipDeploys  bool
+	serviceIDs    map[string]string // service name → ID, populated lazily
+	skipDeploys   bool
 }
 
-func (r *railwaySetter) SetVar(ctx context.Context, service, key, value string, confirm bool) error {
-	if !confirm {
-		return nil
+func (r *railwaySetter) SetVar(ctx context.Context, service, key, value string) error {
+	serviceID, err := r.resolveServiceID(ctx, service)
+	if err != nil {
+		return err
 	}
-	serviceID := r.resolveServiceID(service)
 	return railway.UpsertVariable(ctx, r.client, r.projectID, r.environmentID, serviceID, key, value, r.skipDeploys)
 }
 ```
 
-Add a small `resolveServiceID` helper that maps service name → ID using a cached live config fetch (reuse `FetchLiveConfig` with `serviceFilter`).
+Add a `resolveServiceID` helper that maps service name to ID via `ProjectServices` query (cache the result for repeated calls).
 
 Do the same for delete using `railway.DeleteVariable`.
 
@@ -1341,7 +1424,7 @@ git commit -m "Wire config set/delete to Railway variable mutations"
 
 ---
 
-### Task 11: Update docs for M3 behavior
+## Task 11: Update docs for M3 behavior
 
 **Files:**
 
@@ -1377,7 +1460,7 @@ git commit -m "Document M3 config set/delete scope"
 
 ---
 
-### Task 12: Final verification
+## Task 12: Final verification
 
 **Files:**
 

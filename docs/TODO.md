@@ -3,13 +3,13 @@
 - [ ] Implement config validation warnings (M4: unknown keys/typos) and wire up `config validate`.
 - [ ] Include deploy/build settings in live state fetches so `config get --full` and diffs reflect them.
 - [ ] Batch variable updates in apply using `variableCollectionUpsert` instead of per-variable mutations.
-- [ ] Add an interactive confirmation prompt for apply when `--confirm` is not set and stdin is a TTY.
-- [ ] Support JSON/TOML output formats for `config apply`.
+- [x] Add an interactive confirmation prompt for apply when `--confirm` is not set and stdin is a TTY.
+- [x] Support JSON/TOML output formats for `config apply`.
 - [ ] Add `workspace` as an optional top-level config key (parsing, merge, and resolution fallback).
 - [ ] Extend `config init` with optional service selection (choose which services to include).
 - [ ] Add `config init` support for environment-specific files (e.g. generate overlay files).
 - [ ] Resolve project/environment IDs to names when `config init` is passed UUIDs.
-- [ ] Update `.gitignore` automatically when creating `fat-controller.local.toml` (optional safety).
+- [x] Update `.gitignore` automatically when creating `fat-controller.local.toml` (optional safety).
 - [ ] Add volume, domain, and TCP proxy management to config (Future).
 - [x] Add GoReleaser pipeline for prebuilt binaries.
 - [ ] Make `config init` interactive bootstrap (Future).

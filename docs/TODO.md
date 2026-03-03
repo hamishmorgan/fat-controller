@@ -19,6 +19,12 @@
 - [ ] Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (currently ~0-60%).
 - [ ] Add end-to-end integration tests using a staging Railway project or a mocked GraphQL API.
 - [ ] Automate CLI reference documentation generation (e.g., using `cobra/doc`).
+- [ ] Apply CLI timeout flag to derived contexts in command `Run` methods and set per-client HTTP timeouts.
+- [ ] Make OAuth login wait bounded by context/timeout to avoid indefinite blocking when callback never arrives.
+- [ ] Shutdown auth callback server with a timeout context to prevent hangs.
+- [ ] Surface token refresh failures from transport (return wrapped error instead of silent 401).
+- [ ] Tie auth callback server goroutine lifecycle to context/cancellation.
+- [ ] Refactor repeated config CLI tests into table-driven subtests.
 
 ## Features
 

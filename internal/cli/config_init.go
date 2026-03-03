@@ -6,12 +6,51 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
+
+func ensureGitignoreHasLine(dir, line string) (bool, error) {
+	gitignorePath := filepath.Join(dir, ".gitignore")
+
+	b, err := os.ReadFile(gitignorePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.WriteFile(gitignorePath, []byte(line+"\n"), 0o644); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+		return false, err
+	}
+
+	lines := strings.Split(string(b), "\n")
+	for _, existing := range lines {
+		if strings.TrimSpace(existing) == line {
+			return false, nil
+		}
+	}
+
+	f, err := os.OpenFile(gitignorePath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	if len(b) > 0 && b[len(b)-1] != '\n' {
+		if _, err := f.WriteString("\n"); err != nil {
+			return false, err
+		}
+	}
+	if _, err := f.WriteString(line + "\n"); err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
 const localConfigStub = `# Local overrides (gitignored). Use for secrets and per-developer settings.
 # Example:
@@ -78,6 +117,16 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 			return fmt.Errorf("writing %s: %w", config.LocalConfigFile, err)
 		}
 		if _, err := fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile); err != nil {
+			return err
+		}
+	}
+
+	added, err := ensureGitignoreHasLine(dir, config.LocalConfigFile)
+	if err != nil {
+		return fmt.Errorf("updating .gitignore: %w", err)
+	}
+	if added {
+		if _, err := fmt.Fprintf(out, "updated %s (added %s)\n", ".gitignore", config.LocalConfigFile); err != nil {
 			return err
 		}
 	}

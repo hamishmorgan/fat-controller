@@ -4,9 +4,9 @@ import "fmt"
 
 // Result holds apply summary counts.
 type Result struct {
-	Applied int
-	Failed  int
-	Skipped int
+	Applied int `json:"applied" toml:"applied"`
+	Failed  int `json:"failed" toml:"failed"`
+	Skipped int `json:"skipped" toml:"skipped"`
 }
 
 // Summary returns a concise summary string.

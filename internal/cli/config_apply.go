@@ -2,15 +2,19 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/hamishmorgan/fat-controller/internal/apply"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/diff"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -97,31 +101,70 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 
 	// 6. If no changes, report and return.
 	if changes.IsEmpty() {
-		_, err := fmt.Fprintln(out, "No changes.")
+		if globals.Output == "json" {
+			b, _ := json.MarshalIndent(&apply.Result{}, "", "  ")
+			fmt.Fprintln(out, string(b))
+		} else if globals.Output == "toml" {
+			b, _ := toml.Marshal(&apply.Result{})
+			fmt.Fprint(out, string(b))
+		} else {
+			fmt.Fprintln(out, "No changes.")
+		}
+		return nil
+	}
+
+	// 7. Handle dry-run and confirmation.
+	if globals.DryRun {
+		// Output diff for dry-run. If structured output is requested, fall back to text diff for now.
+		formatted := diff.Format(changes, globals.ShowSecrets)
+		_, err := fmt.Fprintf(out, "dry run: would apply the following changes\n\n%s\n", formatted)
 		return err
 	}
 
-	// 7. Dry-run by default unless --confirm is set and --dry-run is not.
-	if !globals.Confirm || globals.DryRun {
+	if !globals.Confirm {
 		formatted := diff.Format(changes, globals.ShowSecrets)
-		_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --confirm to execute)\n\n%s\n", formatted)
-		return err
+		if !prompt.StdinIsInteractive() {
+			_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --confirm to execute)\n\n%s\n", formatted)
+			return err
+		}
+
+		_, err := fmt.Fprintf(out, "The following changes will be applied:\n\n%s\n\n", formatted)
+		if err != nil {
+			return err
+		}
+
+		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure you want to apply these changes?", false)
+		if err != nil {
+			return fmt.Errorf("reading confirmation: %w", err)
+		}
+		if !confirmed {
+			fmt.Fprintln(out, "Apply cancelled.")
+			return nil
+		}
 	}
 
 	// 8. Apply changes.
-	applyResult, err := apply.Apply(ctx, desired, live, applier, apply.Options{
+	applyResult, applyErr := apply.Apply(ctx, desired, live, applier, apply.Options{
 		FailFast:    globals.FailFast,
 		SkipDeploys: globals.SkipDeploys,
 	})
-	if err != nil {
-		// Fail-fast: print partial summary before returning error.
-		_, _ = fmt.Fprintln(out, applyResult.Summary())
-		return err
+
+	if globals.Output == "json" {
+		b, _ := json.MarshalIndent(applyResult, "", "  ")
+		fmt.Fprintln(out, string(b))
+	} else if globals.Output == "toml" {
+		b, _ := toml.Marshal(applyResult)
+		fmt.Fprint(out, string(b))
+	} else {
+		fmt.Fprintln(out, applyResult.Summary())
 	}
 
-	_, err = fmt.Fprintln(out, applyResult.Summary())
+	if applyErr != nil {
+		return applyErr
+	}
+
 	if applyResult.HasFailures() {
 		return fmt.Errorf("apply completed with %d failure(s)", applyResult.Failed)
 	}
-	return err
+	return nil
 }

@@ -28,7 +28,7 @@ func main() {
 	)
 
 	// Configure structured logging based on --verbose / --quiet.
-	slog.SetDefault(c.Globals.Logger())
+	slog.SetDefault(c.Logger())
 
 	if err := ctx.Run(&c.Globals); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

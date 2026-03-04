@@ -28,8 +28,8 @@ type Globals struct {
 	FailFast    bool          `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
 	ShowSecrets bool          `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
 	Full        bool          `help:"Include IDs and read-only fields (get only)."`
-	Verbose     bool          `help:"Debug output (HTTP requests, timing)." short:"v"`
-	Quiet       bool          `help:"Suppress informational output." short:"q"`
+	Verbose     bool          `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
+	Quiet       bool          `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
 }
 
 // TimeoutContext returns a context with the configured timeout applied.

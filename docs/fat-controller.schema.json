@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fat-controller.toml",
+  "description": "Configuration file for fat-controller — declarative Railway project management. See https://github.com/hamishmorgan/fat-controller",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Railway project name or ID."
+    },
+    "environment": {
+      "type": "string",
+      "description": "Railway environment name."
+    },
+    "shared": {
+      "$ref": "#/$defs/sharedSection",
+      "description": "Variables shared across all services."
+    },
+    "sensitive_keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Keywords for detecting sensitive variable names (replaces defaults)."
+    },
+    "sensitive_allowlist": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Keywords that suppress false-positive secret matches (replaces defaults)."
+    },
+    "suppress_warnings": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^W\\d{3}$" },
+      "description": "Warning codes to suppress (e.g. [\"W012\", \"W030\"])."
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/service",
+    "description": "Per-service configuration. The key is the Railway service name."
+  },
+  "$defs": {
+    "sharedSection": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "$ref": "#/$defs/variables"
+        }
+      },
+      "additionalProperties": false
+    },
+    "variables": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "integer", "number", "boolean"],
+        "description": "Variable value. Non-string types are coerced to strings."
+      },
+      "description": "Environment variables as key-value pairs."
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "vcpus": {
+          "type": "number",
+          "description": "Number of vCPUs.",
+          "minimum": 0
+        },
+        "memory_gb": {
+          "type": "number",
+          "description": "Memory in gigabytes.",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "deploy": {
+      "type": "object",
+      "properties": {
+        "builder": {
+          "type": "string",
+          "description": "Railway builder (e.g. NIXPACKS, RAILPACK, DOCKERFILE)."
+        },
+        "dockerfile_path": {
+          "type": "string",
+          "description": "Path to Dockerfile relative to root directory."
+        },
+        "root_directory": {
+          "type": "string",
+          "description": "Root directory for the build context."
+        },
+        "start_command": {
+          "type": "string",
+          "description": "Command to start the service."
+        },
+        "healthcheck_path": {
+          "type": "string",
+          "description": "HTTP path for health checks."
+        }
+      },
+      "additionalProperties": false
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "$ref": "#/$defs/variables"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "deploy": {
+          "$ref": "#/$defs/deploy"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

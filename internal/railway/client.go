@@ -1,7 +1,11 @@
 package railway
 
 import (
+	"context"
+	"encoding/json"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -32,6 +36,7 @@ func NewClient(endpoint string, resolved *auth.ResolvedAuth, store *auth.TokenSt
 
 	httpClient := &http.Client{Transport: transport}
 	gql := graphql.NewClient(endpoint, httpClient)
+	gql = &loggingClient{inner: gql}
 
 	return &Client{gql: gql, auth: resolved}
 }
@@ -47,4 +52,74 @@ func (c *Client) Auth() *auth.ResolvedAuth {
 //	resp, err := ProjectToken(ctx, client.GQL())
 func (c *Client) GQL() graphql.Client {
 	return c.gql
+}
+
+// loggingClient wraps a genqlient graphql.Client and logs each operation.
+type loggingClient struct {
+	inner graphql.Client
+}
+
+func (c *loggingClient) MakeRequest(ctx context.Context, req *graphql.Request, resp *graphql.Response) error {
+	start := time.Now()
+	err := c.inner.MakeRequest(ctx, req, resp)
+	duration := time.Since(start)
+
+	attrs := []slog.Attr{
+		slog.String("op", req.OpName),
+		slog.Duration("duration", duration),
+	}
+
+	if req.Variables != nil {
+		attrs = append(attrs, slog.Any("vars", RedactVariables(req.Variables)))
+	}
+
+	if err != nil {
+		attrs = append(attrs, slog.String("error", err.Error()))
+		slog.LogAttrs(ctx, slog.LevelDebug, "graphql request failed", attrs...)
+		return err
+	}
+
+	if resp != nil && len(resp.Errors) > 0 {
+		attrs = append(attrs, slog.Int("graphql_errors", len(resp.Errors)))
+	}
+
+	slog.LogAttrs(ctx, slog.LevelDebug, "graphql request", attrs...)
+	return nil
+}
+
+// redactedValue is the placeholder for redacted fields.
+const redactedValue = "[REDACTED]"
+
+// secretKeys are JSON field names whose values should be redacted in logs.
+var secretKeys = map[string]bool{
+	"value":     true, // VariableUpsertInput.Value
+	"variables": true, // VariableCollectionUpsertInput.Variables (map of key→value)
+}
+
+// RedactVariables converts a variables struct to a map and redacts secret fields.
+// If marshaling fails, it returns the original value unmodified.
+func RedactVariables(v interface{}) interface{} {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return v
+	}
+	redactMap(m)
+	return m
+}
+
+// redactMap recursively walks a map and replaces secret field values.
+func redactMap(m map[string]interface{}) {
+	for k, v := range m {
+		if secretKeys[k] {
+			m[k] = redactedValue
+			continue
+		}
+		if sub, ok := v.(map[string]interface{}); ok {
+			redactMap(sub)
+		}
+	}
 }

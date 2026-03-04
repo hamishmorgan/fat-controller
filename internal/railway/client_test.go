@@ -13,6 +13,77 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
+func TestRedactVariables_RedactsSecretFields(t *testing.T) {
+	// Simulate a VariableUpsertInput with a secret value.
+	input := map[string]interface{}{
+		"input": map[string]interface{}{
+			"projectId":     "proj-123",
+			"environmentId": "env-456",
+			"name":          "API_KEY",
+			"value":         "super-secret-key",
+		},
+	}
+
+	result := railway.RedactVariables(input)
+	m, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map, got %T", result)
+	}
+	inner, ok := m["input"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected input to be map, got %T", m["input"])
+	}
+	if inner["value"] != "[REDACTED]" {
+		t.Errorf("value = %q, want [REDACTED]", inner["value"])
+	}
+	if inner["projectId"] != "proj-123" {
+		t.Errorf("projectId = %q, want proj-123", inner["projectId"])
+	}
+	if inner["name"] != "API_KEY" {
+		t.Errorf("name = %q, want API_KEY", inner["name"])
+	}
+}
+
+func TestRedactVariables_RedactsVariablesMap(t *testing.T) {
+	// Simulate a VariableCollectionUpsertInput.
+	input := map[string]interface{}{
+		"input": map[string]interface{}{
+			"projectId": "proj-123",
+			"variables": map[string]interface{}{
+				"DB_URL":  "postgres://secret",
+				"API_KEY": "secret-key",
+			},
+		},
+	}
+
+	result := railway.RedactVariables(input)
+	m := result.(map[string]interface{})
+	inner := m["input"].(map[string]interface{})
+	if inner["variables"] != "[REDACTED]" {
+		t.Errorf("variables = %v, want [REDACTED]", inner["variables"])
+	}
+	if inner["projectId"] != "proj-123" {
+		t.Errorf("projectId = %q, want proj-123", inner["projectId"])
+	}
+}
+
+func TestRedactVariables_LeavesNonSecretFieldsAlone(t *testing.T) {
+	// Simulate a query-only input (no secrets).
+	input := map[string]interface{}{
+		"projectId":     "proj-123",
+		"environmentId": "env-456",
+	}
+
+	result := railway.RedactVariables(input)
+	m := result.(map[string]interface{})
+	if m["projectId"] != "proj-123" {
+		t.Errorf("projectId = %q, want proj-123", m["projectId"])
+	}
+	if m["environmentId"] != "env-456" {
+		t.Errorf("environmentId = %q, want env-456", m["environmentId"])
+	}
+}
+
 func TestNewClient_WithFlagToken(t *testing.T) {
 	keyring.MockInit()
 

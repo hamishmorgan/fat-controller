@@ -14,12 +14,62 @@ concurrency:
 
 jobs:
   test:
-    uses: ./.github/workflows/test.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - name: Run tests with coverage
+        run: |
+          mkdir -p .build/coverage
+          go test -race -coverprofile=.build/coverage/coverage.out ./...
+      - name: Print coverage summary
+        run: go tool cover -func=.build/coverage/coverage.out
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-report
+          path: .build/coverage/coverage.out
+
   build:
-    uses: ./.github/workflows/build.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - run: go build ./...
+
   lint-go:
-    uses: ./.github/workflows/lint-go.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - run: mise run lint:go
+
   lint-docs:
-    uses: ./.github/workflows/lint-docs.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - run: mise run lint:md
+      - run: mise run lint:json
+      - run: mise run lint:graphql
+      - run: mise run lint:toml
+      - run: mise run lint:yaml
+      - name: Validate example config against schema
+        run: taplo check --schema "file://$(pwd)/docs/fat-controller.schema.json" docs/fat-controller.example.toml
+      - name: Check CLI reference docs are up to date
+        run: |
+          mise run docs:cli
+          git diff --exit-code docs/cli/ || {
+            echo "::error::CLI reference docs are stale. Run 'mise run docs:cli' and commit the result."
+            exit 1
+          }
+
   secrets:
-    uses: ./.github/workflows/secrets.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - run: mise run lint:secrets

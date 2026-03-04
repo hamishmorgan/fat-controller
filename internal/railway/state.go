@@ -3,12 +3,14 @@ package railway
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
 // FetchLiveConfig loads shared + per-service variables and basic settings.
 func FetchLiveConfig(ctx context.Context, client *Client, projectID, environmentID, serviceFilter string) (*config.LiveConfig, error) {
+	slog.Debug("fetching live config", "project_id", projectID, "environment_id", environmentID, "service_filter", serviceFilter)
 	cfg := &config.LiveConfig{
 		ProjectID:     projectID,
 		EnvironmentID: environmentID,
@@ -25,6 +27,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	for k, v := range shared.Variables {
 		cfg.Shared[k] = fmt.Sprint(v)
 	}
+	slog.Debug("fetched shared variables", "count", len(cfg.Shared))
 
 	services, err := ProjectServices(ctx, client.GQL(), projectID)
 	if err != nil {
@@ -60,6 +63,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			HealthcheckPath: si.HealthcheckPath,
 		}
 
+		slog.Debug("fetched service state", "service", edge.Node.Name, "variables", len(svc.Variables))
 		cfg.Services[edge.Node.Name] = svc
 	}
 

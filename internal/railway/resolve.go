@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -17,6 +18,7 @@ var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 // For project tokens, it uses the ProjectToken query. For account tokens, it
 // resolves the provided project/environment names (or passes through IDs).
 func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, project, environment string) (string, string, error) {
+	slog.Debug("resolving project and environment", "workspace", workspace, "project", project, "environment", environment)
 	if client == nil || client.Auth() == nil {
 		return "", "", errors.New("missing auth")
 	}
@@ -40,6 +42,7 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, p
 
 func resolveProjectID(ctx context.Context, client *Client, workspace, project string) (string, error) {
 	if project != "" && uuidPattern.MatchString(project) {
+		slog.Debug("project is UUID, skipping resolution", "project_id", project)
 		return project, nil
 	}
 	workspaceID, err := resolveWorkspaceID(ctx, client, workspace)
@@ -81,6 +84,7 @@ func resolveWorkspaceID(ctx context.Context, client *Client, workspace string) (
 		for _, ws := range resp.ApiToken.Workspaces {
 			if ws.Name == workspace {
 				id := ws.Id
+				slog.Debug("resolved workspace", "name", workspace, "id", id)
 				return &id, nil
 			}
 		}
@@ -147,6 +151,7 @@ func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env st
 	if env != "" {
 		for _, edge := range resp.Environments.Edges {
 			if edge.Node.Name == env {
+				slog.Debug("resolved environment", "name", env, "id", edge.Node.Id)
 				return edge.Node.Id, nil
 			}
 		}

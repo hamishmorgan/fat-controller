@@ -121,12 +121,18 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 	if changes.IsEmpty() {
 		switch globals.Output {
 		case "json":
-			b, _ := json.MarshalIndent(&apply.Result{}, "", "  ")
+			b, err := json.MarshalIndent(&apply.Result{}, "", "  ")
+			if err != nil {
+				return fmt.Errorf("marshalling result: %w", err)
+			}
 			if _, err := fmt.Fprintln(out, string(b)); err != nil {
 				return err
 			}
 		case "toml":
-			b, _ := toml.Marshal(&apply.Result{})
+			b, err := toml.Marshal(&apply.Result{})
+			if err != nil {
+				return fmt.Errorf("marshalling result: %w", err)
+			}
 			if _, err := fmt.Fprint(out, string(b)); err != nil {
 				return err
 			}
@@ -178,12 +184,18 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 
 	switch globals.Output {
 	case "json":
-		b, _ := json.MarshalIndent(applyResult, "", "  ")
+		b, err := json.MarshalIndent(applyResult, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshalling result: %w", err)
+		}
 		if _, err := fmt.Fprintln(out, string(b)); err != nil {
 			return err
 		}
 	case "toml":
-		b, _ := toml.Marshal(applyResult)
+		b, err := toml.Marshal(applyResult)
+		if err != nil {
+			return fmt.Errorf("marshalling result: %w", err)
+		}
 		if _, err := fmt.Fprint(out, string(b)); err != nil {
 			return err
 		}

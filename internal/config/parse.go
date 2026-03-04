@@ -52,6 +52,29 @@ func Parse(data []byte) (*DesiredConfig, error) {
 		cfg.Environment = s
 	}
 
+	// Extract sensitive_keywords, sensitive_allowlist, suppress_warnings.
+	if v, ok := raw["sensitive_keywords"]; ok {
+		sl, err := toStringSlice(v, "sensitive_keywords")
+		if err != nil {
+			return nil, err
+		}
+		cfg.SensitiveKeywords = sl
+	}
+	if v, ok := raw["sensitive_allowlist"]; ok {
+		sl, err := toStringSlice(v, "sensitive_allowlist")
+		if err != nil {
+			return nil, err
+		}
+		cfg.SensitiveAllowlist = sl
+	}
+	if v, ok := raw["suppress_warnings"]; ok {
+		sl, err := toStringSlice(v, "suppress_warnings")
+		if err != nil {
+			return nil, err
+		}
+		cfg.SuppressWarnings = sl
+	}
+
 	// Extract shared section.
 	if sharedRaw, ok := raw["shared"]; ok {
 		sharedMap, ok := sharedRaw.(map[string]any)
@@ -153,6 +176,24 @@ func toStringMap(val any, section string) (map[string]string, error) {
 	result := make(map[string]string, len(raw))
 	for k, v := range raw {
 		result[k] = fmt.Sprint(v)
+	}
+	return result, nil
+}
+
+// toStringSlice converts an any value to []string.
+// Returns an error if the value is not an array of strings.
+func toStringSlice(val any, field string) ([]string, error) {
+	arr, ok := val.([]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid '%s': expected array of strings, got %T", field, val)
+	}
+	result := make([]string, 0, len(arr))
+	for i, item := range arr {
+		s, ok := item.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid '%s[%d]': expected string, got %T", field, i, item)
+		}
+		result = append(result, s)
 	}
 	return result, nil
 }

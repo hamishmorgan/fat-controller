@@ -8,6 +8,10 @@ type DesiredConfig struct {
 	Environment string                     // from top-level `environment` key (optional)
 	Shared      *DesiredVariables          // nil means no shared section in config
 	Services    map[string]*DesiredService // keyed by service name
+
+	SensitiveKeywords  []string
+	SensitiveAllowlist []string
+	SuppressWarnings   []string
 }
 
 // DesiredService holds one service's desired configuration.

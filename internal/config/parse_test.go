@@ -307,6 +307,33 @@ func TestParse_AcceptsUnknownTableTopLevelKey(t *testing.T) {
 	}
 }
 
+func TestParse_ExtractsSensitiveKeywords(t *testing.T) {
+	cfg, err := config.Parse([]byte(`
+sensitive_keywords = ["SECRET", "TOKEN"]
+sensitive_allowlist = ["TOKEN_URL"]
+suppress_warnings = ["W012", "W030"]
+`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.SensitiveKeywords) != 2 || cfg.SensitiveKeywords[0] != "SECRET" {
+		t.Errorf("unexpected keywords: %v", cfg.SensitiveKeywords)
+	}
+	if len(cfg.SensitiveAllowlist) != 1 || cfg.SensitiveAllowlist[0] != "TOKEN_URL" {
+		t.Errorf("unexpected allowlist: %v", cfg.SensitiveAllowlist)
+	}
+	if len(cfg.SuppressWarnings) != 2 || cfg.SuppressWarnings[0] != "W012" {
+		t.Errorf("unexpected suppress_warnings: %v", cfg.SuppressWarnings)
+	}
+}
+
+func TestParse_RejectsInvalidSensitiveKeywords(t *testing.T) {
+	_, err := config.Parse([]byte(`sensitive_keywords = "not-an-array"`))
+	if err == nil {
+		t.Fatal("expected error for non-array sensitive_keywords")
+	}
+}
+
 // writeTempTOML writes content to a temp .toml file and returns its path.
 func writeTempTOML(t *testing.T, content string) string {
 	t.Helper()

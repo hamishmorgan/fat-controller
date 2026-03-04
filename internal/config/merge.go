@@ -18,6 +18,15 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 		if cfg.Environment != "" {
 			result.Environment = cfg.Environment
 		}
+		if len(cfg.SensitiveKeywords) > 0 {
+			result.SensitiveKeywords = cfg.SensitiveKeywords
+		}
+		if len(cfg.SensitiveAllowlist) > 0 {
+			result.SensitiveAllowlist = cfg.SensitiveAllowlist
+		}
+		if len(cfg.SuppressWarnings) > 0 {
+			result.SuppressWarnings = cfg.SuppressWarnings
+		}
 		result.Shared = mergeVariables(result.Shared, cfg.Shared)
 		for name, svc := range cfg.Services {
 			existing, ok := result.Services[name]

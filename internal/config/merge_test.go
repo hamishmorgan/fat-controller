@@ -156,6 +156,15 @@ func TestMerge_ProjectEnvironment(t *testing.T) {
 	}
 }
 
+func TestMerge_SensitiveKeywords(t *testing.T) {
+	base := &config.DesiredConfig{SensitiveKeywords: []string{"SECRET"}}
+	overlay := &config.DesiredConfig{SensitiveKeywords: []string{"TOKEN", "KEY"}}
+	result := config.Merge(base, overlay)
+	if len(result.SensitiveKeywords) != 2 || result.SensitiveKeywords[0] != "TOKEN" {
+		t.Errorf("expected overlay keywords to win: %v", result.SensitiveKeywords)
+	}
+}
+
 func TestMerge_ProjectEnvironment_EmptyDoesNotOverride(t *testing.T) {
 	base := &config.DesiredConfig{
 		Project:     "my-app",

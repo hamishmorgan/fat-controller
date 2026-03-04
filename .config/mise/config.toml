@@ -240,6 +240,11 @@ go generate ./...
 go run github.com/Khan/genqlient .config/genqlient.yaml
 """
 
+[tasks."docs:cli"]
+alias = ["docs"]
+description = "Generate CLI reference Markdown from Kong model"
+run = "go run ./cmd/docgen -out docs/cli"
+
 [tasks."lint:go"]
 description = "Lint Go code"
 run = """

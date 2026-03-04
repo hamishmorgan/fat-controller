@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"io"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -38,6 +40,28 @@ func (g *Globals) TimeoutContext(ctx context.Context) (context.Context, context.
 		return context.WithTimeout(ctx, g.Timeout)
 	}
 	return ctx, func() {}
+}
+
+// Logger returns a slog.Logger configured for the current verbosity level.
+// Output goes to stderr with no timestamps for clean CLI output.
+func (g *Globals) Logger() *slog.Logger {
+	level := slog.LevelInfo
+	if g.Verbose {
+		level = slog.LevelDebug
+	} else if g.Quiet {
+		level = slog.LevelWarn
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     level,
+		AddSource: false,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Remove timestamp for clean CLI output.
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	}))
 }
 
 // CLI is the root struct for the kong CLI parser.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -25,6 +26,9 @@ func main() {
 		kong.UsageOnError(),
 		kong.Help(cli.ColorHelpPrinter),
 	)
+
+	// Configure structured logging based on --verbose / --quiet.
+	slog.SetDefault(c.Globals.Logger())
 
 	if err := ctx.Run(&c.Globals); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

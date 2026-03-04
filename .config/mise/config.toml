@@ -2,13 +2,13 @@
 
 [tools]
 go = "1.25"
-golangci-lint = "latest"
-"npm:markdownlint-cli2" = "latest"
-"npm:prettier" = "latest"
-taplo = "latest"
-actionlint = "latest"
-gitleaks = "latest"
-apollo-rover = "latest"
+golangci-lint = "2.10.1"
+"npm:markdownlint-cli2" = "0.21.0"
+"npm:prettier" = "3.8.1"
+taplo = "0.10.0"
+actionlint = "1.7.11"
+gitleaks = "8.30.0"
+apollo-rover = "0.37.2"
 
 [settings]
 experimental = true

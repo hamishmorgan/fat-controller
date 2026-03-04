@@ -3,8 +3,10 @@ package railway
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 )
@@ -47,10 +49,15 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	clone := req.Clone(req.Context())
 	clone.Header.Set(headerName, headerValue)
 
+	start := time.Now()
 	resp, err := t.base.RoundTrip(clone)
+	duration := time.Since(start)
 	if err != nil {
+		slog.Debug("http request failed", "method", req.Method, "url", req.URL.String(), "error", err, "duration", duration)
 		return nil, err
 	}
+
+	slog.Debug("http request", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode, "duration", duration)
 
 	if resp.StatusCode != http.StatusUnauthorized {
 		return resp, nil
@@ -67,13 +74,14 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Re-check: another goroutine may have refreshed while we waited.
 	if t.resolved.HeaderValue != headerValue {
-		// Token was already refreshed — retry with the new value.
+		slog.Debug("token already refreshed by another goroutine, retrying")
 		resp.Body.Close() //nolint:errcheck
 		retry := req.Clone(req.Context())
 		retry.Header.Set(headerName, t.resolved.HeaderValue)
 		return t.base.RoundTrip(retry)
 	}
 
+	slog.Debug("refreshing expired token")
 	newTokens, refreshErr := t.tryRefresh(req.Context())
 	if refreshErr != nil {
 		resp.Body.Close() //nolint:errcheck
@@ -82,6 +90,7 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	resp.Body.Close() //nolint:errcheck
 
+	slog.Debug("token refreshed successfully")
 	t.resolved.SetToken(newTokens.AccessToken)
 
 	retry := req.Clone(req.Context())

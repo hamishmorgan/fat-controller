@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 )
@@ -51,6 +52,7 @@ func (r *ResolvedAuth) SetToken(token string) {
 func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 	// 1. --token flag
 	if flagToken != "" {
+		slog.Debug("auth resolved", "source", SourceFlag)
 		return &ResolvedAuth{
 			Token:       flagToken,
 			HeaderName:  "Authorization",
@@ -61,6 +63,7 @@ func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*Res
 
 	// 2. RAILWAY_API_TOKEN env var
 	if token := os.Getenv("RAILWAY_API_TOKEN"); token != "" {
+		slog.Debug("auth resolved", "source", SourceEnvAPIToken)
 		return &ResolvedAuth{
 			Token:       token,
 			HeaderName:  "Authorization",
@@ -71,6 +74,7 @@ func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*Res
 
 	// 3. RAILWAY_TOKEN env var (project-scoped)
 	if token := os.Getenv("RAILWAY_TOKEN"); token != "" {
+		slog.Debug("auth resolved", "source", SourceEnvToken)
 		return &ResolvedAuth{
 			Token:       token,
 			HeaderName:  "Project-Access-Token",
@@ -92,6 +96,7 @@ func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*Res
 		return nil, ErrNotAuthenticated
 	}
 
+	slog.Debug("auth resolved", "source", SourceStored)
 	return &ResolvedAuth{
 		Token:       tokens.AccessToken,
 		HeaderName:  "Authorization",

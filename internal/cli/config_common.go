@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
@@ -24,7 +25,7 @@ type configPair struct {
 //  6. Filter desired config by --service if set
 func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extraFiles []string, fetcher configFetcher) (*configPair, error) {
 	// 1. Load and merge config files.
-	debug(globals, "loading config from %s", configDir)
+	slog.Debug("loading config", "dir", configDir)
 	desired, err := config.LoadConfigs(configDir, extraFiles)
 	if err != nil {
 		return nil, err
@@ -50,14 +51,14 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 	}
 
 	// 4. Resolve project and environment IDs.
-	debug(globals, "resolving project=%q environment=%q", project, environment)
+	slog.Debug("resolving project and environment", "project", project, "environment", environment)
 	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return nil, err
 	}
 
 	// 5. Fetch live state.
-	debug(globals, "fetching live state for project=%s environment=%s", projID, envID)
+	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)
 	live, err := fetcher.Fetch(ctx, projID, envID, globals.Service)
 	if err != nil {
 		return nil, err

@@ -86,7 +86,12 @@ func TestRunConfigGet_PathExtractsService(t *testing.T) {
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
 			Shared:        map[string]string{},
-			Services:      map[string]*config.ServiceConfig{},
+			Services: map[string]*config.ServiceConfig{
+				"api": {
+					Name:      "api",
+					Variables: map[string]string{"PORT": "8080"},
+				},
+			},
 		},
 	}
 	// Wrap to capture the service argument.
@@ -145,6 +150,68 @@ func TestRunConfigGet_NilConfig(t *testing.T) {
 	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error for nil config")
+	}
+}
+
+func TestRunConfigGet_FiltersByPathSectionAndKey(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Services: map[string]*config.ServiceConfig{
+				"api": {
+					Name: "api",
+					Variables: map[string]string{
+						"PORT":  "8080",
+						"DEBUG": "false",
+					},
+				},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text", ShowSecrets: true}
+	err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", fetcher, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "8080") {
+		t.Errorf("expected PORT value: %s", output)
+	}
+	if strings.Contains(output, "DEBUG") {
+		t.Errorf("should not contain other variables: %s", output)
+	}
+}
+
+func TestRunConfigGet_FiltersByPathSection(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Shared: map[string]string{"GLOBAL": "yes"},
+			Services: map[string]*config.ServiceConfig{
+				"api": {
+					Name: "api",
+					Variables: map[string]string{
+						"PORT":  "8080",
+						"DEBUG": "false",
+					},
+				},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text", ShowSecrets: true}
+	err := cli.RunConfigGet(context.Background(), globals, "api.variables", fetcher, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "PORT") {
+		t.Errorf("expected PORT in section output: %s", output)
+	}
+	if !strings.Contains(output, "DEBUG") {
+		t.Errorf("expected DEBUG in section output: %s", output)
+	}
+	if strings.Contains(output, "GLOBAL") {
+		t.Errorf("should not contain shared variables: %s", output)
 	}
 }
 

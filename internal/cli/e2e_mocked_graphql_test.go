@@ -747,13 +747,15 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
-		// FetchLiveConfig always includes shared vars, but the service filter
-		// should exclude the worker service.
+		// Single-key lookup should output just the raw value.
 		if strings.Contains(output, "QUEUE") {
 			t.Errorf("dot-path should exclude other services, but worker QUEUE appeared:\n%s", output)
 		}
-		if !strings.Contains(output, "PORT") {
-			t.Errorf("expected PORT in output, got:\n%s", output)
+		if !strings.Contains(output, "8080") {
+			t.Errorf("expected raw value 8080 in output, got:\n%s", output)
+		}
+		if strings.Contains(output, "PORT") {
+			t.Errorf("single-key lookup should output raw value, not key name:\n%s", output)
 		}
 	})
 

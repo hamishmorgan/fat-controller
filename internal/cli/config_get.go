@@ -58,8 +58,9 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 		return err
 	}
 	service := globals.Service
+	var parsed config.Path
 	if path != "" {
-		parsed, err := config.ParsePath(path)
+		parsed, err = config.ParsePath(path)
 		if err != nil {
 			return err
 		}
@@ -74,6 +75,27 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 	if cfg == nil {
 		return errors.New("no config returned")
 	}
+
+	// Single key lookup: output just the raw value.
+	if parsed.Key != "" {
+		val, ok := lookupKey(*cfg, parsed)
+		if !ok {
+			return fmt.Errorf("key %q not found in %s.%s", parsed.Key, parsed.Service, parsed.Section)
+		}
+		if !globals.ShowSecrets {
+			masker := config.NewMasker(nil, nil)
+			val = masker.MaskValue(parsed.Key, val)
+		}
+		_, err = fmt.Fprintln(out, val)
+		return err
+	}
+
+	// Section-level lookup: filter config to just that section.
+	if parsed.Section != "" {
+		filtered := filterSection(*cfg, parsed)
+		cfg = &filtered
+	}
+
 	output, err := config.Render(*cfg, config.RenderOptions{
 		Format:      globals.Output,
 		Full:        globals.Full,
@@ -84,4 +106,42 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 	}
 	_, err = fmt.Fprintln(out, output)
 	return err
+}
+
+// lookupKey retrieves a single value from the config for a fully-qualified path.
+func lookupKey(cfg config.LiveConfig, p config.Path) (string, bool) {
+	svc, ok := cfg.Services[p.Service]
+	if !ok {
+		return "", false
+	}
+	switch p.Section {
+	case "variables":
+		val, found := svc.Variables[p.Key]
+		return val, found
+	default:
+		return "", false
+	}
+}
+
+// filterSection returns a copy of cfg containing only the requested section.
+func filterSection(cfg config.LiveConfig, p config.Path) config.LiveConfig {
+	filtered := config.LiveConfig{
+		ProjectID:     cfg.ProjectID,
+		EnvironmentID: cfg.EnvironmentID,
+	}
+	svc, ok := cfg.Services[p.Service]
+	if !ok {
+		return filtered
+	}
+	switch p.Section {
+	case "variables":
+		filtered.Services = map[string]*config.ServiceConfig{
+			p.Service: {
+				ID:        svc.ID,
+				Name:      svc.Name,
+				Variables: svc.Variables,
+			},
+		}
+	}
+	return filtered
 }

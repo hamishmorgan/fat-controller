@@ -29,7 +29,7 @@ func TestRunConfigDelete(t *testing.T) {
 			wantDryRun: true,
 		},
 		{
-			name:       "dry-run flag overrides confirm",
+			name:       "explicit dry-run flag",
 			globals:    &cli.Globals{Confirm: true, DryRun: true},
 			path:       "api.variables.OLD",
 			wantDryRun: true,
@@ -110,5 +110,21 @@ func TestRunConfigDelete(t *testing.T) {
 				t.Errorf("key: got %q, want %q", m.key, tt.wantKey)
 			}
 		})
+	}
+}
+
+func TestRunConfigDelete_DryRunFlag(t *testing.T) {
+	mut := &recordingMutator{}
+	var buf bytes.Buffer
+	globals := &cli.Globals{DryRun: true, Confirm: true}
+	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", mut, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "dry run") {
+		t.Error("expected dry-run message")
+	}
+	if mut.called {
+		t.Error("should not call deleter in dry-run mode")
 	}
 }

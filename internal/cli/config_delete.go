@@ -10,6 +10,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -32,9 +33,24 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config delete currently supports only variables (path: service.variables.KEY)")
 	}
-	if !globals.Confirm || globals.DryRun {
-		_, err := fmt.Fprintf(out, "dry run: would delete %s (use --confirm to apply)\n", path)
+	if globals.DryRun {
+		_, err := fmt.Fprintf(out, "dry run: would delete %s\n", path)
 		return err
+	}
+	if !globals.Confirm {
+		if !prompt.StdinIsInteractive() {
+			_, err := fmt.Fprintf(out, "dry run: would delete %s (use --confirm to apply)\n", path)
+			return err
+		}
+		fmt.Fprintf(out, "Will delete %s\n\n", path)
+		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
+		if err != nil {
+			return fmt.Errorf("reading confirmation: %w", err)
+		}
+		if !confirmed {
+			_, err := fmt.Fprintln(out, "Cancelled.")
+			return err
+		}
 	}
 	return deleter.DeleteVar(ctx, parsed.Service, parsed.Key)
 }

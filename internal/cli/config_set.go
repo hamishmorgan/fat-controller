@@ -10,6 +10,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -32,9 +33,24 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config set currently supports only variables (path: service.variables.KEY)")
 	}
-	if !globals.Confirm || globals.DryRun {
-		_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --confirm to apply)\n", path, value)
+	if globals.DryRun {
+		_, err := fmt.Fprintf(out, "dry run: would set %s = %q\n", path, value)
 		return err
+	}
+	if !globals.Confirm {
+		if !prompt.StdinIsInteractive() {
+			_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --confirm to apply)\n", path, value)
+			return err
+		}
+		fmt.Fprintf(out, "Will set %s = %q\n\n", path, value)
+		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
+		if err != nil {
+			return fmt.Errorf("reading confirmation: %w", err)
+		}
+		if !confirmed {
+			_, err := fmt.Fprintln(out, "Cancelled.")
+			return err
+		}
 	}
 	return setter.SetVar(ctx, parsed.Service, parsed.Key, value)
 }

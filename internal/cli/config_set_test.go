@@ -32,7 +32,7 @@ func TestRunConfigSet(t *testing.T) {
 			wantDryRun: true,
 		},
 		{
-			name:       "dry-run flag overrides confirm",
+			name:       "explicit dry-run flag",
 			globals:    &cli.Globals{Confirm: true, DryRun: true},
 			path:       "api.variables.PORT",
 			value:      "8080",
@@ -72,6 +72,10 @@ func TestRunConfigSet(t *testing.T) {
 			wantCalled: true,
 		},
 	}
+
+	// The existing "dry-run by default" case now hits the non-TTY branch
+	// (since tests don't run in a TTY), which still outputs "dry run".
+	// The "dry-run flag overrides confirm" case hits the explicit --dry-run branch.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -122,5 +126,21 @@ func TestRunConfigSet(t *testing.T) {
 				t.Errorf("value: got %q, want %q", m.value, tt.wantValue)
 			}
 		})
+	}
+}
+
+func TestRunConfigSet_DryRunFlag(t *testing.T) {
+	mut := &recordingMutator{}
+	var buf bytes.Buffer
+	globals := &cli.Globals{DryRun: true, Confirm: true}
+	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", mut, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "dry run") {
+		t.Error("expected dry-run message")
+	}
+	if mut.called {
+		t.Error("should not call setter in dry-run mode")
 	}
 }

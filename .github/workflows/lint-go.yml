@@ -1,15 +1,13 @@
 name: Lint Go
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: lint-go-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

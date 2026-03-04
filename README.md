@@ -1,12 +1,8 @@
 ![Fat Controller Logo](docs/logo.svg)
 
-[![Test](https://github.com/hamishmorgan/fat-controller/actions/workflows/test.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/test.yml)
-[![Build](https://github.com/hamishmorgan/fat-controller/actions/workflows/build.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/build.yml)
-[![Lint Go](https://github.com/hamishmorgan/fat-controller/actions/workflows/lint-go.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/lint-go.yml)
-[![Lint Docs](https://github.com/hamishmorgan/fat-controller/actions/workflows/lint-docs.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/lint-docs.yml)
-[![Secrets](https://github.com/hamishmorgan/fat-controller/actions/workflows/secrets.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/secrets.yml)
-
+[![CI](https://github.com/hamishmorgan/fat-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/hamishmorgan/fat-controller/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/hamishmorgan/fat-controller)](https://github.com/hamishmorgan/fat-controller/releases)
+[![Go](https://img.shields.io/github/go-mod/go-version/hamishmorgan/fat-controller)](go.mod)
 [![License](https://img.shields.io/github/license/hamishmorgan/fat-controller)](LICENSE)
 
 # Fat Controller

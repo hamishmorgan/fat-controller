@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+  build:
+    uses: ./.github/workflows/build.yml
+  lint-go:
+    uses: ./.github/workflows/lint-go.yml
+  lint-docs:
+    uses: ./.github/workflows/lint-docs.yml
+  secrets:
+    uses: ./.github/workflows/secrets.yml

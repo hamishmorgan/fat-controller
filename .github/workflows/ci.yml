@@ -42,17 +42,37 @@ jobs:
       - uses: ./.github/actions/setup
       - run: mise run lint:go
 
-  lint-fmt:
+  lint-md:
     runs-on: ubuntu-latest
     steps:
       - uses: ./.github/actions/setup
       - run: mise run lint:md
+
+  lint-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/setup
       - run: mise run lint:json
+
+  lint-graphql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/setup
       - run: mise run lint:graphql
+
+  lint-toml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/setup
       - run: mise run lint:toml
-      - run: mise run lint:yaml
       - name: Validate example config against schema
         run: taplo check --schema "file://$(pwd)/docs/fat-controller.schema.json" docs/fat-controller.example.toml
+
+  lint-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/setup
+      - run: mise run lint:yaml
 
   docs-freshness:
     runs-on: ubuntu-latest

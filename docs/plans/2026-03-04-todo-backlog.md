@@ -4,7 +4,7 @@
 
 **Goal:** Implement all remaining TODO items from `docs/TODO.md` — config validation warnings, bug fixes, safety improvements, output format handling, auth hardening, and code quality improvements.
 
-**Architecture:** Work is organised into 19 independent tasks grouped by theme. Each task is self-contained: write failing test, implement, verify, commit. Tasks are ordered so that foundational changes (config parsing validation, shared helpers) land first, and dependent work (warning system, output improvements) builds on them.
+**Architecture:** Work is organised into 23 tasks grouped by theme. Each task is self-contained: write failing test, implement, verify, commit. Tasks are ordered so that foundational changes (config parsing validation, shared helpers) land first, and dependent work (warning system, output improvements) builds on them.
 
 **Tech Stack:** Go 1.25, kong (CLI), BurntSushi/toml, genqlient (Railway GraphQL), lipgloss (styled output), stdlib testing, httptest
 
@@ -16,17 +16,34 @@
 
 - **CLI layer** (`internal/cli/`): Each command has a `Run(globals *Globals) error` method that wires up real dependencies, and a testable `RunXxx(...)` function that accepts interfaces. All commands embed `Globals` for shared flags.
 - **Auth bootstrap** is identical in every `Run()` method: `NewTokenStore → ResolveAuth → NewClient → interface wrapper`. This is the boilerplate referenced in the TODO.
+- **Auth commands are different**: `auth login` uses `OAuthClient` + `TokenStore` + `BrowserOpener` directly; `auth logout` only needs `TokenStore`; `auth status` builds its own transport and `OAuthClient`. None of these use `railway.NewClient`, so they cannot share the same helper as config commands.
 - **Config pipeline**: `LoadConfigs` (base + local + extras) → `Merge` → `Interpolate` → `Fetch` live → `diff.Compute` → `diff.Format` or `apply.Apply`.
 - **Testing style**: External test packages (`package cli_test`), `fakeFetcher`/`recordingMutator` in `helpers_test.go`, `httptest.NewServer` for API mocks, obviously-fake values to avoid gitleaks false positives.
 - **Pre-commit hooks** run gitleaks and formatters. Use `mise run check` for full suite. Use `go test -race ./...` for tests.
-- **Config parsing** (`internal/config/parse.go`): TOML → `map[string]any` → manual extraction. `knownTopLevelKeys` map tracks non-service keys. Unknown non-table keys are silently skipped (line 68-69).
+- **Config parsing** (`internal/config/parse.go`): TOML → `map[string]any` → manual extraction. `knownTopLevelKeys` map tracks non-service keys. Unknown non-table keys are silently skipped (line 69).
 - **Config rendering** (`internal/config/render.go`): `tomlQuote` escapes values but does NOT quote keys. Section headers and keys are written bare.
+- **Config merging** (`internal/config/merge.go`): `Merge()` uses a local variable named `result` (not `merged`) for the accumulated config.
 - **Diff** (`internal/diff/`): `Compute` does additive-only comparison. `Format` uses lipgloss styles.
 - **Apply** (`internal/apply/`): Three-phase (settings → shared vars → per-service vars). `Result` has `Applied`, `Failed`, `Skipped` fields — `Skipped` is never incremented.
-- **Auth** (`internal/auth/`): OAuth 2.0 PKCE flow. `Login` in `login.go` calls `OpenBrowser` which uses `cmd.Start()` without `cmd.Wait()`. `CallbackServer` has no shutdown timeout. `RegisterClient`/`ExchangeCode` take no `context.Context`. `ResolveAuth` takes no `context.Context`.
+- **Applier interface** (`internal/apply/apply.go:19-24`):
+
+  ```go
+  type Applier interface {
+      UpsertVariable(ctx context.Context, service, key, value string, skipDeploys bool) error
+      DeleteVariable(ctx context.Context, service, key string) error
+      UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error
+      UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error
+  }
+  ```
+
+- **Auth** (`internal/auth/`): OAuth 2.0 PKCE flow. `browserCommand` in `login.go` is a **function** variable (`var browserCommand = exec.Command`) — NOT a string. `OpenBrowser` calls `browserCommand(...)` then `cmd.Start()` without `cmd.Wait()`. `CallbackServer` already stores `*http.Server` as a field and has a `Shutdown()` method that calls `s.server.Shutdown(context.Background())` — it just needs a timeout context instead.
+- **Auth function signatures**:
+  - `RegisterClient(redirectURI string) (*RegistrationResponse, error)` — takes redirectURI, no context
+  - `ExchangeCode(clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error)` — note parameter order
+  - `ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error)` — no context
 - **Transport** (`internal/railway/transport.go`): `ResolvedAuth.Token` is mutated under `mu` lock inside `RoundTrip` but the field is public and accessible externally.
-- **List commands** (`project_list.go`, `environment_list.go`, `workspace_list.go`): Output format switch handles `"json"` and default (text). TOML case is missing — falls through to text.
-- **GraphQL operations** in `internal/railway/operations.graphql` — includes `variableCollectionUpsert` mutation already defined.
+- **List commands** (`project_list.go`, `environment_list.go`, `workspace_list.go`): Output format switch handles `"json"` and default (text). TOML case is missing — falls through to text. Info structs have `json` tags but no `toml` tags.
+- **GraphQL operations**: `variableCollectionUpsert` exists in `schema.graphql` (the introspected schema) but is NOT yet defined in `operations.graphql` and has no generated Go code. The `ServiceInstance` query IS already in `operations.graphql` and has generated Go code, but `FetchLiveConfig` doesn't call it.
 
 ### Running tests
 
@@ -43,7 +60,23 @@ mise run check                                # full lint + test + build
 - gitleaks pre-commit hook: use obviously-fake values like `fakekeyfakekeyfakekey` in tests
 - TOML formatting: `taplo format` runs on pre-commit, may reformat TOML test fixtures
 - Config keys containing dots/spaces: TOML spec requires quoting keys with special chars
-- The `variableCollectionUpsert` GraphQL mutation exists in operations.graphql but the generated code may need verification
+- `browserCommand` is a **function** variable (`var browserCommand = exec.Command`), not a string — proposed code must call it as a function
+- `TestOpenBrowser` in `login_test.go` uses `SetBrowserCommand` — removing it requires updating this test
+- List command structs need `toml` struct tags added for TOML marshalling to work correctly
+- `variableCollectionUpsert` must be added to `operations.graphql` and code generation re-run before the batch upsert task
+
+### TODO items explicitly deferred (not in this plan)
+
+These are marked as "future" in TODO.md or require significant API/design work beyond the current scope:
+
+- Extend `config init` with optional service selection (choose which services to include)
+- Add `config init` support for environment-specific files (e.g. generate overlay files)
+- Resolve project/environment IDs to names when `config init` is passed UUIDs
+- Add volume, domain, and TCP proxy management to config (future)
+- Make `config init` interactive bootstrap (future)
+- Support parsing, validating, and updating standard `railway.toml` native service configurations natively
+- Add shell completions (kong custom completers or external generator)
+- Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (ongoing effort, not a single task)
 
 ---
 
@@ -205,9 +238,6 @@ These keys are in `knownTopLevelKeys` but are never extracted from the parsed TO
 - Modify: `internal/config/desired.go`
 - Modify: `internal/config/parse.go`
 - Modify: `internal/config/merge.go`
-- Modify: `internal/config/render.go` (thread keywords/allowlist to masker)
-- Modify: `internal/cli/config_get.go` (pass keywords/allowlist from config)
-- Modify: `internal/cli/config_diff.go` (pass keywords/allowlist to diff format)
 - Test: `internal/config/parse_test.go`
 - Test: `internal/config/merge_test.go`
 
@@ -316,35 +346,33 @@ func toStringSlice(val any, field string) ([]string, error) {
 
 **Step 5: Update merge logic**
 
-In `internal/config/merge.go`, in the `Merge` function, add after project/environment merging:
+In `internal/config/merge.go`, in the `Merge` function, add after the project/environment merging (after line 20, before `result.Shared = ...`):
 
 ```go
 if len(cfg.SensitiveKeywords) > 0 {
-    merged.SensitiveKeywords = cfg.SensitiveKeywords
+    result.SensitiveKeywords = cfg.SensitiveKeywords
 }
 if len(cfg.SensitiveAllowlist) > 0 {
-    merged.SensitiveAllowlist = cfg.SensitiveAllowlist
+    result.SensitiveAllowlist = cfg.SensitiveAllowlist
 }
 if len(cfg.SuppressWarnings) > 0 {
-    merged.SuppressWarnings = cfg.SuppressWarnings
+    result.SuppressWarnings = cfg.SuppressWarnings
 }
 ```
+
+Note: The merge function uses the variable name `result`, not `merged`.
 
 **Step 6: Run test to verify it passes**
 
 Run: `go test -race -run TestParse_ExtractsSensitive ./internal/config/...`
 Expected: PASS
 
-**Step 7: Thread keywords through to config get rendering**
-
-In `internal/cli/config_get.go` `RunConfigGet`, after loading config (if config files are loaded), pass `desired.SensitiveKeywords` and `desired.SensitiveAllowlist` through to `config.Render` via `RenderOptions`. This requires loading config files in `config get` — for now, only thread when config files are explicitly available. Since `config get` doesn't currently load TOML configs, defer this wiring to when `config get --full` uses config (a separate TODO). The parsing/merge work is the core deliverable here.
-
-**Step 8: Run full test suite**
+**Step 7: Run full test suite**
 
 Run: `go test -race ./...`
 Expected: All pass.
 
-**Step 9: Commit**
+**Step 8: Commit**
 
 ```bash
 git add internal/config/desired.go internal/config/parse.go internal/config/parse_test.go internal/config/merge.go internal/config/merge_test.go
@@ -371,7 +399,7 @@ func TestRenderTOML_QuotesSpecialKeys(t *testing.T) {
 			"api": {
 				Name: "api",
 				Variables: map[string]string{
-					"my.dotted.key": "value1",
+					"my.dotted.key":   "value1",
 					"key with spaces": "value2",
 					"NORMAL_KEY":      "value3",
 				},
@@ -463,6 +491,17 @@ Currently `project list`, `environment list`, and `workspace list` switch on `gl
 - Test: `internal/cli/environment_list_test.go`
 - Test: `internal/cli/workspace_list_test.go`
 
+**Prerequisite:** The `ProjectInfo`, `EnvironmentInfo`, and `WorkspaceInfo` structs only have `json` struct tags. You must add `toml` struct tags for `toml.Marshal` to produce correctly-named fields. For example:
+
+```go
+type ProjectInfo struct {
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
+}
+```
+
+Apply the same to `EnvironmentInfo` and `WorkspaceInfo`.
+
 **Step 1: Write failing tests**
 
 ```go
@@ -480,7 +519,6 @@ func TestRunProjectList_TOMLOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := buf.String()
-	// TOML output should be parseable and contain the project.
 	if !strings.Contains(output, "my-app") {
 		t.Errorf("expected project name in TOML output: %s", output)
 	}
@@ -536,8 +574,7 @@ Currently `config get api.variables.PORT` parses the path to extract the service
 
 **Files:**
 
-- Modify: `internal/cli/config_get.go:60-87`
-- Modify: `internal/config/render.go` (add single-value rendering option or filter)
+- Modify: `internal/cli/config_get.go`
 - Test: `internal/cli/config_get_test.go`
 
 **Step 1: Write the failing test**
@@ -580,20 +617,17 @@ Expected: FAIL — output contains all variables for the service.
 
 **Step 3: Implement path-based filtering in RunConfigGet**
 
-After fetching the config, if the parsed path has a Section and/or Key, filter the `LiveConfig` before rendering. When a specific key is requested, output just the value (not the full config structure):
+Restructure `RunConfigGet` to handle the path after fetching. When a specific key is requested, output just the value (not the full config structure). When a section is requested (e.g., `api.variables`), filter to just that section:
 
 ```go
+// After fetching cfg...
 if path != "" {
-    parsed, err := config.ParsePath(path)
-    if err != nil {
-        return err
+    parsed, parseErr := config.ParsePath(path)
+    if parseErr != nil {
+        return parseErr
     }
-    if parsed.Service != "" {
-        service = parsed.Service
-    }
-    // After fetching, filter by section and key.
+    // Single variable lookup — output just the value.
     if parsed.Key != "" && parsed.Section == "variables" {
-        // Single value lookup — output just the value.
         svc, ok := cfg.Services[parsed.Service]
         if !ok {
             return fmt.Errorf("service not found: %s", parsed.Service)
@@ -605,11 +639,8 @@ if path != "" {
         _, err = fmt.Fprintln(out, val)
         return err
     }
-    if parsed.Section != "" {
-        // Filter to just the requested section (e.g., api.variables).
-        // Modify cfg to only include the requested section data.
-        // Implementation depends on which sections exist.
-    }
+    // Section-level filtering (e.g., api.variables) — filter cfg
+    // to only the requested section data before rendering.
 }
 ```
 
@@ -634,12 +665,12 @@ git commit -m "feat: filter config get output by section/key path"
 
 ## Task 7: `config set` and `config delete` should offer interactive confirmation
 
-Currently `config set` and `config delete` default to dry-run with no prompt. They should match `config apply`'s behaviour: when stdin is a TTY and `--confirm` is not set, show a diff preview and prompt for confirmation.
+Currently `config set` and `config delete` use a single condition `if !globals.Confirm || globals.DryRun` that goes straight to dry-run output. They should match `config apply`'s behaviour: separate `--dry-run`, non-TTY dry-run, and TTY-interactive-prompt branches.
 
 **Files:**
 
-- Modify: `internal/cli/config_set.go:27-42`
-- Modify: `internal/cli/config_delete.go:27-42`
+- Modify: `internal/cli/config_set.go` (the `RunConfigSet` function, approximately lines 24-40)
+- Modify: `internal/cli/config_delete.go` (the `RunConfigDelete` function, approximately lines 24-40)
 - Test: `internal/cli/config_set_test.go`
 - Test: `internal/cli/config_delete_test.go`
 
@@ -650,8 +681,7 @@ func TestRunConfigSet_PromptsWhenInteractive(t *testing.T) {
 	mut := &recordingMutator{}
 	var buf bytes.Buffer
 	globals := &cli.Globals{Confirm: false}
-	// RunConfigSet currently outputs dry-run message without prompting.
-	// After this change, it should still output preview in non-TTY mode.
+	// In non-TTY (test) mode, should still output dry-run message.
 	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", mut, &buf)
 	if err != nil {
 		t.Fatal(err)
@@ -673,7 +703,7 @@ Expected: PASS (this test validates the non-TTY path still works).
 
 **Step 3: Implement interactive confirmation**
 
-In `RunConfigSet` and `RunConfigDelete`, change the dry-run logic to match `config apply`:
+In `RunConfigSet` and `RunConfigDelete`, replace the single `if !globals.Confirm || globals.DryRun` block with the three-branch pattern from `config_apply.go`:
 
 ```go
 if globals.DryRun {
@@ -697,7 +727,7 @@ if !globals.Confirm {
 }
 ```
 
-Note: `RunConfigSet`/`RunConfigDelete` currently take `io.Writer` for output but read from `os.Stdin` directly (same as `config apply`). For testability, this is acceptable since the non-interactive path is the one exercised in tests. The function signatures need `os.Stdin` added or kept as `os.Stdin` directly (matching `config_apply.go`'s pattern).
+Note: `RunConfigSet`/`RunConfigDelete` currently do NOT read from stdin — the interactive prompt via `prompt.ConfirmRW(os.Stdin, out, ...)` is new. This matches `config_apply.go:161`'s pattern.
 
 **Step 4: Run full test suite**
 
@@ -715,12 +745,11 @@ git commit -m "feat: add interactive confirmation to config set and config delet
 
 ## Task 8: Extract shared auth/client boilerplate into a helper
 
-Every CLI `Run` method repeats: `NewTokenStore → ResolveAuth → NewClient`. Extract this into a shared helper.
+Every config/list CLI `Run` method repeats: `NewTokenStore → ResolveAuth → NewClient`. Extract this into a shared helper.
 
 **Files:**
 
 - Create: `internal/cli/client.go`
-- Modify: `internal/cli/auth.go`
 - Modify: `internal/cli/config_get.go`
 - Modify: `internal/cli/config_set.go`
 - Modify: `internal/cli/config_delete.go`
@@ -730,7 +759,8 @@ Every CLI `Run` method repeats: `NewTokenStore → ResolveAuth → NewClient`. E
 - Modify: `internal/cli/project_list.go`
 - Modify: `internal/cli/environment_list.go`
 - Modify: `internal/cli/workspace_list.go`
-- Test: `internal/cli/client_test.go`
+
+**Do NOT modify** `internal/cli/auth.go` — the auth commands (`login`, `logout`, `status`) have different patterns that don't fit a shared helper. `login` needs `OAuthClient` + `TokenStore` + `BrowserOpener` directly; `logout` only needs `TokenStore`; `status` builds a custom transport. None use `railway.NewClient`.
 
 **Step 1: Create the helper**
 
@@ -746,7 +776,11 @@ import (
 )
 
 // newClient creates an authenticated Railway client from the globals.
-// This consolidates the auth bootstrap boilerplate repeated in every Run() method.
+// This consolidates the auth bootstrap boilerplate repeated in every
+// config and list command's Run() method.
+//
+// Not used by auth commands (login/logout/status) which have different
+// auth patterns — see internal/cli/auth.go.
 func newClient(globals *Globals) (*railway.Client, error) {
 	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
 	resolved, err := auth.ResolveAuth(globals.Token, store)
@@ -757,7 +791,7 @@ func newClient(globals *Globals) (*railway.Client, error) {
 }
 ```
 
-**Step 2: Replace boilerplate in all Run methods**
+**Step 2: Replace boilerplate in config and list Run methods**
 
 In each `Run()` method (config_get.go, config_set.go, config_delete.go, config_diff.go, config_apply.go, config_init.go, project_list.go, environment_list.go, workspace_list.go), replace:
 
@@ -779,9 +813,7 @@ if err != nil {
 }
 ```
 
-Remove unused imports (`auth`, `platform` if no longer needed) from each file.
-
-Note: `auth.go` commands (login, logout, status) have different patterns — `login` needs `TokenStore` and `OAuthClient` directly, `logout` needs `TokenStore`, `status` needs `TokenStore` and client. Evaluate each and only refactor where the pattern matches cleanly.
+Remove unused imports (`auth`, `platform`) from each file where they're no longer needed.
 
 **Step 3: Run full test suite**
 
@@ -791,7 +823,7 @@ Expected: All pass — this is a pure refactor, no behaviour change.
 **Step 4: Commit**
 
 ```bash
-git add internal/cli/client.go internal/cli/config_get.go internal/cli/config_set.go internal/cli/config_delete.go internal/cli/config_diff.go internal/cli/config_apply.go internal/cli/config_init.go internal/cli/project_list.go internal/cli/environment_list.go internal/cli/workspace_list.go internal/cli/auth.go
+git add internal/cli/client.go internal/cli/config_get.go internal/cli/config_set.go internal/cli/config_delete.go internal/cli/config_diff.go internal/cli/config_apply.go internal/cli/config_init.go internal/cli/project_list.go internal/cli/environment_list.go internal/cli/workspace_list.go
 git commit -m "refactor: extract shared auth/client bootstrap into newClient helper"
 ```
 
@@ -824,8 +856,10 @@ import (
 // configPair holds the loaded desired config and fetched live config,
 // ready for diffing or applying.
 type configPair struct {
-	Desired *config.DesiredConfig
-	Live    *config.LiveConfig
+	Desired       *config.DesiredConfig
+	Live          *config.LiveConfig
+	ProjectID     string
+	EnvironmentID string
 }
 
 // loadAndFetch loads config files, interpolates, resolves project/environment,
@@ -853,12 +887,11 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 		environment = desired.Environment
 	}
 
-	// 4. Fetch live state.
-	_, _, err = fetcher.Resolve(ctx, globals.Workspace, project, environment)
+	// 4. Resolve and fetch live state.
+	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, project, environment)
 	if err != nil {
 		return nil, err
 	}
-	projID, envID, _ := fetcher.Resolve(ctx, globals.Workspace, project, environment)
 	live, err := fetcher.Fetch(ctx, projID, envID, globals.Service)
 	if err != nil {
 		return nil, err
@@ -876,18 +909,12 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 		desired = filtered
 	}
 
-	return &configPair{Desired: desired, Live: live}, nil
-}
-```
-
-Actually, review this more carefully. The resolve call returns (projID, envID) which `config_apply.go` also uses to construct the `RailwayApplier`. So the helper should return those IDs too:
-
-```go
-type configPair struct {
-	Desired       *config.DesiredConfig
-	Live          *config.LiveConfig
-	ProjectID     string
-	EnvironmentID string
+	return &configPair{
+		Desired:       desired,
+		Live:          live,
+		ProjectID:     projID,
+		EnvironmentID: envID,
+	}, nil
 }
 ```
 
@@ -911,6 +938,10 @@ func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extr
 
 **Step 3: Refactor config_apply.go to use the shared function**
 
+The `Run()` method in `config_apply.go` needs `projID`/`envID` to construct the `RailwayApplier`. Use `pair.ProjectID` and `pair.EnvironmentID` from the returned `configPair`.
+
+`RunConfigApply` can use `loadAndFetch` for the load/resolve/fetch/filter steps, then proceed with the no-changes check, dry-run/confirm logic, and apply.
+
 **Step 4: Run full test suite**
 
 Run: `go test -race ./...`
@@ -927,7 +958,7 @@ git commit -m "refactor: extract shared config load/resolve/fetch/filter pipelin
 
 ## Task 10: Define constants for deploy/resource setting keys
 
-Hard-coded string keys like `"builder"`, `"dockerfile_path"`, `"start_command"` etc. appear in both `diff` and `apply` packages and must be kept in sync.
+Hard-coded string keys like `"builder"`, `"dockerfile_path"`, `"start_command"` etc. appear in `internal/diff/diff.go`, `internal/apply/convert.go`, and `internal/config/parse.go` and must be kept in sync.
 
 **Files:**
 
@@ -946,10 +977,10 @@ package config
 
 // Deploy setting keys shared across config parsing, diff, and apply.
 const (
-	KeyBuilder        = "builder"
-	KeyDockerfilePath = "dockerfile_path"
-	KeyRootDirectory  = "root_directory"
-	KeyStartCommand   = "start_command"
+	KeyBuilder         = "builder"
+	KeyDockerfilePath  = "dockerfile_path"
+	KeyRootDirectory   = "root_directory"
+	KeyStartCommand    = "start_command"
 	KeyHealthcheckPath = "healthcheck_path"
 
 	KeyVCPUs    = "vcpus"
@@ -982,48 +1013,57 @@ git commit -m "refactor: define constants for deploy/resource setting keys"
 **Files:**
 
 - Modify: `internal/auth/login.go`
-- Test: `internal/auth/login_test.go`
+- Test: `internal/auth/login_test.go` (verify existing tests still pass)
 
-**Step 1: Write the failing test**
-
-```go
-func TestOpenBrowser_DoesNotLeakProcess(t *testing.T) {
-	// Set browser command to a known-good command that exits quickly.
-	called := false
-	err := auth.Login(oauth, store, func(url string) error {
-		called = true
-		// Verify the function completes without leaking.
-		return nil
-	})
-	// This is more of a code review verification.
-	// The fix is to add cmd.Wait() after cmd.Start().
-}
-```
-
-Actually, the fix is straightforward — add a goroutine to wait on the process. A test isn't strictly needed since it's a concurrency fix, but we should verify the function still works:
-
-**Step 2: Fix OpenBrowser**
-
-In `internal/auth/login.go`, find the `OpenBrowser` function and add `cmd.Wait()`:
+**Current code** (`login.go:20-31`):
 
 ```go
 func OpenBrowser(url string) error {
-	cmd := exec.Command(browserCommand, url)
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	// Wait in a goroutine to avoid zombie processes.
-	go cmd.Wait() //nolint:errcheck
-	return nil
+    var cmd *exec.Cmd
+    switch runtime.GOOS {
+    case "darwin":
+        cmd = browserCommand("open", url)
+    case "windows":
+        cmd = browserCommand("rundll32", "url.dll,FileProtocolHandler", url)
+    default:
+        cmd = browserCommand("xdg-open", url)
+    }
+    return cmd.Start()
 }
 ```
 
-**Step 3: Run full test suite**
+Note: `browserCommand` is a **function** variable (`var browserCommand = exec.Command`), not a string.
+
+**Step 1: Fix OpenBrowser**
+
+Add a goroutine to wait on the child process after starting it:
+
+```go
+func OpenBrowser(url string) error {
+    var cmd *exec.Cmd
+    switch runtime.GOOS {
+    case "darwin":
+        cmd = browserCommand("open", url)
+    case "windows":
+        cmd = browserCommand("rundll32", "url.dll,FileProtocolHandler", url)
+    default:
+        cmd = browserCommand("xdg-open", url)
+    }
+    if err := cmd.Start(); err != nil {
+        return err
+    }
+    // Wait in a goroutine to reap the child process and avoid zombies.
+    go cmd.Wait() //nolint:errcheck
+    return nil
+}
+```
+
+**Step 2: Run full test suite**
 
 Run: `go test -race ./...`
 Expected: All pass.
 
-**Step 4: Commit**
+**Step 3: Commit**
 
 ```bash
 git add internal/auth/login.go
@@ -1034,41 +1074,48 @@ git commit -m "fix: prevent zombie processes in OpenBrowser by waiting on child"
 
 ## Task 12: Remove mutable `browserCommand` package variable
 
-`auth/login.go` has a mutable package-level `browserCommand` variable. Tests already inject `BrowserOpener` via function parameter, so the mutable variable is unnecessary.
+`auth/login.go` has a mutable package-level `browserCommand` variable (`var browserCommand = exec.Command`). The `Login` function already accepts a `BrowserOpener` function parameter for test injection, making the mutable variable unnecessary for most tests. However, `TestOpenBrowser` in `login_test.go` directly uses `SetBrowserCommand` — this test must be updated.
 
 **Files:**
 
 - Modify: `internal/auth/login.go`
-- Test: `internal/auth/login_test.go` (verify no test uses `SetBrowserCommand`)
+- Modify: `internal/auth/login_test.go` (update `TestOpenBrowser` to not use `SetBrowserCommand`)
 
-**Step 1: Check if anything uses SetBrowserCommand/BrowserCommand**
+**Step 1: Replace OpenBrowser with a fixed implementation**
 
-Search for usages. If nothing outside tests uses `SetBrowserCommand`, remove the variable, `SetBrowserCommand`, and `BrowserCommand` functions.
-
-**Step 2: Replace OpenBrowser with a fixed implementation**
-
-Make `OpenBrowser` use `runtime.GOOS` directly to determine the command, removing the mutable variable:
+Make `OpenBrowser` use `exec.Command` directly, removing the mutable variable:
 
 ```go
 func OpenBrowser(url string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	go cmd.Wait() //nolint:errcheck
-	return nil
+    var cmd *exec.Cmd
+    switch runtime.GOOS {
+    case "darwin":
+        cmd = exec.Command("open", url)
+    case "windows":
+        cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+    default:
+        cmd = exec.Command("xdg-open", url)
+    }
+    if err := cmd.Start(); err != nil {
+        return err
+    }
+    go cmd.Wait() //nolint:errcheck
+    return nil
 }
 ```
 
 Remove `browserCommand`, `SetBrowserCommand`, and `BrowserCommand`.
+
+Note: This preserves the existing Windows command (`rundll32 url.dll,FileProtocolHandler`) rather than changing it.
+
+**Step 2: Update TestOpenBrowser**
+
+`TestOpenBrowser` currently uses `SetBrowserCommand` to inject a stub command. Since `OpenBrowser` now uses `exec.Command` directly, this test needs to change. Options:
+
+1. **Remove TestOpenBrowser** — the function is a thin wrapper around `exec.Command` + `Start`. The real browser opening is tested indirectly via `Login` tests that inject a `BrowserOpener`.
+2. **Test with a real command** — use `echo` or `true` as the browser command via environment manipulation (fragile).
+
+Recommend option 1: remove `TestOpenBrowser` since `Login` tests already exercise the `BrowserOpener` injection point.
 
 **Step 3: Run full test suite**
 
@@ -1084,9 +1131,9 @@ git commit -m "refactor: remove mutable browserCommand variable in auth/login.go
 
 ---
 
-## Task 13: Add `context.Context` to auth functions
+## Task 13: Add `context.Context` to auth functions and include response body in errors
 
-Several auth functions perform network I/O without accepting a `context.Context`, making them uncancellable.
+Several auth functions perform network I/O without accepting a `context.Context`, making them uncancellable. Additionally, `RegisterClient` and `ExchangeCode` don't include response body in error messages (only `RefreshToken` does).
 
 **Files:**
 
@@ -1094,49 +1141,48 @@ Several auth functions perform network I/O without accepting a `context.Context`
 - Modify: `internal/auth/resolver.go` — `ResolveAuth`
 - Modify: `internal/auth/login.go` — update call sites
 - Modify: `internal/cli/auth.go` — update call sites
-- Modify: `internal/cli/config_get.go` — update call sites (if `ResolveAuth` changes)
 - Modify: all other CLI `Run()` methods that call `ResolveAuth`
 - Test: `internal/auth/oauth_test.go`, `internal/auth/resolver_test.go`
 
-**Step 1: Add context.Context to RegisterClient and ExchangeCode**
+**Step 1: Add context.Context to RegisterClient**
 
-Change signatures:
+Current signature: `RegisterClient(redirectURI string) (*RegistrationResponse, error)`
+New signature: `RegisterClient(ctx context.Context, redirectURI string) (*RegistrationResponse, error)`
 
-```go
-func (c *OAuthClient) RegisterClient(ctx context.Context) (*RegistrationResponse, error) {
-    // Replace http.NewRequest with http.NewRequestWithContext(ctx, ...)
-}
+Replace `c.httpClient().Post(...)` with `http.NewRequestWithContext(ctx, ...)` + `c.httpClient().Do(req)`.
 
-func (c *OAuthClient) ExchangeCode(ctx context.Context, code, codeVerifier, redirectURI, clientID string) (*TokenResponse, error) {
-    // Replace http.NewRequest with http.NewRequestWithContext(ctx, ...)
-}
-```
-
-**Step 2: Add context.Context to ResolveAuth**
-
-Change signature:
+Also add response body to error message:
 
 ```go
-func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*ResolvedAuth, error) {
-    // No network calls currently, but keyring access can block on Linux.
-    // Accept ctx for future-proofing and consistency.
-}
-```
-
-**Step 3: Update all call sites**
-
-Every `Run()` method calls `auth.ResolveAuth` — add `context.Background()` as the first argument. Update `Login` to pass context to `RegisterClient` and `ExchangeCode`.
-
-**Step 4: Include response body in RegisterClient and ExchangeCode error messages**
-
-Currently only `RefreshToken` includes the response body in errors. Apply the same pattern:
-
-```go
-if resp.StatusCode != http.StatusCreated {
+if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
     body, _ := io.ReadAll(resp.Body)
-    return nil, fmt.Errorf("client registration failed: %s: %s", resp.Status, string(body))
+    return nil, fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 }
 ```
+
+**Step 2: Add context.Context to ExchangeCode**
+
+Current signature: `ExchangeCode(clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error)`
+New signature: `ExchangeCode(ctx context.Context, clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error)`
+
+**Important:** Preserve the existing parameter order (`clientID, code, redirectURI, codeVerifier`) — only prepend `ctx`.
+
+Replace `c.httpClient().PostForm(...)` with `http.NewRequestWithContext(ctx, ...)` + `c.httpClient().Do(req)`.
+
+Add response body to error message (same pattern as `RegisterClient`).
+
+**Step 3: Add context.Context to ResolveAuth**
+
+Current signature: `ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error)`
+New signature: `ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*ResolvedAuth, error)`
+
+No network calls currently, but keyring access can block on Linux. Accept ctx for future-proofing and consistency.
+
+**Step 4: Update all call sites**
+
+- `Login` in `login.go` calls `RegisterClient` and `ExchangeCode` — pass context from the Login function (which should also accept `ctx` — see Task 14).
+- Every config/list `Run()` method calls `auth.ResolveAuth` — add `context.Background()` as the first argument. If Task 8 is done, update `newClient` instead.
+- `auth status` in `auth.go` calls `ResolveAuth` — add `context.Background()`.
 
 **Step 5: Run full test suite**
 
@@ -1147,7 +1193,7 @@ Expected: All pass.
 
 ```bash
 git add internal/auth/oauth.go internal/auth/resolver.go internal/auth/login.go internal/cli/
-git commit -m "feat: add context.Context to RegisterClient, ExchangeCode, and ResolveAuth"
+git commit -m "feat: add context.Context to RegisterClient, ExchangeCode, and ResolveAuth; include response body in auth errors"
 ```
 
 ---
@@ -1156,34 +1202,34 @@ git commit -m "feat: add context.Context to RegisterClient, ExchangeCode, and Re
 
 Multiple related auth safety fixes:
 
-- Shutdown auth callback server with a timeout context
+- Change `CallbackServer.Shutdown()` to use a timeout context instead of `context.Background()`
 - Tie callback server goroutine lifecycle to context/cancellation
 - Make OAuth login wait bounded by context/timeout
 - Surface token refresh failures from transport
+- Address `ResolvedAuth.Token` thread safety
 
 **Files:**
 
 - Modify: `internal/auth/callback.go`
 - Modify: `internal/auth/login.go`
 - Modify: `internal/railway/transport.go`
+- Modify: `internal/auth/resolver.go`
 - Test: `internal/auth/callback_test.go`
 - Test: `internal/auth/login_test.go`
 - Test: `internal/railway/transport_test.go`
 
-**Step 1: Add context-aware shutdown to CallbackServer**
+**Step 1: Add timeout to CallbackServer.Shutdown**
 
-In `internal/auth/callback.go`:
+`CallbackServer` already stores `*http.Server` as a field (`callback.go:23`). The `Shutdown` method already calls `s.server.Shutdown(context.Background())` (`callback.go:82`). Change to use a timeout context:
 
 ```go
-// Shutdown gracefully shuts down the callback server with a timeout.
+// Shutdown gracefully stops the callback server with a timeout.
 func (s *CallbackServer) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.server.Shutdown(ctx) //nolint:errcheck
 }
 ```
-
-The `CallbackServer` needs to store the `*http.Server` reference. Currently it's created inline in `StartCallbackServer` — refactor to store it as a field.
 
 **Step 2: Make Login accept context and bound the wait**
 
@@ -1200,35 +1246,29 @@ func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrows
 }
 ```
 
+Update the call site in `auth.go` `AuthLoginCmd.Run` to pass a context (e.g., `context.Background()` or a timeout context from `globals.Timeout`).
+
 **Step 3: Surface refresh failures in transport**
 
-In `internal/railway/transport.go`, the `RoundTrip` method silently returns the original 401 response when refresh fails. Add error wrapping:
+In `internal/railway/transport.go`, the `RoundTrip` method at line ~88 silently returns the original 401 response when refresh fails. Return the refresh error instead:
 
 ```go
 newTokens, refreshErr := t.tryRefresh(req.Context())
 if refreshErr != nil {
-    // Return the original 401 but wrap the refresh error for visibility.
-    // Note: We can't change the return type, but we can log or annotate.
-    // The simplest approach: return the refresh error directly so callers
-    // see why auth failed, rather than getting a cryptic 401.
     resp.Body.Close() //nolint:errcheck
     return nil, fmt.Errorf("authentication failed (token refresh error: %w)", refreshErr)
 }
 ```
 
-**Step 4: Fix ResolvedAuth.Token thread safety**
+**Step 4: Address ResolvedAuth.Token thread safety**
 
-`ResolvedAuth.Token` is mutated inside transport's mutex but readable externally. Add a safe accessor:
+`ResolvedAuth.Token` is mutated under `AuthTransport.mu` in `RoundTrip` but readable externally without synchronisation. The proper fix is to make `Token` unexported with a synchronized accessor, but this is invasive. For now:
 
-```go
-// In auth/resolver.go:
-func (r *ResolvedAuth) AccessToken() string {
-    // For thread safety when transport refreshes tokens.
-    return r.Token
-}
-```
+1. Add a `sync.Mutex` field to `ResolvedAuth`
+2. Add `SetToken(token string)` and `GetToken() string` methods
+3. Have the transport use `SetToken` and have external readers use `GetToken`
 
-Actually, the proper fix is to not expose the field directly. But since this is a more invasive change, document the constraint and add a comment for now. The transport already holds the mutex when mutating — the risk is external reads during mutation. Consider using `atomic.Value` or making `Token` unexported with an accessor.
+Alternatively, use `atomic.Value` for the token string.
 
 **Step 5: Run full test suite**
 
@@ -1246,33 +1286,32 @@ git commit -m "fix: add timeout to callback shutdown, bound login wait, surface 
 
 ## Task 15: Handle marshal errors in config_apply.go
 
-`config_apply.go` discards errors from `json.MarshalIndent` and `toml.Marshal` with `_`.
+`config_apply.go` discards errors from `json.MarshalIndent` and `toml.Marshal` with `_`. There are two locations: the "no changes" block (approximately lines 122-138) and the apply results block (approximately lines 179-189).
 
 **Files:**
 
-- Modify: `internal/cli/config_apply.go:131-141`
-- Test: existing tests cover the happy path; add a test for marshal error awareness
+- Modify: `internal/cli/config_apply.go`
 
 **Step 1: Fix error handling**
 
-Replace:
+Replace all instances of:
 
 ```go
-case "json":
-    b, _ := json.MarshalIndent(&apply.Result{}, "", "  ")
+b, _ := json.MarshalIndent(...)
 ```
 
 with:
 
 ```go
-case "json":
-    b, err := json.MarshalIndent(&apply.Result{}, "", "  ")
-    if err != nil {
-        return fmt.Errorf("marshalling result: %w", err)
-    }
+b, err := json.MarshalIndent(...)
+if err != nil {
+    return fmt.Errorf("marshalling result: %w", err)
+}
 ```
 
-Apply the same fix to all `json.MarshalIndent` and `toml.Marshal` calls in the file (there are two sets: one for "no changes" and one for apply results).
+Apply the same fix to `toml.Marshal` calls.
+
+There are four total: two in the "no changes" output block, two in the apply results output block.
 
 **Step 2: Run full test suite**
 
@@ -1299,7 +1338,25 @@ The apply engine loops through services in `internal/apply/apply.go`. When the c
 
 **Step 1: Write the failing test**
 
+Define a `countingApplier` test double (or reuse `recordingApplier` from existing tests):
+
 ```go
+type countingApplier struct {
+	upsertCount int
+}
+
+func (a *countingApplier) UpsertVariable(_ context.Context, _, _, _ string, _ bool) error {
+	a.upsertCount++
+	return nil
+}
+func (a *countingApplier) DeleteVariable(_ context.Context, _, _ string) error   { return nil }
+func (a *countingApplier) UpdateServiceSettings(_ context.Context, _ string, _ *config.DesiredDeploy) error {
+	return nil
+}
+func (a *countingApplier) UpdateServiceResources(_ context.Context, _ string, _ *config.DesiredResources) error {
+	return nil
+}
+
 func TestApply_StopsOnContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately.
@@ -1315,14 +1372,13 @@ func TestApply_StopsOnContextCancellation(t *testing.T) {
 		},
 	}
 	applier := &countingApplier{}
-	result, err := apply.Apply(ctx, desired, live, applier, apply.Options{})
+	_, err := apply.Apply(ctx, desired, live, applier, apply.Options{})
 	if err == nil {
 		t.Fatal("expected error from cancelled context")
 	}
 	if applier.upsertCount > 0 {
 		t.Errorf("expected no upsert calls on cancelled context, got %d", applier.upsertCount)
 	}
-	_ = result
 }
 ```
 
@@ -1333,15 +1389,13 @@ Expected: FAIL — apply proceeds with network calls.
 
 **Step 3: Add ctx.Err() checks**
 
-In `internal/apply/apply.go`, add at the top of each loop iteration:
+In `internal/apply/apply.go`, add at the top of each loop iteration and before each applier call:
 
 ```go
 if err := ctx.Err(); err != nil {
     return result, err
 }
 ```
-
-Add this check before each applier call (UpsertVariable, DeleteVariable, UpdateServiceSettings, UpdateServiceResources).
 
 **Step 4: Run test to verify it passes**
 
@@ -1362,25 +1416,18 @@ git commit -m "fix: check ctx.Err() in apply loops to avoid wasted calls on canc
 
 ---
 
-## Task 17: Wire up or remove `apply.Result.Skipped`
+## Task 17: Remove `apply.Result.Skipped`
 
-`Result.Skipped` is declared and serialised but never incremented. Either wire it up (increment when a service is filtered out or a no-op is detected) or remove it.
+`Result.Skipped` is declared and serialised but never incremented. The current diff-then-apply approach means only actual changes reach the apply engine — there are no semantic "skips". Remove it as dead code.
 
 **Files:**
 
-- Modify: `internal/apply/apply.go`
 - Modify: `internal/apply/result.go`
-- Test: `internal/apply/apply_test.go`
+- Modify: `internal/apply/apply.go` (if any reference)
+- Test: `internal/apply/apply_test.go` (fix any tests referencing `Skipped`)
+- Modify: `internal/cli/e2e_mocked_graphql_test.go` (if it checks `Skipped`)
 
-**Step 1: Decide approach**
-
-The `Skipped` field makes sense for tracking no-op operations (e.g., variable already has the desired value). However, the current diff-then-apply approach means only changes are applied — there are no skips at the apply level. The clean choice is to **remove** the field to avoid confusion.
-
-Alternatively, wire it up to count context-cancellation skips from Task 16 — when `ctx.Err()` is detected, remaining operations are "skipped".
-
-**Recommended: Remove it.** It's dead code with no clear semantic.
-
-**Step 2: Remove the field**
+**Step 1: Remove the field**
 
 In `internal/apply/result.go`, remove `Skipped`:
 
@@ -1391,14 +1438,14 @@ type Result struct {
 }
 ```
 
-Update `Summary()` to remove the skipped count.
+Update `Summary()` to remove the skipped count from its output.
 
-**Step 3: Run full test suite**
+**Step 2: Run full test suite**
 
 Run: `go test -race ./...`
-Expected: All pass. Fix any tests that reference `Skipped`.
+Expected: Fix any tests that reference `Skipped`, then all pass.
 
-**Step 4: Commit**
+**Step 3: Commit**
 
 ```bash
 git add internal/apply/result.go internal/apply/apply.go internal/apply/apply_test.go
@@ -1453,21 +1500,19 @@ concurrency:
 
 **Step 3: Pin mise tool versions**
 
-In `.config/mise/config.toml`, replace `"latest"` with specific versions:
+In `.config/mise/config.toml`, replace `"latest"` with specific versions. Run `mise ls` to find currently installed versions, then pin to those:
 
 ```toml
 [tools]
 go = "1.25"
-golangci-lint = "1.64"          # was "latest"
-"npm:markdownlint-cli2" = "0.17" # was "latest"
-"npm:prettier" = "3.5"          # was "latest"
-taplo = "0.9"                   # was "latest"
-actionlint = "1.7"              # was "latest"
-gitleaks = "8.24"               # was "latest"
-apollo-rover = "0.30"           # was "latest"
+golangci-lint = "1.64"            # was "latest" — check actual current
+"npm:markdownlint-cli2" = "0.17"  # was "latest" — check actual current
+"npm:prettier" = "3.5"            # was "latest" — check actual current
+taplo = "0.9"                     # was "latest" — check actual current
+actionlint = "1.7"                # was "latest" — check actual current
+gitleaks = "8.24"                 # was "latest" — check actual current
+apollo-rover = "0.30"             # was "latest" — check actual current
 ```
-
-Look up actual current versions with `mise ls` or tool release pages before pinning.
 
 **Step 4: Run lint and build to verify**
 
@@ -1487,56 +1532,123 @@ git commit -m "chore: pin CI actions to SHAs, add concurrency, pin tool versions
 
 This is the largest task. Implement the warning system described in `docs/WARNINGS.md` and wire up `config validate`.
 
+**Dependencies:** Task 3 (parse `SensitiveKeywords`/`SensitiveAllowlist`/`SuppressWarnings` into `DesiredConfig`).
+
 **Files:**
 
 - Create: `internal/config/validate.go`
 - Create: `internal/config/validate_test.go`
-- Modify: `internal/cli/cli.go` (remove validate stub)
+- Modify: `internal/cli/cli.go` (remove validate stub, un-hide command)
 - Create: `internal/cli/config_validate.go`
 - Create: `internal/cli/config_validate_test.go`
-- Modify: `docs/WARNINGS.md` (remove "not yet implemented" notice)
 
-### Sub-task 19a: Warning type and structural warnings (W001-W003)
-
-**Step 1: Write the failing test**
+**Step 1: Write the failing tests**
 
 ```go
 // internal/config/validate_test.go
-func TestValidate_UnknownTopLevelKey(t *testing.T) {
-	cfg := []byte(`shaerd = "typo"`)
-	parsed, _ := config.Parse(cfg)
-	// Actually, parse.go now errors on unknown scalar keys (Task 2).
-	// So W001 applies to table-level unknown keys. For example:
-	// a service table named with a typo won't be caught by parse
-	// because all unknown tables are treated as services.
-	// W001 needs live state to compare against — skip for pure parse validation.
-}
+package config_test
 
-// Better approach: validate against known service names from live state.
+import (
+	"testing"
+
+	"github.com/hamishmorgan/fat-controller/internal/config"
+)
+
 func TestValidate_W003_EmptyServiceBlock(t *testing.T) {
 	warnings := config.Validate(&config.DesiredConfig{
 		Services: map[string]*config.DesiredService{
 			"api": {}, // No variables, resources, or deploy
 		},
 	}, nil)
-	var found bool
+	assertHasWarning(t, warnings, "W003")
+}
+
+func TestValidate_W012_EmptyStringDelete(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"OLD_VAR": ""}},
+		},
+	}, nil)
+	assertHasWarning(t, warnings, "W012")
+}
+
+func TestValidate_W020_SharedAndServiceConflict(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{
+		Shared: &config.DesiredVariables{Vars: map[string]string{"PORT": "3000"}},
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"PORT": "8080"}},
+		},
+	}, nil)
+	assertHasWarning(t, warnings, "W020")
+}
+
+func TestValidate_W030_LowercaseVarName(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"myVar": "value"}},
+		},
+	}, nil)
+	assertHasWarning(t, warnings, "W030")
+}
+
+func TestValidate_W040_UnknownServiceName(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"typo-svc": {Variables: map[string]string{"FOO": "bar"}},
+		},
+	}, []string{"api", "worker"})
+	assertHasWarning(t, warnings, "W040")
+}
+
+func TestValidate_W041_NothingActionable(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{}, nil)
+	assertHasWarning(t, warnings, "W041")
+}
+
+func TestValidate_SuppressedWarnings(t *testing.T) {
+	warnings := config.Validate(&config.DesiredConfig{
+		SuppressWarnings: []string{"W041"},
+	}, nil)
+	assertNoWarning(t, warnings, "W041")
+}
+
+func assertHasWarning(t *testing.T, warnings []config.Warning, code string) {
+	t.Helper()
 	for _, w := range warnings {
-		if w.Code == "W003" {
-			found = true
+		if w.Code == code {
+			return
 		}
 	}
-	if !found {
-		t.Error("expected W003 for empty service block")
+	t.Errorf("expected warning %s, got: %v", code, warnings)
+}
+
+func assertNoWarning(t *testing.T, warnings []config.Warning, code string) {
+	t.Helper()
+	for _, w := range warnings {
+		if w.Code == code {
+			t.Errorf("did not expect warning %s", code)
+		}
 	}
 }
 ```
 
-**Step 2: Create the Warning type and Validate function**
+**Step 2: Run tests to verify they fail**
+
+Run: `go test -race -run TestValidate ./internal/config/...`
+Expected: FAIL — `Validate` function doesn't exist yet.
+
+**Step 3: Create the Warning type and Validate function**
 
 In `internal/config/validate.go`:
 
 ```go
 package config
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
 
 // Warning represents a config validation warning.
 type Warning struct {
@@ -1547,7 +1659,7 @@ type Warning struct {
 
 // Validate checks a DesiredConfig for common issues and returns warnings.
 // liveServiceNames can be nil for offline-only checks (e.g., config validate
-// without API calls). When non-nil, enables W040/W041 checks.
+// without API calls). When non-nil, enables W040 checks.
 func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 	var warnings []Warning
 
@@ -1562,13 +1674,10 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 		}
 	}
 
-	// W010: Unresolved local interpolation — already handled by Interpolate() as error.
-	// W011: Suspicious reference syntax
+	// W011: Suspicious reference syntax — ${word.word} that probably should be ${{word.word}}
 	for name, svc := range cfg.Services {
 		for key, val := range svc.Variables {
 			if strings.Contains(val, "${") && !strings.Contains(val, "${{") {
-				// Check for ${service.X} pattern that looks like it should be ${{service.X}}
-				// Simple heuristic: ${word.word} pattern
 				if matched, _ := regexp.MatchString(`\$\{[a-zA-Z_]+\.[a-zA-Z_]+\}`, val); matched {
 					warnings = append(warnings, Warning{
 						Code:    "W011",
@@ -1581,26 +1690,23 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 	}
 
 	// W012: Empty string is explicit delete
+	checkEmptyDelete := func(scope, key, val string) {
+		if val == "" {
+			warnings = append(warnings, Warning{
+				Code:    "W012",
+				Message: fmt.Sprintf("%s.%s is set to empty string — this will delete the variable in Railway", scope, key),
+				Path:    scope + "." + key,
+			})
+		}
+	}
 	for name, svc := range cfg.Services {
 		for key, val := range svc.Variables {
-			if val == "" {
-				warnings = append(warnings, Warning{
-					Code:    "W012",
-					Message: fmt.Sprintf("%s.variables.%s is set to empty string — this will delete the variable in Railway", name, key),
-					Path:    name + ".variables." + key,
-				})
-			}
+			checkEmptyDelete(name+".variables", key, val)
 		}
 	}
 	if cfg.Shared != nil {
 		for key, val := range cfg.Shared.Vars {
-			if val == "" {
-				warnings = append(warnings, Warning{
-					Code:    "W012",
-					Message: fmt.Sprintf("shared.variables.%s is set to empty string — this will delete the variable in Railway", key),
-					Path:    "shared.variables." + key,
-				})
-			}
+			checkEmptyDelete("shared.variables", key, val)
 		}
 	}
 
@@ -1657,7 +1763,7 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 		})
 	}
 
-	// W050: Hardcoded secret in config
+	// W050: Hardcoded secret in config (requires Task 3 fields)
 	masker := NewMasker(cfg.SensitiveKeywords, cfg.SensitiveAllowlist)
 	for name, svc := range cfg.Services {
 		for key, val := range svc.Variables {
@@ -1690,11 +1796,7 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 }
 ```
 
-**Step 3: Write tests for each warning code**
-
-Add tests for W011, W012, W020, W030, W040, W041, W050 in `validate_test.go`.
-
-**Step 4: Run tests**
+**Step 4: Run tests to verify they pass**
 
 Run: `go test -race -run TestValidate ./internal/config/...`
 Expected: PASS
@@ -1753,9 +1855,9 @@ func RunConfigValidate(ctx context.Context, globals *Globals, configDir string, 
 }
 ```
 
-**Step 6: Remove the stub from cli.go**
+**Step 6: Remove the stub from cli.go and un-hide the command**
 
-In `internal/cli/cli.go`, remove:
+In `internal/cli/cli.go`, remove the stub `Run` method:
 
 ```go
 func (c *ConfigValidateCmd) Run(globals *Globals) error {
@@ -1764,7 +1866,11 @@ func (c *ConfigValidateCmd) Run(globals *Globals) error {
 }
 ```
 
-Also un-hide the command by removing `hidden:""` from the `ConfigValidateCmd` field tag.
+Change the `ConfigValidateCmd` field tag from `hidden:""` to just `cmd:""`:
+
+```go
+Validate ConfigValidateCmd `cmd:"" help:"Check config file for warnings (no API calls)."`
+```
 
 **Step 7: Write CLI test**
 
@@ -1795,14 +1901,10 @@ environment = "production"
 Run: `go test -race ./...`
 Expected: All pass.
 
-**Step 9: Update docs**
-
-Add a notice to `docs/WARNINGS.md` that the warning system is now implemented (or remove the "not yet implemented" notice if Task 46 added one — the TODO says to add such a notice, but since we're implementing warnings, just ensure the doc is accurate).
-
-**Step 10: Commit**
+**Step 9: Commit**
 
 ```bash
-git add internal/config/validate.go internal/config/validate_test.go internal/cli/config_validate.go internal/cli/config_validate_test.go internal/cli/cli.go docs/WARNINGS.md
+git add internal/config/validate.go internal/config/validate_test.go internal/cli/config_validate.go internal/cli/config_validate_test.go internal/cli/cli.go
 git commit -m "feat: implement config validation warning system and config validate command"
 ```
 
@@ -1814,9 +1916,8 @@ The `--timeout` CLI flag is declared but unused. It should be applied to the `co
 
 **Files:**
 
-- Modify: `internal/cli/config_get.go` (and all other CLI command files)
-- Modify: `internal/cli/client.go` (from Task 8, add timeout to client)
-- Test: `internal/cli/config_get_test.go`
+- Modify: all CLI command `Run()` methods
+- Modify: `internal/cli/client.go` (if Task 8 done)
 
 **Step 1: Apply timeout in Run methods**
 
@@ -1830,31 +1931,14 @@ func (c *ConfigGetCmd) Run(globals *Globals) error {
 }
 ```
 
-**Step 2: Set HTTP client timeout**
+Apply this to all commands that make API calls (config get/set/delete/diff/apply/init, project/environment/workspace list).
 
-In `internal/cli/client.go` (or in `railway.NewClient`), configure the HTTP client's timeout:
-
-```go
-func newClient(globals *Globals) (*railway.Client, error) {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
-	if err != nil {
-		return nil, err
-	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
-	// Note: The HTTP transport timeout is controlled by context, not client.Timeout,
-	// because the genqlient client passes context through. The context.WithTimeout
-	// in Run() handles this.
-	return client, nil
-}
-```
-
-**Step 3: Run full test suite**
+**Step 2: Run full test suite**
 
 Run: `go test -race ./...`
 Expected: All pass.
 
-**Step 4: Commit**
+**Step 3: Commit**
 
 ```bash
 git add internal/cli/
@@ -1870,10 +1954,7 @@ These flags are declared but not wired to anything. `--verbose` should enable de
 **Files:**
 
 - Create: `internal/cli/output.go`
-- Modify: `internal/cli/config_diff.go`
-- Modify: `internal/cli/config_apply.go`
-- Modify: `internal/cli/config_get.go`
-- Modify: Other CLI commands as needed
+- Modify: CLI commands as needed
 - Test: `internal/cli/output_test.go`
 
 **Step 1: Create output helpers**
@@ -1885,7 +1966,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -1908,10 +1988,9 @@ func debug(globals *Globals, format string, args ...any) {
 
 **Step 2: Add debug logging to key operations**
 
-In config commands, add `debug` calls for timing and resolution:
+In config commands (particularly `loadAndFetch` from Task 9, or directly in diff/apply), add `debug` calls:
 
 ```go
-// In loadAndFetch:
 debug(globals, "loading config from %s", configDir)
 debug(globals, "resolving project=%q environment=%q", project, environment)
 debug(globals, "fetching live state for project=%s environment=%s", projID, envID)
@@ -1930,7 +2009,7 @@ Expected: All pass.
 **Step 5: Commit**
 
 ```bash
-git add internal/cli/output.go internal/cli/config_diff.go internal/cli/config_apply.go internal/cli/config_get.go
+git add internal/cli/output.go internal/cli/
 git commit -m "feat: wire up --verbose and --quiet flags for output control"
 ```
 
@@ -1940,20 +2019,34 @@ git commit -m "feat: wire up --verbose and --quiet flags for output control"
 
 Instead of calling `variableUpsert` per variable, use `variableCollectionUpsert` for bulk updates. This reduces API calls and triggers only one redeployment.
 
+**Prerequisites:** The `variableCollectionUpsert` mutation exists in `schema.graphql` but is NOT yet defined in `operations.graphql`. You must add it and re-run code generation before implementing.
+
 **Files:**
 
-- Modify: `internal/apply/apply.go` (batch variables before calling applier)
-- Modify: `internal/apply/railway.go` (add batch method)
+- Modify: `internal/railway/operations.graphql` (add mutation definition)
+- Regenerate: `internal/railway/generated.go` (via `go generate` / `mise run generate`)
 - Modify: `internal/railway/mutate.go` (add batch mutation function)
-- Verify: `internal/railway/operations.graphql` (check `variableCollectionUpsert` is defined)
+- Modify: `internal/apply/apply.go` (batch variables before calling applier)
+- Modify: `internal/apply/railway.go` (implement batch method)
 - Test: `internal/apply/apply_test.go`
 - Test: `internal/railway/mutate_test.go`
 
-**Step 1: Verify the GraphQL mutation exists**
+**Step 1: Add the mutation to operations.graphql**
 
-Check `internal/railway/operations.graphql` for `variableCollectionUpsert`. If present, verify the generated types in `generated.go`.
+Check `schema.graphql` for `VariableCollectionUpsertInput` type definition, then add to `operations.graphql`:
 
-**Step 2: Add batch mutation function**
+```graphql
+mutation VariableCollectionUpsert($input: VariableCollectionUpsertInput!) {
+  variableCollectionUpsert(input: $input)
+}
+```
+
+**Step 2: Re-run code generation**
+
+Run: `mise run generate`
+Verify: `internal/railway/generated.go` now has `VariableCollectionUpsert` function and `VariableCollectionUpsertInput` type.
+
+**Step 3: Add batch mutation function**
 
 In `internal/railway/mutate.go`:
 
@@ -1974,37 +2067,45 @@ func UpsertVariables(ctx context.Context, client *Client, projectID, environment
 }
 ```
 
-**Step 3: Add batch method to Applier interface**
+**Step 4: Add batch method to Applier interface**
 
-Either add a new `UpsertVariables` batch method to the `Applier` interface, or change the apply engine to collect variables and call a batch method. The cleaner approach is to keep the existing interface and batch inside `RailwayApplier`:
-
-Actually, the simplest approach is to add a new method to `Applier`:
+Add `UpsertVariables` to the interface, preserving the existing `UpsertVariable` for backward compatibility:
 
 ```go
 type Applier interface {
-	UpsertVariable(ctx context.Context, service, key, value string) error
-	UpsertVariables(ctx context.Context, service string, variables map[string]string) error
+	UpsertVariable(ctx context.Context, service, key, value string, skipDeploys bool) error
+	UpsertVariables(ctx context.Context, service string, variables map[string]string, skipDeploys bool) error
 	DeleteVariable(ctx context.Context, service, key string) error
 	UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error
-	UpdateServiceResources(ctx context.Context, service string, resources *config.DesiredResources) error
+	UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error
 }
 ```
 
-**Step 4: Update apply engine to batch upserts**
+Note: `skipDeploys bool` must be included (it's part of the existing `UpsertVariable` signature).
 
-In `internal/apply/apply.go`, collect all upsert variables for a service/shared scope, then call `UpsertVariables` once. Deletes still happen individually (no batch delete API).
+**Step 5: Update apply engine to batch upserts**
 
-**Step 5: Write tests**
+In `internal/apply/apply.go`, collect all create/update variables for a service/shared scope into a map, then call `UpsertVariables` once. Deletes still happen individually (no batch delete API).
 
-**Step 6: Run full test suite**
+**Step 6: Implement in RailwayApplier**
+
+In `internal/apply/railway.go`, implement `UpsertVariables` using the new `railway.UpsertVariables` function.
+
+**Step 7: Update all test doubles to implement the new method**
+
+All test applier implementations (in apply_test.go, helpers_test.go, e2e tests) need the new `UpsertVariables` method.
+
+**Step 8: Write tests**
+
+**Step 9: Run full test suite**
 
 Run: `go test -race ./...`
 Expected: All pass.
 
-**Step 7: Commit**
+**Step 10: Commit**
 
 ```bash
-git add internal/apply/ internal/railway/mutate.go
+git add internal/railway/operations.graphql internal/railway/generated.go internal/railway/mutate.go internal/apply/ internal/cli/
 git commit -m "feat: batch variable upserts using variableCollectionUpsert"
 ```
 
@@ -2048,9 +2149,14 @@ Commit: `refactor: use cache-aside pattern for service ID resolution in applier`
 
 ### 23b: Add workspace as optional top-level config key
 
-**Files:** `internal/config/desired.go`, `internal/config/parse.go`, `internal/config/merge.go`
+**Files:** `internal/config/desired.go`, `internal/config/parse.go`, `internal/config/merge.go`, `internal/config/parse_test.go`
 
-Add `Workspace` field to `DesiredConfig`, add `"workspace"` to `knownTopLevelKeys`, extract it in `Parse`, merge it in `Merge`. Thread through as fallback in CLI commands alongside project/environment.
+1. Add `Workspace` field to `DesiredConfig`
+2. Add `"workspace"` to `knownTopLevelKeys` in `parse.go`
+3. Extract workspace in `Parse` (same pattern as project/environment, with non-string error from Task 1)
+4. Merge workspace in `Merge` (non-empty overrides, same pattern as project/environment)
+5. Thread through as fallback in CLI commands: in `loadAndFetch` (Task 9) or in `Run()` methods, fall back to `desired.Workspace` when `globals.Workspace` is empty
+6. Write tests for parsing, merging, and resolution fallback
 
 Commit: `feat: add workspace as optional top-level config key`
 
@@ -2058,13 +2164,26 @@ Commit: `feat: add workspace as optional top-level config key`
 
 **File:** `internal/railway/state.go`
 
-`FetchLiveConfig` currently doesn't populate `Deploy` on `ServiceConfig`. Add a query for service instance settings and populate the `Deploy` field. This requires a GraphQL query that fetches the service instance for the given environment.
+`FetchLiveConfig` currently doesn't populate `Deploy` on `ServiceConfig`. The `ServiceInstance` GraphQL query already exists in `operations.graphql` and has generated Go code — it just needs to be called.
 
-Check if there's already a query for service instance data in `operations.graphql`. If not, add one. Then populate `svc.Deploy` in `FetchLiveConfig`.
+In the service loop in `FetchLiveConfig`, after fetching variables, call `ServiceInstance`:
+
+```go
+instance, err := ServiceInstance(ctx, client.GQL(), environmentID, edge.Node.Id)
+if err != nil {
+    return nil, err
+}
+svc.Deploy = config.Deploy{
+    Builder: string(instance.ServiceInstance.Builder),
+    // ... map other fields
+}
+```
+
+Write tests with `httptest.NewServer` to verify deploy settings are populated.
 
 Commit: `feat: include deploy/build settings in live state fetches`
 
-### 23d: Add WARNINGS.md notice that warning system is planned
+### 23d: Add WARNINGS.md notice (conditional)
 
 **File:** `docs/WARNINGS.md`
 
@@ -2083,30 +2202,25 @@ Commit: `docs: add notice that warning system is not yet implemented`
 
 ## Summary of task dependencies
 
-Tasks are mostly independent. Recommended execution order:
+```text
+Task 1  (non-string errors)     ──┐
+Task 2  (unknown key errors)    ──┤── Foundation (do first)
+Task 3  (parse sensitive keys)  ──┘
+                                  │
+Task 19 (warnings + validate)  ←──┘ depends on Task 3
 
-1. **Task 1** — non-string project/environment errors (foundation)
-2. **Task 2** — unknown scalar key errors (foundation)
-3. **Task 3** — parse sensitive_keywords/allowlist/suppress_warnings (foundation for Task 19)
-4. **Task 4** — TOML key quoting (independent)
-5. **Task 5** — TOML output in list commands (independent)
-6. **Task 6** — config get path filtering (independent)
-7. **Task 7** — interactive confirmation for set/delete (independent)
-8. **Task 8** — extract auth boilerplate (refactor, do before Task 9)
-9. **Task 9** — extract config load pipeline (refactor, do after Task 8)
-10. **Task 10** — setting key constants (refactor, independent)
-11. **Task 11** — fix zombie process (independent)
-12. **Task 12** — remove mutable browserCommand (after Task 11)
-13. **Task 13** — context.Context in auth (independent, large)
-14. **Task 14** — auth safety improvements (after Task 13)
-15. **Task 15** — handle marshal errors (independent, small)
-16. **Task 16** — ctx.Err in apply loops (independent)
-17. **Task 17** — remove Result.Skipped (independent, small)
-18. **Task 18** — CI/build improvements (independent)
-19. **Task 19** — config validation + validate command (after Task 3)
-20. **Task 20** — wire up --timeout (after Task 8)
-21. **Task 21** — wire up --verbose/--quiet (after Task 8)
-22. **Task 22** — batch variable upserts (independent, large)
-23. **Task 23a-d** — remaining small fixes (independent)
+Task 8  (auth boilerplate)     ──→ Task 9  (config pipeline)
+                                ──→ Task 20 (--timeout)
+                                ──→ Task 21 (--verbose/--quiet)
 
-Tasks 1-7 can be done in parallel. Tasks 8-9 are sequential. Tasks 10-18 can be done in parallel. Task 19 depends on Task 3. Tasks 20-23 can be done in parallel.
+Task 11 (zombie fix)           ──→ Task 12 (remove browserCommand)
+Task 13 (context in auth)      ──→ Task 14 (auth safety)
+```
+
+**Recommended execution order:**
+
+1. Tasks 1-7 can be done in parallel (independent)
+2. Task 8 then Task 9 (sequential refactors)
+3. Tasks 10-18 can be done in parallel (independent)
+4. Task 19 after Task 3 (depends on parsed fields)
+5. Tasks 20-23 can be done in parallel (independent)

@@ -39,7 +39,11 @@ func ensureGitignoreHasLine(dir, line string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	if len(b) > 0 && b[len(b)-1] != '\n' {
 		if _, err := f.WriteString("\n"); err != nil {

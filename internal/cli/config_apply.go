@@ -101,14 +101,21 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 
 	// 6. If no changes, report and return.
 	if changes.IsEmpty() {
-		if globals.Output == "json" {
+		switch globals.Output {
+		case "json":
 			b, _ := json.MarshalIndent(&apply.Result{}, "", "  ")
-			fmt.Fprintln(out, string(b))
-		} else if globals.Output == "toml" {
+			if _, err := fmt.Fprintln(out, string(b)); err != nil {
+				return err
+			}
+		case "toml":
 			b, _ := toml.Marshal(&apply.Result{})
-			fmt.Fprint(out, string(b))
-		} else {
-			fmt.Fprintln(out, "No changes.")
+			if _, err := fmt.Fprint(out, string(b)); err != nil {
+				return err
+			}
+		default:
+			if _, err := fmt.Fprintln(out, "No changes."); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -138,7 +145,9 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 			return fmt.Errorf("reading confirmation: %w", err)
 		}
 		if !confirmed {
-			fmt.Fprintln(out, "Apply cancelled.")
+			if _, err := fmt.Fprintln(out, "Apply cancelled."); err != nil {
+				return err
+			}
 			return nil
 		}
 	}
@@ -149,14 +158,21 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 		SkipDeploys: globals.SkipDeploys,
 	})
 
-	if globals.Output == "json" {
+	switch globals.Output {
+	case "json":
 		b, _ := json.MarshalIndent(applyResult, "", "  ")
-		fmt.Fprintln(out, string(b))
-	} else if globals.Output == "toml" {
+		if _, err := fmt.Fprintln(out, string(b)); err != nil {
+			return err
+		}
+	case "toml":
 		b, _ := toml.Marshal(applyResult)
-		fmt.Fprint(out, string(b))
-	} else {
-		fmt.Fprintln(out, applyResult.Summary())
+		if _, err := fmt.Fprint(out, string(b)); err != nil {
+			return err
+		}
+	default:
+		if _, err := fmt.Fprintln(out, applyResult.Summary()); err != nil {
+			return err
+		}
 	}
 
 	if applyErr != nil {

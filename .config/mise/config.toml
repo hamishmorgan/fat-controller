@@ -259,6 +259,21 @@ run = """
 go test -race ./...
 """
 
+[tasks."test:fresh"]
+alias = ["tf"]
+description = "Run Go tests (no cache)"
+run = """
+[ -f go.mod ] || exit 0
+go test -count=1 -race ./...
+"""
+
+[tasks."test:e2e"]
+description = "Run mocked E2E integration tests"
+run = """
+[ -f go.mod ] || exit 0
+go test -count=1 -race -run TestCLIE2E ./internal/cli
+"""
+
 [tasks."test:coverage"]
 alias = ["cover", "cov"]
 description = "Run tests with coverage and open HTML report"

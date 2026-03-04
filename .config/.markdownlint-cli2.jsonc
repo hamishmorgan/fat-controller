@@ -15,4 +15,7 @@
     // Allow non-heading first line (ASCII art logo in README)
     "MD041": false,
   },
+  // Prompt files are AI agent instructions, not regular docs — they have
+  // repeated headings and raw code fences by design.
+  "ignores": ["**/*-prompt.md"],
 }

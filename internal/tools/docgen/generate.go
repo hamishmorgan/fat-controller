@@ -171,7 +171,6 @@ func writeNodeFile(outDir, appName string, node *kong.Node) error {
 	} else {
 		fmt.Fprintf(&buf, "- [%s](%s.md) — top-level reference\n", appName, appName)
 	}
-	fmt.Fprintf(&buf, "\n")
 
 	path := filepath.Join(outDir, slug(appName, node))
 	return os.WriteFile(path, buf.Bytes(), 0o644)
@@ -235,17 +234,22 @@ func writeIndex(outDir, appName, description string, root *kong.Node, nodes []*k
 	}
 
 	sort.Strings(groupOrder)
-	for _, key := range groupOrder {
+	for i, key := range groupOrder {
 		g := groups[key]
 		title := key
 		if g.parent != nil && g.parent.Help != "" {
-			title = fmt.Sprintf("%s — %s", key, g.parent.Help)
+			// Strip trailing period from help text — MD026 forbids
+			// trailing punctuation in headings.
+			help := strings.TrimRight(g.parent.Help, ".")
+			title = fmt.Sprintf("%s — %s", key, help)
 		}
 		fmt.Fprintf(&buf, "### %s\n\n", title)
 		for _, node := range g.leaves {
 			fmt.Fprintf(&buf, "- [%s](%s) — %s\n", fullPath(appName, node), slug(appName, node), node.Help)
 		}
-		fmt.Fprintf(&buf, "\n")
+		if i < len(groupOrder)-1 {
+			fmt.Fprintf(&buf, "\n")
+		}
 	}
 
 	path := filepath.Join(outDir, appName+".md")

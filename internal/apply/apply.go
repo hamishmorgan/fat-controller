@@ -38,9 +38,16 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 	}
 	changes := diff.Compute(desired, live)
 
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+
 	// Phase 1: Settings first (services sorted).
 	serviceNames := sortedServiceNames(desired.Services)
 	for _, name := range serviceNames {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		sd := changes.Services[name]
 		if sd == nil {
 			continue
@@ -70,6 +77,9 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 	// Phase 2: Shared variables.
 	if changes.Shared != nil {
 		for _, ch := range changes.Shared.Variables {
+			if err := ctx.Err(); err != nil {
+				return result, err
+			}
 			if err := applyVariable(ctx, applier, "", ch, opts.SkipDeploys); err != nil {
 				result.Failed++
 				if opts.FailFast {
@@ -83,11 +93,17 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 
 	// Phase 3: Per-service variables (services sorted).
 	for _, name := range serviceNames {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
 		sd := changes.Services[name]
 		if sd == nil {
 			continue
 		}
 		for _, ch := range sd.Variables {
+			if err := ctx.Err(); err != nil {
+				return result, err
+			}
 			if err := applyVariable(ctx, applier, name, ch, opts.SkipDeploys); err != nil {
 				result.Failed++
 				if opts.FailFast {

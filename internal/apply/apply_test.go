@@ -174,6 +174,30 @@ func TestApply_NoChanges(t *testing.T) {
 	}
 }
 
+func TestApply_StopsOnContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately.
+
+	desired := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"FOO": "bar"}},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{}},
+		},
+	}
+	applier := &recordingApplier{}
+	_, err := apply.Apply(ctx, desired, live, applier, apply.Options{})
+	if err == nil {
+		t.Fatal("expected error from cancelled context")
+	}
+	if len(applier.calls) > 0 {
+		t.Errorf("expected no calls on cancelled context, got %d", len(applier.calls))
+	}
+}
+
 func TestApply_DeleteVariable(t *testing.T) {
 	desired := &config.DesiredConfig{
 		Services: map[string]*config.DesiredService{

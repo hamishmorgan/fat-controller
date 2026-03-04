@@ -12,6 +12,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CGO_ENABLED: "0"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -54,7 +57,6 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Build for ${{ matrix.go-version }} ${{ matrix.goos }}/${{ matrix.goarch }}
         env:
-          CGO_ENABLED: "0"
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: go build -o /dev/null ./cmd/fat-controller

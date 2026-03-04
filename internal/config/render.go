@@ -158,13 +158,16 @@ func renderTOML(cfg LiveConfig, full bool) string {
 }
 
 // RenderInitTOML generates a fat-controller.toml for the init command.
-// It includes a project/environment header, masks secrets, and excludes
-// deploy settings and IDs (those are operational, not config).
-func RenderInitTOML(project, environment string, cfg LiveConfig) string {
+// It includes a workspace/project/environment header (when provided), masks
+// secrets, and excludes deploy settings and IDs (those are operational, not config).
+func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
 	masker := NewMasker(nil, nil)
 	masked := maskConfig(cfg, masker)
 
 	var out strings.Builder
+	if workspace != "" {
+		out.WriteString("workspace = " + tomlQuote(workspace) + "\n")
+	}
 	out.WriteString("project = " + tomlQuote(project) + "\n")
 	out.WriteString("environment = " + tomlQuote(environment) + "\n")
 

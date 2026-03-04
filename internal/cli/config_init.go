@@ -74,11 +74,11 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Project, globals.Environment, fetcher, os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, fetcher, os.Stdout)
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, project, environment string, fetcher configFetcher, out io.Writer) error {
+func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -92,7 +92,7 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 	}
 
 	// 2. Resolve project/environment (may prompt interactively).
-	projID, envID, err := fetcher.Resolve(ctx, "", project, environment)
+	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 
 	// 4. Render and write the config file.
 	// project/environment args are names (not IDs) — used as the header values.
-	content := config.RenderInitTOML(project, environment, *live)
+	content := config.RenderInitTOML(workspace, project, environment, *live)
 	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
 	}

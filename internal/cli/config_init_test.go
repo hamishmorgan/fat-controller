@@ -30,7 +30,7 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "my-app", "production", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "my-app", "production", fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -41,6 +41,9 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 		t.Fatalf("reading config file: %v", err)
 	}
 	got := string(content)
+	if strings.Contains(got, `workspace = `) {
+		t.Errorf("did not expect workspace header when not provided, got:\n%s", got)
+	}
 	if !strings.Contains(got, `project = "my-app"`) {
 		t.Errorf("expected project header in file:\n%s", got)
 	}
@@ -67,7 +70,7 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 		cfg: &config.LiveConfig{Services: map[string]*config.ServiceConfig{}},
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error when config file already exists")
 	}
@@ -86,7 +89,7 @@ func TestRunConfigInit_CreatesLocalTOMLStub(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -112,7 +115,7 @@ func TestRunConfigInit_PrintsSummary(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -126,7 +129,7 @@ func TestRunConfigInit_ResolveError(t *testing.T) {
 	dir := t.TempDir()
 	fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error from resolve failure")
 	}

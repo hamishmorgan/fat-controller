@@ -254,12 +254,15 @@ func TestRenderInitTOML_Header(t *testing.T) {
 			},
 		},
 	}
-	got := config.RenderInitTOML("my-app", "production", cfg)
+	got := config.RenderInitTOML("", "my-app", "production", cfg)
 	if !strings.Contains(got, `project = "my-app"`) {
 		t.Errorf("expected project header:\n%s", got)
 	}
 	if !strings.Contains(got, `environment = "production"`) {
 		t.Errorf("expected environment header:\n%s", got)
+	}
+	if strings.Contains(got, `workspace = `) {
+		t.Errorf("did not expect workspace header when not provided:\n%s", got)
 	}
 	if !strings.Contains(got, "[api.variables]") {
 		t.Errorf("expected service section:\n%s", got)
@@ -281,7 +284,7 @@ func TestRenderInitTOML_MasksSecrets(t *testing.T) {
 			},
 		},
 	}
-	got := config.RenderInitTOML("proj", "env", cfg)
+	got := config.RenderInitTOML("", "proj", "env", cfg)
 	if strings.Contains(got, "hunter2") {
 		t.Errorf("secret should be masked:\n%s", got)
 	}
@@ -323,7 +326,10 @@ func TestRenderInitTOML_SharedVariables(t *testing.T) {
 		Shared:   map[string]string{"GLOBAL": "value"},
 		Services: map[string]*config.ServiceConfig{},
 	}
-	got := config.RenderInitTOML("proj", "env", cfg)
+	got := config.RenderInitTOML("ws", "proj", "env", cfg)
+	if !strings.Contains(got, `workspace = "ws"`) {
+		t.Errorf("expected workspace header:\n%s", got)
+	}
 	if !strings.Contains(got, "[shared.variables]") {
 		t.Errorf("expected shared section:\n%s", got)
 	}

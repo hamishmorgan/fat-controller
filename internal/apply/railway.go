@@ -26,20 +26,23 @@ func (r *RailwayApplier) resolveServiceID(ctx context.Context, name string) (str
 	}
 
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.serviceIDs == nil {
-		r.serviceIDs = make(map[string]string)
-	}
 	if id, ok := r.serviceIDs[name]; ok {
+		r.mu.Unlock()
 		return id, nil
 	}
+	r.mu.Unlock()
 
 	id, err := railway.ResolveServiceID(ctx, r.Client, r.ProjectID, name)
 	if err != nil {
 		return "", err
 	}
+
+	r.mu.Lock()
+	if r.serviceIDs == nil {
+		r.serviceIDs = make(map[string]string)
+	}
 	r.serviceIDs[name] = id
+	r.mu.Unlock()
 	return id, nil
 }
 

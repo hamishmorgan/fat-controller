@@ -50,7 +50,9 @@ type mockGraphQLServer struct {
 	t *testing.T
 
 	// options set before the server is started (not guarded by mu).
-	workspaces []mockWorkspace
+	workspaces      []mockWorkspace
+	failUpsertAfter int  // 0 = never fail; N = fail upserts after Nth
+	failAll         bool // return GraphQL errors for all operations
 
 	mu       sync.Mutex
 	url      string // set once by newMockGraphQLServer
@@ -101,6 +103,17 @@ type mockServerOption func(*mockGraphQLServer)
 // ambiguous list (triggers the non-TTY error path).
 func withWorkspaces(ws ...mockWorkspace) mockServerOption {
 	return func(m *mockGraphQLServer) { m.workspaces = ws }
+}
+
+// withFailUpsertAfter causes upserts after the Nth one to return a GraphQL
+// error. Useful for testing --fail-fast behavior.
+func withFailUpsertAfter(n int) mockServerOption {
+	return func(m *mockGraphQLServer) { m.failUpsertAfter = n }
+}
+
+// withFailAllQueries causes all operations to return a GraphQL error.
+func withFailAllQueries() mockServerOption {
+	return func(m *mockGraphQLServer) { m.failAll = true }
 }
 
 // newMockGraphQLServer creates a mock server with canned responses and
@@ -169,6 +182,14 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 	op := req.OperationName
 	if op == "" {
 		op = inferOperation(req.Query)
+	}
+
+	if m.failAll {
+		respondJSON(m.t, w, map[string]any{
+			"data":   nil,
+			"errors": []map[string]any{{"message": "simulated server error"}},
+		})
+		return
 	}
 
 	switch op {
@@ -276,7 +297,16 @@ func (m *mockGraphQLServer) handleVariableUpsert(w http.ResponseWriter, req grap
 	}
 	m.mu.Lock()
 	m.upserts = append(m.upserts, call)
+	count := len(m.upserts)
 	m.mu.Unlock()
+
+	if m.failUpsertAfter > 0 && count > m.failUpsertAfter {
+		respondJSON(m.t, w, map[string]any{
+			"data":   nil,
+			"errors": []map[string]any{{"message": "simulated upsert failure"}},
+		})
+		return
+	}
 	respondJSON(m.t, w, map[string]any{
 		"data": map[string]any{"variableUpsert": true},
 	})
@@ -558,11 +588,36 @@ func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID, servic
 	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, service)
 }
 
+// dedent strips the common leading whitespace from all non-empty lines
+// in a multi-line string, so TOML literals can be indented with the
+// surrounding test code.
+func dedent(s string) string {
+	lines := strings.Split(strings.TrimLeft(s, "\n"), "\n")
+	min := len(s) // start with a value larger than any indent
+	for _, l := range lines {
+		trimmed := strings.TrimLeft(l, "\t ")
+		if len(trimmed) > 0 {
+			indent := len(l) - len(trimmed)
+			if indent < min {
+				min = indent
+			}
+		}
+	}
+	for i, l := range lines {
+		if len(l) >= min {
+			lines[i] = l[min:]
+		}
+	}
+	return strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
+}
+
 // writeTOML writes content to fat-controller.toml inside dir.
+// The content is automatically dedented so callers can indent the
+// TOML literal with the surrounding test code.
 func writeTOML(t *testing.T, dir, content string) {
 	t.Helper()
 	p := filepath.Join(dir, config.BaseConfigFile)
-	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte(dedent(content)), 0o644); err != nil {
 		t.Fatalf("write %s: %v", config.BaseConfigFile, err)
 	}
 }
@@ -645,21 +700,21 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		writeTOML(t, dir, `
-project = "`+fixtureProjectName+`"
-environment = "`+fixtureEnvironment+`"
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
 
-[api.variables]
-PORT = "9090"
-NEW = "hello"
+			[api.variables]
+			PORT = "9090"
+			NEW = "hello"
 
-[api.deploy]
-builder = "NIXPACKS"
-start_command = "./start"
+			[api.deploy]
+			builder = "NIXPACKS"
+			start_command = "./start"
 
-[api.resources]
-vcpus = 1
-memory_gb = 2
-`)
+			[api.resources]
+			vcpus = 1
+			memory_gb = 2
+		`)
 
 		globals := &cli.Globals{Confirm: true}
 		var out bytes.Buffer
@@ -742,6 +797,282 @@ memory_gb = 2
 		}
 	})
 
+	t.Run("config init refuses overwrite of existing file", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		dir := t.TempDir()
+		// Create the config file first.
+		writeTOML(t, dir, `project = "existing"`)
+
+		var out bytes.Buffer
+		err := cli.RunConfigInit(context.Background(), dir, fixtureProjectName, fixtureEnvironment, fetcher, &out)
+		if err == nil {
+			t.Fatal("expected error when config file already exists")
+		}
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("config get with dot-path filters to service", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		globals := &cli.Globals{
+			Project:     fixtureProjectName,
+			Environment: fixtureEnvironment,
+			Output:      "text",
+			ShowSecrets: true,
+		}
+		var out bytes.Buffer
+		// Dot-path "api.variables.PORT" should scope Fetch to the "api" service.
+		if err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		output := out.String()
+		// FetchLiveConfig always includes shared vars, but the service filter
+		// should exclude the worker service.
+		if strings.Contains(output, "QUEUE") {
+			t.Errorf("dot-path should exclude other services, but worker QUEUE appeared:\n%s", output)
+		}
+		// The api service variable should be present.
+		if !strings.Contains(output, "PORT") {
+			t.Errorf("expected PORT in output, got:\n%s", output)
+		}
+
+		_ = mock // server used for GraphQL calls
+	})
+
+	t.Run("config get JSON output", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		globals := &cli.Globals{
+			Project:     fixtureProjectName,
+			Environment: fixtureEnvironment,
+			Output:      "json",
+			ShowSecrets: true,
+		}
+		var out bytes.Buffer
+		if err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		output := out.String()
+		// Verify it's valid JSON by checking for expected keys.
+		if !strings.Contains(output, `"GLOBAL"`) {
+			t.Errorf("expected JSON key GLOBAL, got:\n%s", output)
+		}
+		if !strings.Contains(output, `"PORT"`) {
+			t.Errorf("expected JSON key PORT, got:\n%s", output)
+		}
+		// Sanity check: must start with "{".
+		trimmed := strings.TrimSpace(output)
+		if !strings.HasPrefix(trimmed, "{") {
+			t.Errorf("expected JSON output to start with '{', got:\n%s", output)
+		}
+
+		_ = mock
+	})
+
+	t.Run("config get TOML output", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		globals := &cli.Globals{
+			Project:     fixtureProjectName,
+			Environment: fixtureEnvironment,
+			Output:      "toml",
+			ShowSecrets: true,
+		}
+		var out bytes.Buffer
+		if err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		output := out.String()
+		// TOML output should use section headers and quoted values.
+		if !strings.Contains(output, "[shared.variables]") {
+			t.Errorf("expected TOML shared section, got:\n%s", output)
+		}
+		if !strings.Contains(output, `GLOBAL = "one"`) {
+			t.Errorf("expected TOML quoted value, got:\n%s", output)
+		}
+
+		_ = mock
+	})
+
+	t.Run("config apply dry-run sends no mutations", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = "9999"
+		`)
+
+		globals := &cli.Globals{DryRun: true}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+		output := out.String()
+		if !strings.Contains(output, "dry run") {
+			t.Errorf("expected dry-run message, got:\n%s", output)
+		}
+
+		snap := mock.snapshot()
+		if len(snap.Upserts) != 0 {
+			t.Errorf("dry-run should send 0 upserts, got %d", len(snap.Upserts))
+		}
+		if len(snap.Deletes) != 0 {
+			t.Errorf("dry-run should send 0 deletes, got %d", len(snap.Deletes))
+		}
+		if len(snap.Settings) != 0 {
+			t.Errorf("dry-run should send 0 settings updates, got %d", len(snap.Settings))
+		}
+		if len(snap.Limits) != 0 {
+			t.Errorf("dry-run should send 0 limits updates, got %d", len(snap.Limits))
+		}
+	})
+
+	t.Run("config apply reports no changes when config matches live", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		// Config matches exactly what the mock returns for api service.
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[shared.variables]
+			GLOBAL = "one"
+
+			[api.variables]
+			PORT = "8080"
+
+			[worker.variables]
+			QUEUE = "default"
+		`)
+
+		globals := &cli.Globals{Confirm: true}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+		if !strings.Contains(out.String(), "No changes") {
+			t.Errorf("expected 'No changes' message, got:\n%s", out.String())
+		}
+
+		snap := mock.snapshot()
+		if len(snap.Upserts)+len(snap.Deletes)+len(snap.Settings)+len(snap.Limits) != 0 {
+			t.Error("expected zero mutations for no-change apply")
+		}
+	})
+
+	t.Run("config apply with --service filter scopes to one service", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		// Both services have changes, but --service=api should only apply api changes.
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = "9090"
+
+			[worker.variables]
+			QUEUE = "high"
+		`)
+
+		globals := &cli.Globals{Confirm: true, Service: "api"}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+
+		snap := mock.snapshot()
+		// Only api's PORT should be upserted, not worker's QUEUE.
+		if len(snap.Upserts) != 1 {
+			t.Fatalf("expected 1 upsert (api only), got %d", len(snap.Upserts))
+		}
+		if snap.Upserts[0].Name != "PORT" {
+			t.Errorf("upsert name = %q, want PORT", snap.Upserts[0].Name)
+		}
+		if snap.Upserts[0].ServiceID == nil || *snap.Upserts[0].ServiceID != fixtureServiceAPIID {
+			t.Errorf("upsert serviceId = %v, want %q", snap.Upserts[0].ServiceID, fixtureServiceAPIID)
+		}
+	})
+
+	t.Run("config apply deletes variable with empty value", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		// Empty string for PORT means "delete this variable".
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = ""
+		`)
+
+		globals := &cli.Globals{Confirm: true}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+
+		snap := mock.snapshot()
+		if len(snap.Upserts) != 0 {
+			t.Errorf("expected 0 upserts for delete, got %d", len(snap.Upserts))
+		}
+		if len(snap.Deletes) != 1 {
+			t.Fatalf("expected 1 delete, got %d", len(snap.Deletes))
+		}
+		if snap.Deletes[0].Name != "PORT" {
+			t.Errorf("delete name = %q, want PORT", snap.Deletes[0].Name)
+		}
+		if snap.Deletes[0].ServiceID == nil || *snap.Deletes[0].ServiceID != fixtureServiceAPIID {
+			t.Errorf("delete serviceId = %v, want %q", snap.Deletes[0].ServiceID, fixtureServiceAPIID)
+		}
+	})
+
 	t.Run("config init fails with ambiguous workspace in non-tty", func(t *testing.T) {
 		mock := newMockGraphQLServer(t, withWorkspaces(
 			mockWorkspace{ID: fixtureWorkspaceID, Name: fixtureWorkspaceName},
@@ -759,5 +1090,211 @@ memory_gb = 2
 		if !strings.Contains(err.Error(), "multiple workspaces") {
 			t.Errorf("unexpected error: %v", err)
 		}
+	})
+
+	t.Run("config apply --fail-fast stops on first error", func(t *testing.T) {
+		// The mock will succeed on the first upsert and fail on the second.
+		mock := newMockGraphQLServer(t, withFailUpsertAfter(1))
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		// Two new shared variables → two upserts. Second will fail.
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[shared.variables]
+			GLOBAL = "one"
+			ALPHA = "new-a"
+			BRAVO = "new-b"
+		`)
+
+		globals := &cli.Globals{Confirm: true, FailFast: true}
+		var out bytes.Buffer
+		err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out)
+		if err == nil {
+			t.Fatal("expected error from fail-fast on second upsert")
+		}
+
+		snap := mock.snapshot()
+		// With fail-fast, only 2 upserts should be attempted (first succeeds,
+		// second fails, third is never sent).
+		if len(snap.Upserts) != 2 {
+			t.Errorf("expected 2 upserts attempted (1 ok + 1 fail), got %d", len(snap.Upserts))
+		}
+	})
+
+	t.Run("config apply --skip-deploys passes flag through", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = "9090"
+		`)
+
+		globals := &cli.Globals{Confirm: true, SkipDeploys: true}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+
+		snap := mock.snapshot()
+		if len(snap.Upserts) != 1 {
+			t.Fatalf("expected 1 upsert, got %d", len(snap.Upserts))
+		}
+		if snap.Upserts[0].SkipDeploys == nil || !*snap.Upserts[0].SkipDeploys {
+			t.Errorf("skipDeploys = %v, want true", snap.Upserts[0].SkipDeploys)
+		}
+	})
+
+	t.Run("config apply with local overlay merges values", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		// Base config: sets PORT to "9090".
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = "9090"
+		`)
+		// Local override: adds a SECRET variable (simulates .local.toml).
+		localPath := filepath.Join(dir, config.LocalConfigFile)
+		if err := os.WriteFile(localPath, []byte(dedent(`
+			[api.variables]
+			SECRET = "s3cret"
+		`)), 0o644); err != nil {
+			t.Fatalf("write local config: %v", err)
+		}
+
+		globals := &cli.Globals{Confirm: true}
+		var out bytes.Buffer
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+			t.Fatalf("RunConfigApply() error: %v", err)
+		}
+
+		snap := mock.snapshot()
+		// Expect 2 upserts: PORT changed (8080→9090) + SECRET created.
+		if len(snap.Upserts) != 2 {
+			t.Fatalf("expected 2 upserts (PORT + SECRET), got %d", len(snap.Upserts))
+		}
+		names := map[string]string{}
+		for _, u := range snap.Upserts {
+			names[u.Name] = u.Value
+		}
+		if names["PORT"] != "9090" {
+			t.Errorf("PORT = %q, want %q", names["PORT"], "9090")
+		}
+		if names["SECRET"] != "s3cret" {
+			t.Errorf("SECRET = %q, want %q", names["SECRET"], "s3cret")
+		}
+	})
+
+	t.Run("config get --full includes IDs", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		globals := &cli.Globals{
+			Project:     fixtureProjectName,
+			Environment: fixtureEnvironment,
+			Output:      "json",
+			Full:        true,
+			ShowSecrets: true,
+		}
+		var out bytes.Buffer
+		if err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		output := out.String()
+
+		// Full mode should include project_id, environment_id, and service id.
+		for _, want := range []string{
+			`"project_id"`,
+			`"environment_id"`,
+			`"id"`,
+		} {
+			if !strings.Contains(output, want) {
+				t.Errorf("expected %s in --full output, got:\n%s", want, output)
+			}
+		}
+
+		_ = mock
+	})
+
+	t.Run("GraphQL error propagates to caller", func(t *testing.T) {
+		mock := newMockGraphQLServer(t, withFailAllQueries())
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+
+		globals := &cli.Globals{
+			Project:     fixtureProjectName,
+			Environment: fixtureEnvironment,
+			Output:      "text",
+		}
+		var out bytes.Buffer
+		err := cli.RunConfigGet(context.Background(), globals, "", fetcher, &out)
+		if err == nil {
+			t.Fatal("expected error when GraphQL returns errors")
+		}
+
+		_ = mock
+	})
+
+	t.Run("context cancellation stops apply", func(t *testing.T) {
+		mock := newMockGraphQLServer(t)
+		client := newTestClient(mock.URL())
+		fetcher := &e2eFetcher{client: client}
+		applier := &apply.RailwayApplier{
+			Client:        client,
+			ProjectID:     fixtureProjectID,
+			EnvironmentID: fixtureEnvironmentID,
+		}
+
+		dir := t.TempDir()
+		writeTOML(t, dir, `
+			project = "`+fixtureProjectName+`"
+			environment = "`+fixtureEnvironment+`"
+
+			[api.variables]
+			PORT = "9090"
+		`)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // cancel immediately
+
+		globals := &cli.Globals{Confirm: true}
+		var out bytes.Buffer
+		err := cli.RunConfigApply(ctx, globals, dir, nil, fetcher, applier, &out)
+		if err == nil {
+			t.Fatal("expected error from cancelled context")
+		}
+
+		_ = mock
 	})
 }

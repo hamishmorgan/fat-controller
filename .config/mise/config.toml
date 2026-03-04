@@ -271,7 +271,7 @@ go test -count=1 -race ./...
 description = "Run mocked E2E integration tests"
 run = """
 [ -f go.mod ] || exit 0
-go test -count=1 -race -run TestCLIE2E ./internal/cli
+go test -v -count=1 -race -run TestCLIE2E ./internal/cli
 """
 
 [tasks."test:coverage"]

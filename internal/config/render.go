@@ -210,7 +210,7 @@ func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
 // (A-Z, a-z, 0-9, -, _), otherwise returns a quoted key.
 func tomlKey(key string) string {
 	for _, r := range key {
-		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+		if (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '_' && r != '-' {
 			return tomlQuote(key)
 		}
 	}
@@ -241,7 +241,7 @@ func tomlQuote(s string) string {
 			b.WriteString(`\t`)
 		default:
 			if r <= 0x1F || r == 0x7F {
-				b.WriteString(fmt.Sprintf(`\u%04X`, r))
+				fmt.Fprintf(&b, `\u%04X`, r)
 			} else {
 				b.WriteRune(r)
 			}

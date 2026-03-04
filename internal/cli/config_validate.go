@@ -36,7 +36,7 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 
 	if len(warnings) == 0 {
 		if !globals.Quiet {
-			fmt.Fprintln(out, "No warnings found.")
+			_, _ = fmt.Fprintln(out, "No warnings found.")
 		}
 		return nil
 	}
@@ -46,7 +46,7 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 		if w.Path != "" {
 			path = " (" + w.Path + ")"
 		}
-		fmt.Fprintf(out, "[%s]%s %s\n", w.Code, path, w.Message)
+		_, _ = fmt.Fprintf(out, "[%s]%s %s\n", w.Code, path, w.Message)
 	}
 
 	// Exit cleanly — warnings are advisory, not errors.

@@ -5,13 +5,6 @@ import (
 	"os"
 )
 
-func info(globals *Globals, format string, args ...any) {
-	if globals.Quiet {
-		return
-	}
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-}
-
 func debug(globals *Globals, format string, args ...any) {
 	if !globals.Verbose {
 		return

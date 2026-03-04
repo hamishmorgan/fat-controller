@@ -115,12 +115,6 @@ func withWorkspaces(ws ...mockWorkspace) mockServerOption {
 	return func(m *mockGraphQLServer) { m.workspaces = ws }
 }
 
-// withFailUpsertAfter causes upserts after the Nth one to return a GraphQL
-// error. Useful for testing --fail-fast behavior.
-func withFailUpsertAfter(n int) mockServerOption {
-	return func(m *mockGraphQLServer) { m.failUpsertAfter = n }
-}
-
 // withFailCollectionUpsert causes variableCollectionUpsert to return a
 // GraphQL error. Useful for testing --fail-fast behavior with batch upserts.
 func withFailCollectionUpsert() mockServerOption {

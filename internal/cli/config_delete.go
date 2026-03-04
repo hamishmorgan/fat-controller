@@ -40,7 +40,7 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 			_, err := fmt.Fprintf(out, "dry run: would delete %s (use --confirm to apply)\n", path)
 			return err
 		}
-		fmt.Fprintf(out, "Will delete %s\n\n", path)
+		_, _ = fmt.Fprintf(out, "Will delete %s\n\n", path)
 		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)

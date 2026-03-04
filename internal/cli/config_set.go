@@ -40,7 +40,7 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 			_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --confirm to apply)\n", path, value)
 			return err
 		}
-		fmt.Fprintf(out, "Will set %s = %q\n\n", path, value)
+		_, _ = fmt.Fprintf(out, "Will set %s = %q\n\n", path, value)
 		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)

@@ -50,17 +50,19 @@ type mockGraphQLServer struct {
 	t *testing.T
 
 	// options — set before the server starts, never mutated after.
-	url             string // base URL of the httptest.Server
-	workspaces      []mockWorkspace
-	failUpsertAfter int  // 0 = never fail; N = fail upserts after Nth
-	failAll         bool // return GraphQL errors for all operations
+	url                  string // base URL of the httptest.Server
+	workspaces           []mockWorkspace
+	failUpsertAfter      int  // 0 = never fail; N = fail upserts after Nth
+	failCollectionUpsert bool // if true, variableCollectionUpsert returns error
+	failAll              bool // return GraphQL errors for all operations
 
-	mu       sync.Mutex
-	upserts  []recordedUpsert
-	deletes  []recordedDelete
-	settings []recordedSettingsUpdate
-	limits   []recordedLimitsUpdate
-	lastAuth string
+	mu                sync.Mutex
+	upserts           []recordedUpsert
+	collectionUpserts []recordedCollectionUpsert
+	deletes           []recordedDelete
+	settings          []recordedSettingsUpdate
+	limits            []recordedLimitsUpdate
+	lastAuth          string
 }
 
 type mockWorkspace struct {
@@ -74,6 +76,14 @@ type recordedUpsert struct {
 	ServiceID     *string
 	Name          string
 	Value         string
+	SkipDeploys   *bool
+}
+
+type recordedCollectionUpsert struct {
+	ProjectID     string
+	EnvironmentID string
+	ServiceID     *string
+	Variables     map[string]string
 	SkipDeploys   *bool
 }
 
@@ -111,6 +121,12 @@ func withFailUpsertAfter(n int) mockServerOption {
 	return func(m *mockGraphQLServer) { m.failUpsertAfter = n }
 }
 
+// withFailCollectionUpsert causes variableCollectionUpsert to return a
+// GraphQL error. Useful for testing --fail-fast behavior with batch upserts.
+func withFailCollectionUpsert() mockServerOption {
+	return func(m *mockGraphQLServer) { m.failCollectionUpsert = true }
+}
+
 // withFailAllQueries causes all operations to return a GraphQL error.
 func withFailAllQueries() mockServerOption {
 	return func(m *mockGraphQLServer) { m.failAll = true }
@@ -139,20 +155,22 @@ func (m *mockGraphQLServer) snapshot() mockSnapshot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return mockSnapshot{
-		Upserts:  append([]recordedUpsert(nil), m.upserts...),
-		Deletes:  append([]recordedDelete(nil), m.deletes...),
-		Settings: append([]recordedSettingsUpdate(nil), m.settings...),
-		Limits:   append([]recordedLimitsUpdate(nil), m.limits...),
-		LastAuth: m.lastAuth,
+		Upserts:           append([]recordedUpsert(nil), m.upserts...),
+		CollectionUpserts: append([]recordedCollectionUpsert(nil), m.collectionUpserts...),
+		Deletes:           append([]recordedDelete(nil), m.deletes...),
+		Settings:          append([]recordedSettingsUpdate(nil), m.settings...),
+		Limits:            append([]recordedLimitsUpdate(nil), m.limits...),
+		LastAuth:          m.lastAuth,
 	}
 }
 
 type mockSnapshot struct {
-	Upserts  []recordedUpsert
-	Deletes  []recordedDelete
-	Settings []recordedSettingsUpdate
-	Limits   []recordedLimitsUpdate
-	LastAuth string
+	Upserts           []recordedUpsert
+	CollectionUpserts []recordedCollectionUpsert
+	Deletes           []recordedDelete
+	Settings          []recordedSettingsUpdate
+	Limits            []recordedLimitsUpdate
+	LastAuth          string
 }
 
 // handle dispatches incoming GraphQL requests to canned responses.
@@ -194,6 +212,8 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleProjectServices(w)
 	case "Variables":
 		m.handleVariables(w, req)
+	case "VariableCollectionUpsert":
+		m.handleVariableCollectionUpsert(w, req)
 	case "VariableUpsert":
 		m.handleVariableUpsert(w, req)
 	case "VariableDelete":
@@ -276,6 +296,29 @@ func (m *mockGraphQLServer) handleVariables(w http.ResponseWriter, req graphqlRe
 	}
 	respondJSON(m.t, w, map[string]any{
 		"data": map[string]any{"variables": vars},
+	})
+}
+
+func (m *mockGraphQLServer) handleVariableCollectionUpsert(w http.ResponseWriter, req graphqlReq) {
+	call, err := parseCollectionUpsertInput(req.Variables)
+	if err != nil {
+		http.Error(w, "invalid variable collection upsert", http.StatusBadRequest)
+		m.t.Errorf("parse variable collection upsert: %v", err)
+		return
+	}
+	m.mu.Lock()
+	m.collectionUpserts = append(m.collectionUpserts, call)
+	m.mu.Unlock()
+
+	if m.failCollectionUpsert {
+		respondJSON(m.t, w, map[string]any{
+			"data":   nil,
+			"errors": []map[string]any{{"message": "simulated collection upsert failure"}},
+		})
+		return
+	}
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{"variableCollectionUpsert": true},
 	})
 }
 
@@ -378,6 +421,7 @@ func inferOperation(query string) string {
 	}{
 		{"mutation ServiceInstanceLimitsUpdate", "ServiceInstanceLimitsUpdate"},
 		{"mutation ServiceInstanceUpdate", "ServiceInstanceUpdate"},
+		{"mutation VariableCollectionUpsert", "VariableCollectionUpsert"},
 		{"mutation VariableUpsert", "VariableUpsert"},
 		{"mutation VariableDelete", "VariableDelete"},
 		{"query ApiToken", "ApiToken"},
@@ -392,6 +436,36 @@ func inferOperation(query string) string {
 		}
 	}
 	return ""
+}
+
+func parseCollectionUpsertInput(vars map[string]interface{}) (recordedCollectionUpsert, error) {
+	input, ok := vars["input"].(map[string]interface{})
+	if !ok {
+		return recordedCollectionUpsert{}, errors.New("missing input")
+	}
+	projectID, err := jsonString(input, "projectId")
+	if err != nil {
+		return recordedCollectionUpsert{}, err
+	}
+	environmentID, err := jsonString(input, "environmentId")
+	if err != nil {
+		return recordedCollectionUpsert{}, err
+	}
+	variables := make(map[string]string)
+	if raw, ok := input["variables"].(map[string]interface{}); ok {
+		for k, v := range raw {
+			if s, ok := v.(string); ok {
+				variables[k] = s
+			}
+		}
+	}
+	return recordedCollectionUpsert{
+		ProjectID:     projectID,
+		EnvironmentID: environmentID,
+		ServiceID:     jsonOptionalString(input, "serviceId"),
+		Variables:     variables,
+		SkipDeploys:   jsonOptionalBool(input, "skipDeploys"),
+	}, nil
 }
 
 func parseUpsertInput(vars map[string]interface{}) (recordedUpsert, error) {
@@ -872,20 +946,28 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		snap := mock.snapshot()
 
-		// Variable upserts.
-		if got := len(snap.Upserts); got != 2 {
-			t.Fatalf("upserts: got %d, want 2", got)
+		// Variable collection upserts (batched).
+		if got := len(snap.CollectionUpserts); got != 1 {
+			t.Fatalf("collection upserts: got %d, want 1", got)
 		}
-		for _, u := range snap.Upserts {
-			if u.ProjectID != fixtureProjectID {
-				t.Errorf("upsert projectId = %q, want %q", u.ProjectID, fixtureProjectID)
-			}
-			if u.EnvironmentID != fixtureEnvironmentID {
-				t.Errorf("upsert environmentId = %q, want %q", u.EnvironmentID, fixtureEnvironmentID)
-			}
-			if u.ServiceID == nil || *u.ServiceID != fixtureServiceAPIID {
-				t.Errorf("upsert serviceId = %v, want %q", u.ServiceID, fixtureServiceAPIID)
-			}
+		cu := snap.CollectionUpserts[0]
+		if cu.ProjectID != fixtureProjectID {
+			t.Errorf("upsert projectId = %q, want %q", cu.ProjectID, fixtureProjectID)
+		}
+		if cu.EnvironmentID != fixtureEnvironmentID {
+			t.Errorf("upsert environmentId = %q, want %q", cu.EnvironmentID, fixtureEnvironmentID)
+		}
+		if cu.ServiceID == nil || *cu.ServiceID != fixtureServiceAPIID {
+			t.Errorf("upsert serviceId = %v, want %q", cu.ServiceID, fixtureServiceAPIID)
+		}
+		if len(cu.Variables) != 2 {
+			t.Errorf("upsert variables count = %d, want 2", len(cu.Variables))
+		}
+		if cu.Variables["PORT"] != "9090" {
+			t.Errorf("PORT = %q, want %q", cu.Variables["PORT"], "9090")
+		}
+		if cu.Variables["NEW"] != "hello" {
+			t.Errorf("NEW = %q, want %q", cu.Variables["NEW"], "hello")
 		}
 
 		// Deploy settings.
@@ -944,7 +1026,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		total := len(snap.Upserts) + len(snap.Deletes) + len(snap.Settings) + len(snap.Limits)
+		total := len(snap.Upserts) + len(snap.CollectionUpserts) + len(snap.Deletes) + len(snap.Settings) + len(snap.Limits)
 		if total != 0 {
 			t.Errorf("dry-run should send 0 mutations, got %d", total)
 		}
@@ -980,7 +1062,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		total := len(snap.Upserts) + len(snap.Deletes) + len(snap.Settings) + len(snap.Limits)
+		total := len(snap.Upserts) + len(snap.CollectionUpserts) + len(snap.Deletes) + len(snap.Settings) + len(snap.Limits)
 		if total != 0 {
 			t.Errorf("expected zero mutations for no-change apply, got %d", total)
 		}
@@ -1010,14 +1092,15 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		if len(snap.Upserts) != 1 {
-			t.Fatalf("expected 1 upsert (api only), got %d", len(snap.Upserts))
+		if len(snap.CollectionUpserts) != 1 {
+			t.Fatalf("expected 1 collection upsert (api only), got %d", len(snap.CollectionUpserts))
 		}
-		if snap.Upserts[0].Name != "PORT" {
-			t.Errorf("upsert name = %q, want PORT", snap.Upserts[0].Name)
+		cu := snap.CollectionUpserts[0]
+		if cu.Variables["PORT"] != "9090" {
+			t.Errorf("upsert PORT = %q, want %q", cu.Variables["PORT"], "9090")
 		}
-		if snap.Upserts[0].ServiceID == nil || *snap.Upserts[0].ServiceID != fixtureServiceAPIID {
-			t.Errorf("upsert serviceId = %v, want %q", snap.Upserts[0].ServiceID, fixtureServiceAPIID)
+		if cu.ServiceID == nil || *cu.ServiceID != fixtureServiceAPIID {
+			t.Errorf("upsert serviceId = %v, want %q", cu.ServiceID, fixtureServiceAPIID)
 		}
 	})
 
@@ -1042,8 +1125,8 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		if len(snap.Upserts) != 0 {
-			t.Errorf("expected 0 upserts for delete, got %d", len(snap.Upserts))
+		if len(snap.CollectionUpserts) != 0 {
+			t.Errorf("expected 0 collection upserts for delete, got %d", len(snap.CollectionUpserts))
 		}
 		if len(snap.Deletes) != 1 {
 			t.Fatalf("expected 1 delete, got %d", len(snap.Deletes))
@@ -1057,12 +1140,12 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 	})
 
 	t.Run("config apply --fail-fast stops on first error", func(t *testing.T) {
-		// The mock succeeds on the first upsert and fails on the second.
-		mock, fetcher := newTestFetcher(t, withFailUpsertAfter(1))
+		// The mock fails all collection upserts.
+		mock, fetcher := newTestFetcher(t, withFailCollectionUpsert())
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		// Two new shared variables -> two upserts. Second will fail.
+		// Two new shared variables -> one batch upsert. Batch will fail.
 		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
@@ -1077,14 +1160,13 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		var out bytes.Buffer
 		err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out)
 		if err == nil {
-			t.Fatal("expected error from fail-fast on second upsert")
+			t.Fatal("expected error from fail-fast on collection upsert failure")
 		}
 
 		snap := mock.snapshot()
-		// With fail-fast, only 2 upserts should be attempted (first succeeds,
-		// second fails, third is never sent).
-		if len(snap.Upserts) != 2 {
-			t.Errorf("expected 2 upserts attempted (1 ok + 1 fail), got %d", len(snap.Upserts))
+		// With fail-fast + batching, 1 collection upsert attempted (fails).
+		if len(snap.CollectionUpserts) != 1 {
+			t.Errorf("expected 1 collection upsert attempted, got %d", len(snap.CollectionUpserts))
 		}
 	})
 
@@ -1108,11 +1190,11 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		if len(snap.Upserts) != 1 {
-			t.Fatalf("expected 1 upsert, got %d", len(snap.Upserts))
+		if len(snap.CollectionUpserts) != 1 {
+			t.Fatalf("expected 1 collection upsert, got %d", len(snap.CollectionUpserts))
 		}
-		if snap.Upserts[0].SkipDeploys == nil || !*snap.Upserts[0].SkipDeploys {
-			t.Errorf("skipDeploys = %v, want true", snap.Upserts[0].SkipDeploys)
+		if snap.CollectionUpserts[0].SkipDeploys == nil || !*snap.CollectionUpserts[0].SkipDeploys {
+			t.Errorf("skipDeploys = %v, want true", snap.CollectionUpserts[0].SkipDeploys)
 		}
 	})
 
@@ -1144,19 +1226,19 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 
 		snap := mock.snapshot()
-		// Expect 2 upserts: PORT changed (8080->9090) + SECRET created.
-		if len(snap.Upserts) != 2 {
-			t.Fatalf("expected 2 upserts (PORT + SECRET), got %d", len(snap.Upserts))
+		// Expect 1 collection upsert with 2 variables: PORT changed (8080->9090) + SECRET created.
+		if len(snap.CollectionUpserts) != 1 {
+			t.Fatalf("expected 1 collection upsert, got %d", len(snap.CollectionUpserts))
 		}
-		names := map[string]string{}
-		for _, u := range snap.Upserts {
-			names[u.Name] = u.Value
+		cu := snap.CollectionUpserts[0]
+		if len(cu.Variables) != 2 {
+			t.Fatalf("expected 2 variables in batch, got %d", len(cu.Variables))
 		}
-		if names["PORT"] != "9090" {
-			t.Errorf("PORT = %q, want %q", names["PORT"], "9090")
+		if cu.Variables["PORT"] != "9090" {
+			t.Errorf("PORT = %q, want %q", cu.Variables["PORT"], "9090")
 		}
-		if names["SECRET"] != "s3cret" {
-			t.Errorf("SECRET = %q, want %q", names["SECRET"], "s3cret")
+		if cu.Variables["SECRET"] != "s3cret" {
+			t.Errorf("SECRET = %q, want %q", cu.Variables["SECRET"], "s3cret")
 		}
 	})
 

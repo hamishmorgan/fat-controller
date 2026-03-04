@@ -18,6 +18,7 @@ type Options struct {
 // The service parameter is the service name (empty string = shared scope).
 type Applier interface {
 	UpsertVariable(ctx context.Context, service, key, value string, skipDeploys bool) error
+	UpsertVariables(ctx context.Context, service string, variables map[string]string, skipDeploys bool) error
 	DeleteVariable(ctx context.Context, service, key string) error
 	UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error
 	UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error
@@ -76,18 +77,8 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 
 	// Phase 2: Shared variables.
 	if changes.Shared != nil {
-		for _, ch := range changes.Shared.Variables {
-			if err := ctx.Err(); err != nil {
-				return result, err
-			}
-			if err := applyVariable(ctx, applier, "", ch, opts.SkipDeploys); err != nil {
-				result.Failed++
-				if opts.FailFast {
-					return result, err
-				}
-			} else {
-				result.Applied++
-			}
+		if err := applyVariables(ctx, applier, "", changes.Shared.Variables, opts, result); err != nil {
+			return result, err
 		}
 	}
 
@@ -100,33 +91,62 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		if sd == nil {
 			continue
 		}
-		for _, ch := range sd.Variables {
-			if err := ctx.Err(); err != nil {
-				return result, err
-			}
-			if err := applyVariable(ctx, applier, name, ch, opts.SkipDeploys); err != nil {
-				result.Failed++
-				if opts.FailFast {
-					return result, err
-				}
-			} else {
-				result.Applied++
-			}
+		if err := applyVariables(ctx, applier, name, sd.Variables, opts, result); err != nil {
+			return result, err
 		}
 	}
 
 	return result, nil
 }
 
-func applyVariable(ctx context.Context, applier Applier, service string, ch diff.Change, skipDeploys bool) error {
-	switch ch.Action {
-	case diff.ActionCreate, diff.ActionUpdate:
-		return applier.UpsertVariable(ctx, service, ch.Key, ch.DesiredValue, skipDeploys)
-	case diff.ActionDelete:
-		return applier.DeleteVariable(ctx, service, ch.Key)
-	default:
-		return nil
+// applyVariables batches create/update changes into a single UpsertVariables
+// call per scope, then processes deletes individually. The result counters
+// are updated in place. Returns a non-nil error only in fail-fast mode.
+func applyVariables(ctx context.Context, applier Applier, service string, changes []diff.Change, opts Options, result *Result) error {
+	if err := ctx.Err(); err != nil {
+		return err
 	}
+
+	// Collect upserts into a batch.
+	batch := make(map[string]string)
+	var deletes []diff.Change
+	for _, ch := range changes {
+		switch ch.Action {
+		case diff.ActionCreate, diff.ActionUpdate:
+			batch[ch.Key] = ch.DesiredValue
+		case diff.ActionDelete:
+			deletes = append(deletes, ch)
+		}
+	}
+
+	// Batch upsert.
+	if len(batch) > 0 {
+		if err := applier.UpsertVariables(ctx, service, batch, opts.SkipDeploys); err != nil {
+			result.Failed += len(batch)
+			if opts.FailFast {
+				return err
+			}
+		} else {
+			result.Applied += len(batch)
+		}
+	}
+
+	// Deletes still happen individually.
+	for _, ch := range deletes {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := applier.DeleteVariable(ctx, service, ch.Key); err != nil {
+			result.Failed++
+			if opts.FailFast {
+				return err
+			}
+		} else {
+			result.Applied++
+		}
+	}
+
+	return nil
 }
 
 func hasDeployChanges(changes []diff.Change) bool {

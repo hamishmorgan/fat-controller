@@ -3,6 +3,8 @@ package apply_test
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/apply"
@@ -19,6 +21,20 @@ var errTest = errors.New("test error")
 
 func (r *recordingApplier) UpsertVariable(_ context.Context, service, key, value string, _ bool) error {
 	r.calls = append(r.calls, "var:+:"+service+":"+key+"="+value)
+	if r.failOn == "var" {
+		return errTest
+	}
+	return nil
+}
+
+func (r *recordingApplier) UpsertVariables(_ context.Context, service string, variables map[string]string, _ bool) error {
+	// Build a deterministic representation: sorted key=value pairs.
+	pairs := make([]string, 0, len(variables))
+	for k, v := range variables {
+		pairs = append(pairs, k+"="+v)
+	}
+	sort.Strings(pairs)
+	r.calls = append(r.calls, "var:batch:"+service+":"+strings.Join(pairs, ","))
 	if r.failOn == "var" {
 		return errTest
 	}
@@ -77,12 +93,12 @@ func TestApply_Order_SettingsThenSharedThenServiceVars(t *testing.T) {
 		t.Errorf("Applied = %d, want 4", result.Applied)
 	}
 
-	// Expected order: settings, resources, shared vars, service vars.
+	// Expected order: settings, resources, shared vars (batched), service vars (batched).
 	want := []string{
 		"settings:api",
 		"resources:api",
-		"var:+::SHARED=1",
-		"var:+:api:PORT=8080",
+		"var:batch::SHARED=1",
+		"var:batch:api:PORT=8080",
 	}
 	if len(rec.calls) != len(want) {
 		t.Fatalf("calls = %v, want %v", rec.calls, want)
@@ -113,9 +129,11 @@ func TestApply_FailFastStops(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error with fail-fast")
 	}
+	// First batch (api) fails, web batch is never attempted.
 	if len(rec.calls) != 1 {
 		t.Errorf("expected 1 call with fail-fast, got %d: %v", len(rec.calls), rec.calls)
 	}
+	// The batch contained 1 variable, so Failed = 1.
 	if result.Failed != 1 {
 		t.Errorf("Failed = %d, want 1", result.Failed)
 	}
@@ -140,10 +158,11 @@ func TestApply_ContinueOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply() should not return error in best-effort mode: %v", err)
 	}
-	// Both services should have been attempted (sorted: api, web).
+	// Both services should have been attempted (sorted: api, web), one batch each.
 	if len(rec.calls) != 2 {
 		t.Errorf("expected 2 calls in best-effort mode, got %d: %v", len(rec.calls), rec.calls)
 	}
+	// Each batch had 1 variable, so Failed = 2.
 	if result.Failed != 2 {
 		t.Errorf("Failed = %d, want 2", result.Failed)
 	}

@@ -445,6 +445,46 @@ func (v *ServiceSourceInput) GetImage() *string { return v.Image }
 // GetRepo returns ServiceSourceInput.Repo, and is useful for accessing the field via an interface.
 func (v *ServiceSourceInput) GetRepo() *string { return v.Repo }
 
+type VariableCollectionUpsertInput struct {
+	EnvironmentId string `json:"environmentId"`
+	ProjectId     string `json:"projectId"`
+	// When set to true, removes all existing variables before upserting the new collection.
+	Replace   *bool   `json:"replace"`
+	ServiceId *string `json:"serviceId"`
+	// Skip deploys for affected services
+	SkipDeploys *bool                  `json:"skipDeploys"`
+	Variables   map[string]interface{} `json:"variables"`
+}
+
+// GetEnvironmentId returns VariableCollectionUpsertInput.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetEnvironmentId() string { return v.EnvironmentId }
+
+// GetProjectId returns VariableCollectionUpsertInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetProjectId() string { return v.ProjectId }
+
+// GetReplace returns VariableCollectionUpsertInput.Replace, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetReplace() *bool { return v.Replace }
+
+// GetServiceId returns VariableCollectionUpsertInput.ServiceId, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetServiceId() *string { return v.ServiceId }
+
+// GetSkipDeploys returns VariableCollectionUpsertInput.SkipDeploys, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetSkipDeploys() *bool { return v.SkipDeploys }
+
+// GetVariables returns VariableCollectionUpsertInput.Variables, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertInput) GetVariables() map[string]interface{} { return v.Variables }
+
+// VariableCollectionUpsertResponse is returned by VariableCollectionUpsert on success.
+type VariableCollectionUpsertResponse struct {
+	// Upserts a collection of variables.
+	VariableCollectionUpsert bool `json:"variableCollectionUpsert"`
+}
+
+// GetVariableCollectionUpsert returns VariableCollectionUpsertResponse.VariableCollectionUpsert, and is useful for accessing the field via an interface.
+func (v *VariableCollectionUpsertResponse) GetVariableCollectionUpsert() bool {
+	return v.VariableCollectionUpsert
+}
+
 type VariableDeleteInput struct {
 	EnvironmentId string  `json:"environmentId"`
 	Name          string  `json:"name"`
@@ -576,6 +616,14 @@ func (v *__ServiceInstanceUpdateInput) GetServiceId() string { return v.ServiceI
 
 // GetInput returns __ServiceInstanceUpdateInput.Input, and is useful for accessing the field via an interface.
 func (v *__ServiceInstanceUpdateInput) GetInput() ServiceInstanceUpdateInput { return v.Input }
+
+// __VariableCollectionUpsertInput is used internally by genqlient
+type __VariableCollectionUpsertInput struct {
+	Input VariableCollectionUpsertInput `json:"input"`
+}
+
+// GetInput returns __VariableCollectionUpsertInput.Input, and is useful for accessing the field via an interface.
+func (v *__VariableCollectionUpsertInput) GetInput() VariableCollectionUpsertInput { return v.Input }
 
 // __VariableDeleteInput is used internally by genqlient
 type __VariableDeleteInput struct {
@@ -893,6 +941,38 @@ func ServiceInstanceUpdate(
 	}
 
 	data_ = &ServiceInstanceUpdateResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by VariableCollectionUpsert.
+const VariableCollectionUpsert_Operation = `
+mutation VariableCollectionUpsert ($input: VariableCollectionUpsertInput!) {
+	variableCollectionUpsert(input: $input)
+}
+`
+
+func VariableCollectionUpsert(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input VariableCollectionUpsertInput,
+) (data_ *VariableCollectionUpsertResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "VariableCollectionUpsert",
+		Query:  VariableCollectionUpsert_Operation,
+		Variables: &__VariableCollectionUpsertInput{
+			Input: input,
+		},
+	}
+
+	data_ = &VariableCollectionUpsertResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

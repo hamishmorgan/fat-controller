@@ -18,6 +18,25 @@ func UpsertVariable(ctx context.Context, client *Client, projectID, environmentI
 	return err
 }
 
+// UpsertVariableCollection upserts multiple variables in a single API call.
+func UpsertVariableCollection(ctx context.Context, client *Client, projectID, environmentID, serviceID string, variables map[string]string, skipDeploys bool) error {
+	vars := make(map[string]interface{}, len(variables))
+	for k, v := range variables {
+		vars[k] = v
+	}
+	input := VariableCollectionUpsertInput{
+		ProjectId:     projectID,
+		EnvironmentId: environmentID,
+		SkipDeploys:   &skipDeploys,
+		Variables:     vars,
+	}
+	if serviceID != "" {
+		input.ServiceId = &serviceID
+	}
+	_, err := VariableCollectionUpsert(ctx, client.GQL(), input)
+	return err
+}
+
 // DeleteVariable deletes a single variable.
 func DeleteVariable(ctx context.Context, client *Client, projectID, environmentID, serviceID, name string) error {
 	input := VariableDeleteInput{

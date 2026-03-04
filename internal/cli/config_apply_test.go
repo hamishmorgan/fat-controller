@@ -22,6 +22,10 @@ func (c *countingApplier) UpsertVariable(_ context.Context, _, _, _ string, _ bo
 	c.upserts++
 	return nil
 }
+func (c *countingApplier) UpsertVariables(_ context.Context, _ string, variables map[string]string, _ bool) error {
+	c.upserts += len(variables)
+	return nil
+}
 func (c *countingApplier) DeleteVariable(_ context.Context, _, _ string) error {
 	c.deletes++
 	return nil

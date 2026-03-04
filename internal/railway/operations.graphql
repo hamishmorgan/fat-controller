@@ -97,6 +97,10 @@ mutation ServiceInstanceUpdate(
   serviceInstanceUpdate(serviceId: $serviceId, input: $input)
 }
 
+mutation VariableCollectionUpsert($input: VariableCollectionUpsertInput!) {
+  variableCollectionUpsert(input: $input)
+}
+
 mutation ServiceInstanceLimitsUpdate(
   $input: ServiceInstanceLimitsUpdateInput!
 ) {

@@ -51,6 +51,14 @@ func (r *RailwayApplier) UpsertVariable(ctx context.Context, service, key, value
 	return railway.UpsertVariable(ctx, r.Client, r.ProjectID, r.EnvironmentID, serviceID, key, value, skipDeploys)
 }
 
+func (r *RailwayApplier) UpsertVariables(ctx context.Context, service string, variables map[string]string, skipDeploys bool) error {
+	serviceID, err := r.resolveServiceID(ctx, service)
+	if err != nil {
+		return err
+	}
+	return railway.UpsertVariableCollection(ctx, r.Client, r.ProjectID, r.EnvironmentID, serviceID, variables, skipDeploys)
+}
+
 func (r *RailwayApplier) DeleteVariable(ctx context.Context, service, key string) error {
 	serviceID, err := r.resolveServiceID(ctx, service)
 	if err != nil {

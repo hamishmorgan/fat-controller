@@ -16,6 +16,8 @@ import (
 
 // Run implements `config apply`.
 func (c *ConfigApplyCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
@@ -27,7 +29,6 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	ctx := context.Background()
 	pair, err := loadAndFetch(ctx, globals, wd, globals.ConfigFiles, fetcher)
 	if err != nil {
 		return err

@@ -36,12 +36,14 @@ func (c *ConfigGetCmd) SetOutput(w io.Writer) {
 
 // Run implements `config get`.
 func (c *ConfigGetCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	return RunConfigGet(context.Background(), globals, c.Path, fetcher, c.output)
+	return RunConfigGet(ctx, globals, c.Path, fetcher, c.output)
 }
 
 // RunConfigGet is the testable core of `config get`.

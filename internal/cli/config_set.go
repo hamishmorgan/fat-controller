@@ -71,12 +71,14 @@ func (r *railwaySetter) SetVar(ctx context.Context, service, key, value string) 
 
 // Run implements `config set`.
 func (c *ConfigSetCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	projID, envID, err := fetcher.Resolve(context.Background(), globals.Workspace, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
 	if err != nil {
 		return err
 	}
@@ -86,5 +88,5 @@ func (c *ConfigSetCmd) Run(globals *Globals) error {
 		environmentID: envID,
 		skipDeploys:   globals.SkipDeploys,
 	}
-	return RunConfigSet(context.Background(), globals, c.Path, c.Value, setter, os.Stdout)
+	return RunConfigSet(ctx, globals, c.Path, c.Value, setter, os.Stdout)
 }

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -27,6 +28,16 @@ type Globals struct {
 	Full        bool          `help:"Include IDs and read-only fields (get only)."`
 	Verbose     bool          `help:"Debug output (HTTP requests, timing)." short:"v"`
 	Quiet       bool          `help:"Suppress informational output." short:"q"`
+}
+
+// TimeoutContext returns a context with the configured timeout applied.
+// If Timeout is zero (or negative), it returns ctx and a no-op cancel func
+// so callers always get a valid cancel to defer.
+func (g *Globals) TimeoutContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if g.Timeout > 0 {
+		return context.WithTimeout(ctx, g.Timeout)
+	}
+	return ctx, func() {}
 }
 
 // CLI is the root struct for the kong CLI parser.

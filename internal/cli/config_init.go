@@ -61,6 +61,8 @@ const localConfigStub = `# Local overrides (gitignored). Use for secrets and per
 
 // Run implements `config init`.
 func (c *ConfigInitCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
@@ -72,7 +74,7 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(context.Background(), wd, globals.Project, globals.Environment, fetcher, os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Project, globals.Environment, fetcher, os.Stdout)
 }
 
 // RunConfigInit is the testable core of `config init`.

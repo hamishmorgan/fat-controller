@@ -11,6 +11,8 @@ import (
 
 // Run implements `config diff`.
 func (c *ConfigDiffCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
@@ -22,7 +24,7 @@ func (c *ConfigDiffCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigDiff(context.Background(), globals, wd, globals.ConfigFiles, fetcher, os.Stdout)
+	return RunConfigDiff(ctx, globals, wd, globals.ConfigFiles, fetcher, os.Stdout)
 }
 
 // RunConfigDiff is the testable core of `config diff`.

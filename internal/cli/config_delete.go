@@ -70,12 +70,14 @@ func (r *railwayDeleter) DeleteVar(ctx context.Context, service, key string) err
 
 // Run implements `config delete`.
 func (c *ConfigDeleteCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	projID, envID, err := fetcher.Resolve(context.Background(), globals.Workspace, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
 	if err != nil {
 		return err
 	}
@@ -84,5 +86,5 @@ func (c *ConfigDeleteCmd) Run(globals *Globals) error {
 		projectID:     projID,
 		environmentID: envID,
 	}
-	return RunConfigDelete(context.Background(), globals, c.Path, deleter, os.Stdout)
+	return RunConfigDelete(ctx, globals, c.Path, deleter, os.Stdout)
 }

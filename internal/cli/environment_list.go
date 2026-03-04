@@ -77,16 +77,18 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 // Run implements `environment list`.
 // Requires --project flag (or env var) to know which project to list environments for.
 func (c *EnvironmentListCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
 
-	projID, err := railway.ResolveProjectID(context.Background(), client, globals.Workspace, globals.Project)
+	projID, err := railway.ResolveProjectID(ctx, client, globals.Workspace, globals.Project)
 	if err != nil {
 		return err
 	}
 
 	lister := &defaultEnvironmentLister{client: client}
-	return RunEnvironmentList(context.Background(), globals, projID, lister, os.Stdout)
+	return RunEnvironmentList(ctx, globals, projID, lister, os.Stdout)
 }

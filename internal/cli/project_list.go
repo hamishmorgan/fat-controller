@@ -80,10 +80,12 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 
 // Run implements `project list`.
 func (c *ProjectListCmd) Run(globals *Globals) error {
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
 	lister := &defaultProjectLister{client: client}
-	return RunProjectList(context.Background(), globals, lister, os.Stdout)
+	return RunProjectList(ctx, globals, lister, os.Stdout)
 }

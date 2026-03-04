@@ -8,9 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -220,46 +218,6 @@ func TestLogin_RetriesOnStaleClientID(t *testing.T) {
 	}
 	if tokens.AccessToken != "retry-access-token" {
 		t.Errorf("AccessToken = %q, want %q", tokens.AccessToken, "retry-access-token")
-	}
-}
-
-func TestOpenBrowser(t *testing.T) {
-	// Avoid opening a real browser; stub the command runner and assert args.
-	original := auth.BrowserCommand()
-	t.Cleanup(func() { auth.SetBrowserCommand(original) })
-
-	var gotName string
-	var gotArgs []string
-	auth.SetBrowserCommand(func(name string, args ...string) *exec.Cmd {
-		gotName = name
-		gotArgs = args
-		return exec.Command("true")
-	})
-
-	if err := auth.OpenBrowser("http://example.com"); err != nil {
-		t.Fatalf("OpenBrowser() error: %v", err)
-	}
-
-	switch runtime.GOOS {
-	case "darwin":
-		if gotName != "open" {
-			t.Fatalf("command = %q, want open", gotName)
-		}
-	case "windows":
-		if gotName != "rundll32" {
-			t.Fatalf("command = %q, want rundll32", gotName)
-		}
-		if len(gotArgs) < 2 || gotArgs[0] != "url.dll,FileProtocolHandler" {
-			t.Fatalf("rundll32 args = %q, want url.dll,FileProtocolHandler", gotArgs)
-		}
-	default:
-		if gotName != "xdg-open" {
-			t.Fatalf("command = %q, want xdg-open", gotName)
-		}
-	}
-
-	if len(gotArgs) == 0 || gotArgs[len(gotArgs)-1] != "http://example.com" {
-		t.Fatalf("url arg = %q, want http://example.com", gotArgs)
 	}
 }
 

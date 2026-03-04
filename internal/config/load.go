@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -34,6 +35,7 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 
 	var configs []*DesiredConfig
 
+	slog.Debug("loading config file", "path", basePath)
 	base, err := ParseFile(basePath)
 	if err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", basePath, err)
@@ -42,6 +44,7 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 
 	localPath := filepath.Join(dir, LocalConfigFile)
 	if _, err := os.Stat(localPath); err == nil {
+		slog.Debug("loading local override", "path", localPath)
 		local, err := ParseFile(localPath)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", localPath, err)
@@ -50,6 +53,7 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 	}
 
 	for _, path := range extraFiles {
+		slog.Debug("loading extra config", "path", path)
 		extra, err := ParseFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", path, err)
@@ -57,5 +61,6 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 		configs = append(configs, extra)
 	}
 
+	slog.Debug("merged config files", "count", len(configs))
 	return Merge(configs...), nil
 }

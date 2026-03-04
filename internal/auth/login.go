@@ -49,8 +49,8 @@ func OpenBrowser(url string) error {
 //
 // The openBrowser parameter controls how the authorization URL is opened.
 // Pass OpenBrowser for production use, or a fake for testing.
-func Login(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) error {
-	err := loginAttempt(oauth, store, openBrowser, false)
+func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) error {
+	err := loginAttempt(ctx, oauth, store, openBrowser, false)
 	if err == nil {
 		return nil
 	}
@@ -64,10 +64,10 @@ func Login(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) err
 	}
 
 	fmt.Println("Token exchange failed; retrying with fresh client registration...")
-	return loginAttempt(oauth, store, openBrowser, true)
+	return loginAttempt(ctx, oauth, store, openBrowser, true)
 }
 
-func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
+func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
 	// Start callback server.
 	srv, err := StartCallbackServer()
 	if err != nil {
@@ -78,7 +78,7 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 	redirectURI := srv.RedirectURI()
 
 	// Check for existing client registration.
-	clientID, err := loadOrRegisterClient(oauth, store, redirectURI, forceNewClient)
+	clientID, err := loadOrRegisterClient(ctx, oauth, store, redirectURI, forceNewClient)
 	if err != nil {
 		return fmt.Errorf("client registration: %w", err)
 	}
@@ -107,7 +107,13 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 
 	// Wait for callback.
 	fmt.Println("Waiting for authorization...")
-	result := <-srv.Result
+	var result CallbackResult
+	select {
+	case result = <-srv.Result:
+	case <-ctx.Done():
+		srv.Shutdown()
+		return ctx.Err()
+	}
 
 	if result.Error != "" {
 		return fmt.Errorf("authorization failed: %s: %s", result.Error, result.ErrorDescription)
@@ -118,7 +124,7 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 	}
 
 	// Exchange code for tokens.
-	tokenResp, err := oauth.ExchangeCode(context.Background(), clientID, result.Code, redirectURI, verifier)
+	tokenResp, err := oauth.ExchangeCode(ctx, clientID, result.Code, redirectURI, verifier)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errCodeExchange, err)
 	}
@@ -139,7 +145,7 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 // loadOrRegisterClient returns a client ID, registering a new client if needed.
 // If forceNew is true, always registers a fresh client (used for retry after
 // a stale client ID causes an auth failure).
-func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI string, forceNew bool) (string, error) {
+func loadOrRegisterClient(ctx context.Context, oauth *OAuthClient, store *TokenStore, redirectURI string, forceNew bool) (string, error) {
 	if !forceNew {
 		existing, err := store.Load()
 		if err == nil && existing.ClientID != "" {
@@ -148,7 +154,7 @@ func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI str
 	}
 
 	// Register a new client.
-	reg, err := oauth.RegisterClient(context.Background(), redirectURI)
+	reg, err := oauth.RegisterClient(ctx, redirectURI)
 	if err != nil {
 		return "", err
 	}

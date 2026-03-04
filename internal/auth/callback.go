@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // CallbackResult holds the data received from the OAuth redirect.
@@ -79,5 +80,7 @@ func (s *CallbackServer) RedirectURI() string {
 
 // Shutdown gracefully stops the callback server.
 func (s *CallbackServer) Shutdown() {
-	s.server.Shutdown(context.Background()) //nolint:errcheck
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	s.server.Shutdown(ctx) //nolint:errcheck
 }

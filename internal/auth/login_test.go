@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -71,7 +72,7 @@ func TestLogin_FullFlow(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err != nil {
 		t.Fatalf("Login() error: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestLogin_AuthorizationDenied(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err == nil {
 		t.Fatal("Login() should have returned an error")
 	}
@@ -198,7 +199,7 @@ func TestLogin_RetriesOnStaleClientID(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err != nil {
 		t.Fatalf("Login() error: %v", err)
 	}
@@ -278,7 +279,7 @@ func TestLogin_BrowserOpenError(t *testing.T) {
 		return errors.New("browser open failed")
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err != nil {
 		t.Fatalf("Login() should succeed despite browser error, got: %v", err)
 	}
@@ -321,7 +322,7 @@ func TestLogin_StateMismatch(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err == nil {
 		t.Fatal("Login() should have returned an error for state mismatch")
 	}
@@ -382,7 +383,7 @@ func TestLogin_StoreSaveError(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err == nil {
 		t.Fatal("Login() should have returned an error when store.Save fails")
 	}
@@ -458,7 +459,7 @@ func TestLogin_UsesStoredClientID(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err != nil {
 		t.Fatalf("Login() error: %v", err)
 	}
@@ -493,7 +494,7 @@ func TestLogin_RegistrationError(t *testing.T) {
 		return nil
 	}
 
-	err := auth.Login(oauth, store, fakeBrowser)
+	err := auth.Login(context.Background(), oauth, store, fakeBrowser)
 	if err == nil {
 		t.Fatal("Login() should have returned an error when registration fails")
 	}

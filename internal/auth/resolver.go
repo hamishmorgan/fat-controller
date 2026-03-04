@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 )
 
 // ErrNotAuthenticated is returned when no token is available from any source.
@@ -20,10 +21,26 @@ const (
 
 // ResolvedAuth contains the resolved token and the HTTP header to use.
 type ResolvedAuth struct {
+	mu          sync.Mutex
 	Token       string
 	HeaderName  string
 	HeaderValue string
 	Source      string // One of the Source* constants.
+}
+
+// GetToken returns the current token in a thread-safe manner.
+func (r *ResolvedAuth) GetToken() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.Token
+}
+
+// SetToken updates the token and header value in a thread-safe manner.
+func (r *ResolvedAuth) SetToken(token string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Token = token
+	r.HeaderValue = "Bearer " + token
 }
 
 // ResolveAuth determines the active auth token using the precedence:

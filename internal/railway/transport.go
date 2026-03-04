@@ -2,6 +2,7 @@ package railway
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -75,13 +76,13 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	newTokens, refreshErr := t.tryRefresh(req.Context())
 	if refreshErr != nil {
-		return resp, nil
+		resp.Body.Close() //nolint:errcheck
+		return nil, fmt.Errorf("authentication failed (token refresh error: %w)", refreshErr)
 	}
 
 	resp.Body.Close() //nolint:errcheck
 
-	t.resolved.Token = newTokens.AccessToken
-	t.resolved.HeaderValue = "Bearer " + newTokens.AccessToken
+	t.resolved.SetToken(newTokens.AccessToken)
 
 	retry := req.Clone(req.Context())
 	retry.Header.Set(headerName, t.resolved.HeaderValue)

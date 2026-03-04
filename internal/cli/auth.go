@@ -15,7 +15,7 @@ func (c *AuthLoginCmd) Run(globals *Globals) error {
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
-	return auth.Login(oauth, store, auth.OpenBrowser)
+	return auth.Login(context.Background(), oauth, store, auth.OpenBrowser)
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {

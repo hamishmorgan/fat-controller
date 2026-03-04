@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -261,7 +262,7 @@ func TestAuthTransport_ConcurrentRefresh(t *testing.T) {
 	}
 }
 
-func TestAuthTransport_RefreshFailsReturnsOriginal401(t *testing.T) {
+func TestAuthTransport_RefreshFailsReturnsError(t *testing.T) {
 	keyring.MockInit()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -295,14 +296,11 @@ func TestAuthTransport_RefreshFailsReturnsOriginal401(t *testing.T) {
 	transport := railway.NewAuthTransport(resolved, store, refresher)
 	client := &http.Client{Transport: transport}
 
-	resp, err := client.Get(server.URL)
-	if err != nil {
-		t.Fatal(err)
+	_, err := client.Get(server.URL)
+	if err == nil {
+		t.Fatal("expected error when refresh fails, got nil")
 	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	// Should return original 401 since refresh failed.
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("StatusCode = %d, want 401", resp.StatusCode)
+	if !strings.Contains(err.Error(), "token refresh error") {
+		t.Errorf("error should mention token refresh error, got: %s", err)
 	}
 }

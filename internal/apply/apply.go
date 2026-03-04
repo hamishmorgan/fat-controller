@@ -2,6 +2,7 @@ package apply
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -37,6 +38,7 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 	if desired == nil {
 		return result, nil
 	}
+	slog.Debug("starting apply", "services", len(desired.Services))
 	changes := diff.Compute(desired, live)
 
 	if err := ctx.Err(); err != nil {
@@ -54,6 +56,7 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 			continue
 		}
 		if hasDeployChanges(sd.Settings) {
+			slog.Debug("updating service settings", "service", name)
 			if err := applier.UpdateServiceSettings(ctx, name, desired.Services[name].Deploy); err != nil {
 				result.Failed++
 				if opts.FailFast {
@@ -64,6 +67,7 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 			}
 		}
 		if hasResourceChanges(sd.Settings) {
+			slog.Debug("updating service resources", "service", name)
 			if err := applier.UpdateServiceResources(ctx, name, desired.Services[name].Resources); err != nil {
 				result.Failed++
 				if opts.FailFast {
@@ -96,6 +100,7 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		}
 	}
 
+	slog.Debug("apply complete", "applied", result.Applied, "failed", result.Failed)
 	return result, nil
 }
 
@@ -121,6 +126,11 @@ func applyVariables(ctx context.Context, applier Applier, service string, change
 
 	// Batch upsert.
 	if len(batch) > 0 {
+		scope := service
+		if scope == "" {
+			scope = "shared"
+		}
+		slog.Debug("upserting variables", "scope", scope, "count", len(batch))
 		if err := applier.UpsertVariables(ctx, service, batch, opts.SkipDeploys); err != nil {
 			result.Failed += len(batch)
 			if opts.FailFast {
@@ -136,6 +146,11 @@ func applyVariables(ctx context.Context, applier Applier, service string, change
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		scope := service
+		if scope == "" {
+			scope = "shared"
+		}
+		slog.Debug("deleting variable", "scope", scope, "key", ch.Key)
 		if err := applier.DeleteVariable(ctx, service, ch.Key); err != nil {
 			result.Failed++
 			if opts.FailFast {

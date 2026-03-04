@@ -54,6 +54,33 @@ func TestRunEnvironmentList_JSON(t *testing.T) {
 	}
 }
 
+func TestRunEnvironmentList_TOML(t *testing.T) {
+	lister := &fakeEnvironmentLister{
+		environments: []cli.EnvironmentInfo{
+			{ID: "env-1", Name: "production"},
+			{ID: "env-2", Name: "staging"},
+		},
+	}
+	var buf bytes.Buffer
+	err := cli.RunEnvironmentList(context.Background(), &cli.Globals{Output: "toml"}, "proj-1", lister, &buf)
+	if err != nil {
+		t.Fatalf("RunEnvironmentList() error: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "[[environments]]") {
+		t.Errorf("expected TOML array of tables header, got:\n%s", got)
+	}
+	if !strings.Contains(got, `id = "env-1"`) {
+		t.Errorf("expected env-1 id in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, `name = "production"`) {
+		t.Errorf("expected production name in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, `name = "staging"`) {
+		t.Errorf("expected staging name in output, got:\n%s", got)
+	}
+}
+
 func TestRunEnvironmentList_Empty(t *testing.T) {
 	lister := &fakeEnvironmentLister{}
 	var buf bytes.Buffer

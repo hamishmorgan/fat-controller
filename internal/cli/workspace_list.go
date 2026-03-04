@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
@@ -14,8 +15,8 @@ import (
 
 // WorkspaceInfo is a simplified workspace record for display.
 type WorkspaceInfo struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
 }
 
 // workspaceLister abstracts workspace listing for tests.
@@ -60,6 +61,11 @@ func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLis
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(workspaces)
+	case "toml":
+		wrapper := struct {
+			Workspaces []WorkspaceInfo `toml:"workspaces"`
+		}{Workspaces: workspaces}
+		return toml.NewEncoder(out).Encode(wrapper)
 	default:
 		for _, ws := range workspaces {
 			if _, err := fmt.Fprintf(out, "%s  %s\n", ws.Name, ws.ID); err != nil {

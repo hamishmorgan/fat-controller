@@ -57,6 +57,33 @@ func TestRunProjectList_JSON(t *testing.T) {
 	}
 }
 
+func TestRunProjectList_TOML(t *testing.T) {
+	lister := &fakeProjectLister{
+		projects: []cli.ProjectInfo{
+			{ID: "proj-1", Name: "my-app"},
+			{ID: "proj-2", Name: "my-api"},
+		},
+	}
+	var buf bytes.Buffer
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "toml"}, lister, &buf)
+	if err != nil {
+		t.Fatalf("RunProjectList() error: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "[[projects]]") {
+		t.Errorf("expected TOML array of tables header, got:\n%s", got)
+	}
+	if !strings.Contains(got, `id = "proj-1"`) {
+		t.Errorf("expected proj-1 id in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, `name = "my-app"`) {
+		t.Errorf("expected my-app name in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, `name = "my-api"`) {
+		t.Errorf("expected my-api name in output, got:\n%s", got)
+	}
+}
+
 func TestRunProjectList_Empty(t *testing.T) {
 	lister := &fakeProjectLister{}
 	var buf bytes.Buffer

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
@@ -14,8 +15,8 @@ import (
 
 // ProjectInfo is a simplified project record for display.
 type ProjectInfo struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
 }
 
 // projectLister abstracts project listing for tests.
@@ -64,6 +65,11 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(projects)
+	case "toml":
+		wrapper := struct {
+			Projects []ProjectInfo `toml:"projects"`
+		}{Projects: projects}
+		return toml.NewEncoder(out).Encode(wrapper)
 	default:
 		for _, p := range projects {
 			if _, err := fmt.Fprintf(out, "%s  %s\n", p.Name, p.ID); err != nil {

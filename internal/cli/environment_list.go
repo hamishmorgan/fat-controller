@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
@@ -14,8 +15,8 @@ import (
 
 // EnvironmentInfo is a simplified environment record for display.
 type EnvironmentInfo struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
 }
 
 // environmentLister abstracts environment listing for tests.
@@ -60,6 +61,11 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(envs)
+	case "toml":
+		wrapper := struct {
+			Environments []EnvironmentInfo `toml:"environments"`
+		}{Environments: envs}
+		return toml.NewEncoder(out).Encode(wrapper)
 	default:
 		for _, e := range envs {
 			if _, err := fmt.Fprintf(out, "%s  %s\n", e.Name, e.ID); err != nil {

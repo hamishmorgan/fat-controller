@@ -8,10 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
-	"github.com/hamishmorgan/fat-controller/internal/platform"
-	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 func ensureGitignoreHasLine(dir, line string) (bool, error) {
@@ -64,12 +61,10 @@ const localConfigStub = `# Local overrides (gitignored). Use for secrets and per
 
 // Run implements `config init`.
 func (c *ConfigInitCmd) Run(globals *Globals) error {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 	fetcher := &defaultConfigFetcher{client: client}
 
 	wd, err := os.Getwd()

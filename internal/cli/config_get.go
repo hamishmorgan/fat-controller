@@ -7,9 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
-	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -38,12 +36,10 @@ func (c *ConfigGetCmd) SetOutput(w io.Writer) {
 
 // Run implements `config get`.
 func (c *ConfigGetCmd) Run(globals *Globals) error {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 	fetcher := &defaultConfigFetcher{client: client}
 	return RunConfigGet(context.Background(), globals, c.Path, fetcher, c.output)
 }

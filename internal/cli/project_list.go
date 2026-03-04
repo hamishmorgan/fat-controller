@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/hamishmorgan/fat-controller/internal/auth"
-	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -82,12 +80,10 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 
 // Run implements `project list`.
 func (c *ProjectListCmd) Run(globals *Globals) error {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 	lister := &defaultProjectLister{client: client}
 	return RunProjectList(context.Background(), globals, lister, os.Stdout)
 }

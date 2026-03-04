@@ -10,22 +10,17 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/hamishmorgan/fat-controller/internal/apply"
-	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/diff"
-	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
-	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 // Run implements `config apply`.
 func (c *ConfigApplyCmd) Run(globals *Globals) error {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 	fetcher := &defaultConfigFetcher{client: client}
 
 	wd, err := os.Getwd()

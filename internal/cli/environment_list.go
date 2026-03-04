@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/hamishmorgan/fat-controller/internal/auth"
-	"github.com/hamishmorgan/fat-controller/internal/platform"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -79,12 +77,10 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 // Run implements `environment list`.
 // Requires --project flag (or env var) to know which project to list environments for.
 func (c *EnvironmentListCmd) Run(globals *Globals) error {
-	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	client, err := newClient(globals)
 	if err != nil {
 		return err
 	}
-	client := railway.NewClient(railway.Endpoint, resolved, store, auth.NewOAuthClient())
 
 	projID, err := railway.ResolveProjectID(context.Background(), client, globals.Workspace, globals.Project)
 	if err != nil {

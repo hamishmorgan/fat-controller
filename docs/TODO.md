@@ -17,8 +17,10 @@
 ## Code Quality & Testing
 
 - [ ] Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (currently ~0-60%).
-- [ ] Add end-to-end integration tests using a staging Railway project or a mocked GraphQL API.
+- [x] Add end-to-end integration tests using a mocked GraphQL API.
 - [x] Automate CLI reference documentation generation (e.g., using `cobra/doc`).
+- [x] Add JSON Schema and annotated example for `fat-controller.toml` config format.
+- [x] CI freshness check for generated CLI reference docs.
 - [ ] Apply CLI timeout flag to derived contexts in command `Run` methods and set per-client HTTP timeouts.
 - [ ] Make OAuth login wait bounded by context/timeout to avoid indefinite blocking when callback never arrives.
 - [ ] Shutdown auth callback server with a timeout context to prevent hangs.

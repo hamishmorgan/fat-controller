@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -263,6 +264,26 @@ PORT = "8080"
 	}
 	if cfg.Environment != "" {
 		t.Errorf("Environment should be empty, got %q", cfg.Environment)
+	}
+}
+
+func TestParse_RejectsNonStringProject(t *testing.T) {
+	_, err := config.Parse([]byte(`project = 123`))
+	if err == nil {
+		t.Fatal("expected error for non-string project")
+	}
+	if !strings.Contains(err.Error(), "project") {
+		t.Errorf("error should mention project: %v", err)
+	}
+}
+
+func TestParse_RejectsNonStringEnvironment(t *testing.T) {
+	_, err := config.Parse([]byte(`environment = true`))
+	if err == nil {
+		t.Fatal("expected error for non-string environment")
+	}
+	if !strings.Contains(err.Error(), "environment") {
+		t.Errorf("error should mention environment: %v", err)
 	}
 }
 

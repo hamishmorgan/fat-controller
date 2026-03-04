@@ -37,11 +37,19 @@ func Parse(data []byte) (*DesiredConfig, error) {
 	cfg := &DesiredConfig{}
 
 	// Extract project/environment metadata.
-	if v, ok := raw["project"].(string); ok {
-		cfg.Project = v
+	if v, ok := raw["project"]; ok {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid 'project': expected string, got %T", v)
+		}
+		cfg.Project = s
 	}
-	if v, ok := raw["environment"].(string); ok {
-		cfg.Environment = v
+	if v, ok := raw["environment"]; ok {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid 'environment': expected string, got %T", v)
+		}
+		cfg.Environment = s
 	}
 
 	// Extract shared section.

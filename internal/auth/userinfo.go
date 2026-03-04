@@ -21,7 +21,7 @@ type UserInfo struct {
 func (c *OAuthClient) FetchUserInfo(ctx context.Context) (*UserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.UserinfoURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("building userinfo request: %w", err)
 	}
 
 	resp, err := c.httpClient().Do(req)

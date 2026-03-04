@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,7 +26,10 @@ const (
 func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 	basePath := filepath.Join(dir, BaseConfigFile)
 	if _, err := os.Stat(basePath); err != nil {
-		return nil, fmt.Errorf("config file not found: %s", basePath)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("config file not found: %s", basePath)
+		}
+		return nil, fmt.Errorf("checking config file: %w", err)
 	}
 
 	var configs []*DesiredConfig

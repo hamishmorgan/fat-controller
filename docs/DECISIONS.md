@@ -38,7 +38,7 @@ model makes it safe when we do.
 ## Shared variables: same semantics as per-service
 
 Shared variables follow the same additive-only rules. The API call is the
-same mutation (`variableCollectionUpsert`) without a `serviceId`. Railway
+same mutation (`variableUpsert`) without a `serviceId`. Railway
 handles precedence: per-service overrides shared when both define the
 same key.
 
@@ -51,8 +51,9 @@ code is non-zero if anything failed.
 
 ## Orchestration: thick cmd/ layer
 
-Command handlers in `cmd/` directly call `internal/` packages. No separate
-engine or orchestration package. Extract if complexity warrants it later.
+Command handlers in `internal/cli/` directly call `internal/` packages. No
+separate engine or orchestration package. Extract if complexity warrants
+it later.
 
 ## CLI framework: kong
 

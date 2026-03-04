@@ -12,7 +12,7 @@ Local secrets are loaded via `.config/mise/.env.local` (git-ignored) using
 
 ## Language: Go
 
-- `go run github.com/hamishmorgan/fat-controller@latest` — zero-install
+- `go install github.com/hamishmorgan/fat-controller/cmd/fat-controller@latest` — zero-install
 - Static binary via GoReleaser if distribution is needed later
 
 ## CLI framework: kong
@@ -34,13 +34,6 @@ from `.graphql` operation files against the schema. Workflow:
 
 [BurntSushi/toml](https://github.com/BurntSushi/toml) — the standard Go TOML
 library. Supports both encoding and decoding, preserves key order.
-
-## Configuration: koanf
-
-[koanf](https://github.com/knadh/koanf) — layered configuration library.
-Modular (zero deps in core), case-sensitive keys, explicit merge order.
-Replaces viper without the baggage (forced lowercase, global singleton,
-massive dep tree).
 
 ## XDG directories: adrg/xdg
 

@@ -18,7 +18,7 @@ the `gh` CLI):
 1. **`--token` flag or env vars** — highest priority. `RAILWAY_TOKEN`
    (project-scoped) or `RAILWAY_API_TOKEN` (account/workspace-scoped).
 2. **OS keyring** — primary persistent storage. Encrypted at rest by the OS.
-   Service name: `fat-controller`, key: hostname or user identifier.
+   Service name: `fat-controller`, key: `oauth-token`.
 3. **Fallback file** — `$XDG_CONFIG_HOME/fat-controller/auth.json` with mode
    0600. Used when no keyring daemon is available (headless, SSH, containers).
    A warning is printed when falling back to plaintext storage.
@@ -26,8 +26,8 @@ the `gh` CLI):
 ## Config loading
 
 All settings (see the settings table in [COMMANDS.md](COMMANDS.md)) can be
-specified at five levels. Layering is handled by koanf — each level is
-loaded in order, later values override earlier ones:
+specified at five levels. Each level is loaded in order, later values
+override earlier ones:
 
 1. Compiled-in defaults
 2. Global config — `$XDG_CONFIG_HOME/fat-controller/config.toml`

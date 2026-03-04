@@ -33,7 +33,25 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	projID, envID, err := fetcher.Resolve(context.Background(), globals.Workspace, globals.Project, globals.Environment)
+	// Load config first to get project/environment fallback values before resolving.
+	desired, err := config.LoadConfigs(wd, globals.ConfigFiles)
+	if err != nil {
+		return err
+	}
+	if err := config.Interpolate(desired); err != nil {
+		return err
+	}
+
+	project := globals.Project
+	if project == "" {
+		project = desired.Project
+	}
+	environment := globals.Environment
+	if environment == "" {
+		environment = desired.Environment
+	}
+
+	projID, envID, err := fetcher.Resolve(context.Background(), globals.Workspace, project, environment)
 	if err != nil {
 		return err
 	}

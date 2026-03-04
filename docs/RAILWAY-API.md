@@ -45,8 +45,8 @@ The login flow:
 6. Use the refresh token to renew the access token transparently (1hr TTL).
 
 `auth logout` clears stored tokens from keychain and fallback file.
-`auth status` calls the `me` query and displays the authenticated user +
-available scopes.
+`auth status` calls the OIDC userinfo endpoint and displays the
+authenticated user's name and email.
 
 ## Queries for get (live state)
 
@@ -56,25 +56,30 @@ All data needed for fetching live state is available via GQL — no Railway CLI 
 |-------|---------|
 | `projectToken` | Project ID + environment ID from the token |
 | `project(id).services` | All service names + IDs |
-| `project(id).volumes` | All volumes |
 | `variables(projectId, environmentId, unrendered: true)` | Shared variables (unrendered preserves `${{ref}}` syntax) |
 | `variables(projectId, environmentId, serviceId, unrendered: true)` | Per-service variables |
-| `serviceInstance(environmentId, serviceId)` | Service config + domains + `latestDeployment.meta` |
+| `serviceInstance(environmentId, serviceId)` | Service config (builder, start command, etc.) |
+
+The following queries exist in the schema but are **not yet implemented**:
+
+| Query | Returns |
+|-------|---------|
+| `project(id).volumes` | All volumes |
 | `serviceInstanceLimitOverride(environmentId, serviceId)` | Resource limits (CPU, memory) |
 | `tcpProxies(serviceId, environmentId)` | TCP proxy config |
-
-**Important nuance**: `serviceInstance` returns `null` for fields set via
-`railway.toml` (e.g. healthcheck, watch patterns). The *effective* merged
-values are in `latestDeployment.meta.serviceManifest`. Pull uses the manifest
-for the state snapshot.
 
 ## Mutations for apply
 
 | Mutation | Input type | Purpose |
 |----------|-----------|---------|
-| `variableCollectionUpsert` | `VariableCollectionUpsertInput` | Atomically set all variables for a service or shared. Has `replace: bool` (true = delete vars not in the set) and `skipDeploys: bool`. |
+| `variableUpsert` | `VariableUpsertInput` | Create or update a single variable (per-service or shared). Has `skipDeploys: bool`. |
+| `variableDelete` | `VariableDeleteInput` | Delete a single variable. |
 | `serviceInstanceUpdate` | `ServiceInstanceUpdateInput` | Update deploy/build settings: builder, dockerfilePath, rootDirectory, region, numReplicas, healthcheckPath/Timeout, restartPolicy, startCommand, preDeployCommand, cronSchedule, sleepApplication, watchPatterns, etc. |
 | `serviceInstanceLimitsUpdate` | `ServiceInstanceLimitsUpdateInput` | Update resource limits: `vCPUs: Float`, `memoryGB: Float`. |
+
+**Note:** The schema also exposes `variableCollectionUpsert` for batching
+variable updates atomically. Migrating to batch mutations is planned
+(see [TODO.md](TODO.md)).
 
 ## Reference implementation
 

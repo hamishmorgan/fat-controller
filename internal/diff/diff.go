@@ -74,7 +74,10 @@ func Compute(desired *config.DesiredConfig, live *config.LiveConfig) *Result {
 
 	// Diff shared variables.
 	if desired.Shared != nil {
-		liveShared := live.Shared
+		var liveShared map[string]string
+		if live != nil {
+			liveShared = live.Shared
+		}
 		if liveShared == nil {
 			liveShared = map[string]string{}
 		}

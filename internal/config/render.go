@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -206,6 +207,8 @@ func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
 }
 
 // tomlQuote returns a TOML basic string with special characters escaped.
+// All C0 control characters (U+0000–U+001F) and DEL (U+007F) are escaped
+// per the TOML spec.
 func tomlQuote(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
@@ -215,6 +218,10 @@ func tomlQuote(s string) string {
 			b.WriteString(`\"`)
 		case '\\':
 			b.WriteString(`\\`)
+		case '\b':
+			b.WriteString(`\b`)
+		case '\f':
+			b.WriteString(`\f`)
 		case '\n':
 			b.WriteString(`\n`)
 		case '\r':
@@ -222,7 +229,11 @@ func tomlQuote(s string) string {
 		case '\t':
 			b.WriteString(`\t`)
 		default:
-			b.WriteRune(r)
+			if r <= 0x1F || r == 0x7F {
+				b.WriteString(fmt.Sprintf(`\u%04X`, r))
+			} else {
+				b.WriteRune(r)
+			}
 		}
 	}
 	b.WriteByte('"')

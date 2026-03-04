@@ -40,7 +40,7 @@ func ensureGitignoreHasLine(dir, line string) (bool, error) {
 		return false, err
 	}
 	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
+		if closeErr := f.Close(); closeErr != nil && err == nil {
 			err = closeErr
 		}
 	}()
@@ -90,6 +90,8 @@ func RunConfigInit(ctx context.Context, dir, project, environment string, fetche
 	configPath := filepath.Join(dir, config.BaseConfigFile)
 	if _, err := os.Stat(configPath); err == nil {
 		return fmt.Errorf("%s already exists — refusing to overwrite", config.BaseConfigFile)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
 	}
 
 	// 2. Resolve project/environment (may prompt interactively).

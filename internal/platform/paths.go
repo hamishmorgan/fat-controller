@@ -18,13 +18,13 @@ func ConfigDir() string {
 // AuthFilePath returns the path to the auth token fallback file.
 // Does NOT create the file or its parent directory.
 func AuthFilePath() string {
-	return filepath.Join(xdg.ConfigHome, appName, "auth.json")
+	return filepath.Join(ConfigDir(), "auth.json")
 }
 
 // ConfigFilePath returns the path to the user config file.
 // Does NOT create the file or its parent directory.
 func ConfigFilePath() string {
-	return filepath.Join(xdg.ConfigHome, appName, "config.toml")
+	return filepath.Join(ConfigDir(), "config.toml")
 }
 
 // EnsureConfigDir creates the config directory if it doesn't exist

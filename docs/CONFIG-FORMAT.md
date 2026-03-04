@@ -108,12 +108,16 @@ See also: [SECRET-MASKING.md](SECRET-MASKING.md) for output masking,
 
 ## Apply ordering and redeployment
 
-- `variableCollectionUpsert` triggers a redeployment by default. The
+- `variableUpsert` triggers a redeployment by default. The
   `--skip-deploys` flag passes `skipDeploys: true` to defer redeployment.
-- When applying both variables and settings, settings are applied first
-  (via `serviceInstanceUpdate`), then variables. This way the triggered
-  redeploy picks up both changes.
-- Shared variables are applied first, then services in alphabetical order.
+- Apply runs in three phases:
+  1. **Service settings** — deploy and resource settings for all services
+     (via `serviceInstanceUpdate` / `serviceInstanceLimitsUpdate`),
+     alphabetically by service name.
+  2. **Shared variables** — project-wide variables (no `serviceId`).
+  3. **Per-service variables** — alphabetically by service name.
+- This ordering ensures that the triggered redeploy from variable
+  upserts picks up settings changes already applied.
 - Apply is **best-effort, non-transactional**. By default, a failure on
   one service does not stop processing of remaining services. Use
   `--fail-fast` to stop on first error. On completion, a summary reports

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 )
 
 // CallbackResult holds the data received from the OAuth redirect.
@@ -35,25 +36,30 @@ func StartCallbackServer() (*CallbackServer, error) {
 	result := make(chan CallbackResult, 1)
 
 	mux := http.NewServeMux()
+	var once sync.Once
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
-		if e := q.Get("error"); e != "" {
-			result <- CallbackResult{
-				Error:            e,
-				ErrorDescription: q.Get("error_description"),
+		once.Do(func() {
+			if e := q.Get("error"); e != "" {
+				result <- CallbackResult{
+					Error:            e,
+					ErrorDescription: q.Get("error_description"),
+				}
+			} else {
+				result <- CallbackResult{
+					Code:  q.Get("code"),
+					State: q.Get("state"),
+				}
 			}
-			w.Header().Set("Content-Type", "text/html")
-			_, _ = fmt.Fprint(w, "<html><body>Authorization failed. You can close this tab.</body></html>")
-			return
-		}
+		})
 
-		result <- CallbackResult{
-			Code:  q.Get("code"),
-			State: q.Get("state"),
-		}
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = fmt.Fprint(w, "<html><body>Authorization successful! You can close this tab.<script>window.close()</script></body></html>")
+		if q.Get("error") != "" {
+			_, _ = fmt.Fprint(w, "<html><body>Authorization failed. You can close this tab.</body></html>")
+		} else {
+			_, _ = fmt.Fprint(w, "<html><body>Authorization successful! You can close this tab.<script>window.close()</script></body></html>")
+		}
 	})
 
 	srv := &http.Server{Handler: mux}

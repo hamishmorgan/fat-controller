@@ -218,6 +218,8 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleVariableUpsert(w, req)
 	case "VariableDelete":
 		m.handleVariableDelete(w, req)
+	case "ServiceInstance":
+		m.handleServiceInstance(w)
 	case "ServiceInstanceUpdate":
 		m.handleServiceInstanceUpdate(w, req)
 	case "ServiceInstanceLimitsUpdate":
@@ -358,6 +360,20 @@ func (m *mockGraphQLServer) handleVariableDelete(w http.ResponseWriter, req grap
 	m.mu.Unlock()
 	respondJSON(m.t, w, map[string]any{
 		"data": map[string]any{"variableDelete": true},
+	})
+}
+
+func (m *mockGraphQLServer) handleServiceInstance(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"serviceInstance": map[string]any{
+				"builder":         "NIXPACKS",
+				"dockerfilePath":  nil,
+				"rootDirectory":   nil,
+				"startCommand":    nil,
+				"healthcheckPath": nil,
+			},
+		},
 	})
 }
 

@@ -36,6 +36,18 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 					"variables": map[string]any{"FOO": "bar"},
 				},
 			})
+		case strings.Contains(body.Query, "serviceInstance("):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"serviceInstance": map[string]any{
+						"builder":         "NIXPACKS",
+						"dockerfilePath":  nil,
+						"rootDirectory":   nil,
+						"startCommand":    "npm start",
+						"healthcheckPath": "/health",
+					},
+				},
+			})
 		default:
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}})
 		}
@@ -57,5 +69,19 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 	}
 	if cfg.Services["api"].Variables["FOO"] != "bar" {
 		t.Fatalf("service FOO = %q", cfg.Services["api"].Variables["FOO"])
+	}
+
+	deploy := cfg.Services["api"].Deploy
+	if deploy.Builder != "NIXPACKS" {
+		t.Fatalf("deploy.Builder = %q, want NIXPACKS", deploy.Builder)
+	}
+	if deploy.StartCommand == nil || *deploy.StartCommand != "npm start" {
+		t.Fatalf("deploy.StartCommand = %v, want 'npm start'", deploy.StartCommand)
+	}
+	if deploy.HealthcheckPath == nil || *deploy.HealthcheckPath != "/health" {
+		t.Fatalf("deploy.HealthcheckPath = %v, want '/health'", deploy.HealthcheckPath)
+	}
+	if deploy.DockerfilePath != nil {
+		t.Fatalf("deploy.DockerfilePath = %v, want nil", deploy.DockerfilePath)
 	}
 }

@@ -46,6 +46,20 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 		for k, v := range vars.Variables {
 			svc.Variables[k] = fmt.Sprint(v)
 		}
+
+		instance, err := ServiceInstance(ctx, client.GQL(), environmentID, edge.Node.Id)
+		if err != nil {
+			return nil, fmt.Errorf("fetching deploy settings for %s: %w", edge.Node.Name, err)
+		}
+		si := instance.ServiceInstance
+		svc.Deploy = config.Deploy{
+			Builder:         string(si.Builder),
+			DockerfilePath:  si.DockerfilePath,
+			RootDirectory:   si.RootDirectory,
+			StartCommand:    si.StartCommand,
+			HealthcheckPath: si.HealthcheckPath,
+		}
+
 		cfg.Services[edge.Node.Name] = svc
 	}
 

@@ -1,5 +1,5 @@
 // Command docgen generates Markdown CLI reference documentation from the
-// Kong command model. Run it via: go run ./cmd/docgen -out docs/cli
+// Kong command model. Run it via: go run ./internal/tools/docgen -out docs/cli
 package main
 
 import (

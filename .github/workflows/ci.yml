@@ -72,8 +72,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
       - run: mise run lint:toml
-      - name: Validate example config against schema
-        run: taplo check --schema "file://$(pwd)/docs/fat-controller.schema.json" docs/fat-controller.example.toml
 
   lint-yaml:
     runs-on: ubuntu-latest
@@ -87,6 +85,8 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - name: Validate example config against schema
+        run: taplo check --schema "file://$(pwd)/docs/fat-controller.schema.json" docs/fat-controller.example.toml
       - name: Check CLI reference docs are up to date
         run: |
           mise run docs:cli
@@ -94,6 +94,13 @@ jobs:
             echo "::error::CLI reference docs are stale. Run 'mise run docs:cli' and commit the result."
             exit 1
           }
+
+  lint-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
+      - run: mise run lint:actions
 
   secrets:
     runs-on: ubuntu-latest

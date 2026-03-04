@@ -74,7 +74,7 @@ func Parse(data []byte) (*DesiredConfig, error) {
 		}
 		svcMap, ok := val.(map[string]any)
 		if !ok {
-			continue // skip non-table top-level keys (future tool settings)
+			return nil, fmt.Errorf("unrecognised config key %q (not a known setting or service table)", key)
 		}
 		svc, err := parseService(key, svcMap)
 		if err != nil {

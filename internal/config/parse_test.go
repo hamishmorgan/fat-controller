@@ -287,6 +287,26 @@ func TestParse_RejectsNonStringEnvironment(t *testing.T) {
 	}
 }
 
+func TestParse_RejectsUnknownScalarTopLevelKey(t *testing.T) {
+	_, err := config.Parse([]byte(`projct = "typo"`))
+	if err == nil {
+		t.Fatal("expected error for unrecognised top-level key")
+	}
+	if !strings.Contains(err.Error(), "projct") {
+		t.Errorf("error should mention the key: %v", err)
+	}
+}
+
+func TestParse_AcceptsUnknownTableTopLevelKey(t *testing.T) {
+	cfg, err := config.Parse([]byte("[my_service]\n[my_service.variables]\nFOO = \"bar\""))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := cfg.Services["my_service"]; !ok {
+		t.Error("expected my_service in services")
+	}
+}
+
 // writeTempTOML writes content to a temp .toml file and returns its path.
 func writeTempTOML(t *testing.T, content string) string {
 	t.Helper()

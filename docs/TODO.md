@@ -15,6 +15,15 @@
 - [ ] Tie auth callback server goroutine lifecycle to context/cancellation.
 - [ ] Add shell completions (kong custom completers or external generator).
 
+## Docs & UX Polish
+
+- [ ] Align `docs/WARNINGS.md` warning codes with `internal/config/validate.go` (or implement the missing warnings).
+- [ ] Decide whether warnings should run during `config diff`/`config apply` (docs say yes); wire validation in or update docs.
+- [ ] Clarify configuration layering and file support (global `$XDG_CONFIG_HOME/...` vs local `.fat-controller.toml` vs `fat-controller.toml`).
+- [ ] Clarify `config validate --quiet` behavior in docs vs implementation.
+- [ ] Improve `config get` path parsing to support keys containing `.` (quoted TOML keys), or document the limitation.
+- [ ] Fetch/include live `serviceInstanceLimits` (resource limits) so specified limits do not always diff.
+
 ## Done
 
 - [x] Implement config validation warnings (W003-W041) and wire up `config validate` command.
@@ -22,6 +31,8 @@
 - [x] Batch variable updates in apply using `variableCollectionUpsert` instead of per-variable mutations.
 - [x] Add `workspace` as an optional top-level config key (parsing, merge, and resolution fallback).
 - [x] `config get` path argument filters by section/key (e.g. `config get api.variables.PORT`).
+- [x] `config get` supports `shared.variables` lookups (e.g. `config get shared.variables.KEY`).
+- [x] `config init` accepts a workspace and can render `workspace = "..."` in output.
 - [x] `config set` and `config delete` offer interactive confirmation like `config apply` does.
 - [x] Handle `toml` output format in list commands (`environment list`, `project list`, `workspace list`).
 - [x] Wire up `--verbose` and `--quiet` flags to control output verbosity across all commands.

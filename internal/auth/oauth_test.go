@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -46,7 +47,7 @@ func TestOAuthClient_RegisterClient(t *testing.T) {
 	client := &auth.OAuthClient{
 		RegistrationURL: server.URL,
 	}
-	resp, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	resp, err := client.RegisterClient(context.Background(), "http://127.0.0.1:12345/callback")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func TestOAuthClient_ExchangeCode(t *testing.T) {
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
 
-	resp, err := client.ExchangeCode("client-123", "auth-code-123", "http://127.0.0.1:8080/callback", "verifier-abc")
+	resp, err := client.ExchangeCode(context.Background(), "client-123", "auth-code-123", "http://127.0.0.1:8080/callback", "verifier-abc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +147,7 @@ func TestOAuthClient_RegisterClient_ErrorStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{RegistrationURL: server.URL}
-	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	_, err := client.RegisterClient(context.Background(), "http://127.0.0.1:12345/callback")
 	if err == nil {
 		t.Fatal("expected error for 403 response")
 	}
@@ -162,7 +163,7 @@ func TestOAuthClient_ExchangeCode_ErrorStatus(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
-	_, err := client.ExchangeCode("client-123", "bad-code", "http://127.0.0.1:8080/callback", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "client-123", "bad-code", "http://127.0.0.1:8080/callback", "verifier")
 	if err == nil {
 		t.Fatal("expected error for 400 response")
 	}
@@ -252,7 +253,7 @@ func TestOAuthClient_RegisterClient_NetworkError(t *testing.T) {
 	server.Close()
 
 	client := &auth.OAuthClient{RegistrationURL: serverURL}
-	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	_, err := client.RegisterClient(context.Background(), "http://127.0.0.1:12345/callback")
 	if err == nil {
 		t.Fatal("expected network error")
 	}
@@ -269,7 +270,7 @@ func TestOAuthClient_RegisterClient_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{RegistrationURL: server.URL}
-	_, err := client.RegisterClient("http://127.0.0.1:12345/callback")
+	_, err := client.RegisterClient(context.Background(), "http://127.0.0.1:12345/callback")
 	if err == nil {
 		t.Fatal("expected JSON decode error")
 	}
@@ -284,7 +285,7 @@ func TestOAuthClient_ExchangeCode_NetworkError(t *testing.T) {
 	server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: serverURL}
-	_, err := client.ExchangeCode("client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
 	if err == nil {
 		t.Fatal("expected network error")
 	}
@@ -300,7 +301,7 @@ func TestOAuthClient_ExchangeCode_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	client := &auth.OAuthClient{TokenEndpoint: server.URL}
-	_, err := client.ExchangeCode("client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
+	_, err := client.ExchangeCode(context.Background(), "client-123", "code", "http://127.0.0.1:8080/callback", "verifier")
 	if err == nil {
 		t.Fatal("expected JSON decode error")
 	}

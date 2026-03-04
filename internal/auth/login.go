@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -117,7 +118,7 @@ func loginAttempt(oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpen
 	}
 
 	// Exchange code for tokens.
-	tokenResp, err := oauth.ExchangeCode(clientID, result.Code, redirectURI, verifier)
+	tokenResp, err := oauth.ExchangeCode(context.Background(), clientID, result.Code, redirectURI, verifier)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errCodeExchange, err)
 	}
@@ -147,7 +148,7 @@ func loadOrRegisterClient(oauth *OAuthClient, store *TokenStore, redirectURI str
 	}
 
 	// Register a new client.
-	reg, err := oauth.RegisterClient(redirectURI)
+	reg, err := oauth.RegisterClient(context.Background(), redirectURI)
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -30,7 +31,7 @@ type ResolvedAuth struct {
 //  2. RAILWAY_API_TOKEN env var (account/workspace-scoped)
 //  3. RAILWAY_TOKEN env var (project-scoped)
 //  4. Stored OAuth token (from keyring or file)
-func ResolveAuth(flagToken string, store *TokenStore) (*ResolvedAuth, error) {
+func ResolveAuth(ctx context.Context, flagToken string, store *TokenStore) (*ResolvedAuth, error) {
 	// 1. --token flag
 	if flagToken != "" {
 		return &ResolvedAuth{

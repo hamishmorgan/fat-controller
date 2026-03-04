@@ -34,7 +34,7 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
 
-	resolved, err := auth.ResolveAuth(globals.Token, store)
+	resolved, err := auth.ResolveAuth(context.Background(), globals.Token, store)
 	if err != nil {
 		fmt.Println("Not authenticated.")
 		fmt.Println("Run 'fat-controller auth login' or set RAILWAY_TOKEN.")

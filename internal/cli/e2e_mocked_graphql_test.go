@@ -1171,7 +1171,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		t.Setenv("RAILWAY_API_TOKEN", "")
 
 		store := auth.NewTokenStore(auth.WithFallbackPath(filepath.Join(t.TempDir(), "auth.json")))
-		_, err := auth.ResolveAuth("", store)
+		_, err := auth.ResolveAuth(context.Background(), "", store)
 		if err == nil {
 			t.Fatal("expected error when no auth is configured")
 		}

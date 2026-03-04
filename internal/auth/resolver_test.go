@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,7 @@ func TestResolveAuth_FlagTakesPrecedence(t *testing.T) {
 	t.Setenv("RAILWAY_TOKEN", "project-token")
 
 	// Flag should win.
-	resolved, err := auth.ResolveAuth("flag-token", store)
+	resolved, err := auth.ResolveAuth(context.Background(), "flag-token", store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func TestResolveAuth_APITokenEnvVar(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "api-token")
 	t.Setenv("RAILWAY_TOKEN", "project-token")
 
-	resolved, err := auth.ResolveAuth("", store)
+	resolved, err := auth.ResolveAuth(context.Background(), "", store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func TestResolveAuth_ProjectTokenEnvVar(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "project-token")
 
-	resolved, err := auth.ResolveAuth("", store)
+	resolved, err := auth.ResolveAuth(context.Background(), "", store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +106,7 @@ func TestResolveAuth_FallsBackToStore(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "")
 
-	resolved, err := auth.ResolveAuth("", store)
+	resolved, err := auth.ResolveAuth(context.Background(), "", store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +132,7 @@ func TestResolveAuth_NothingAvailable(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "")
 
-	_, err := auth.ResolveAuth("", store)
+	_, err := auth.ResolveAuth(context.Background(), "", store)
 	if err != auth.ErrNotAuthenticated {
 		t.Errorf("expected ErrNotAuthenticated, got %v", err)
 	}
@@ -157,7 +158,7 @@ func TestResolveAuth_LoadError(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "")
 
-	_, err := auth.ResolveAuth("", store)
+	_, err := auth.ResolveAuth(context.Background(), "", store)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -185,7 +186,7 @@ func TestResolveAuth_EmptyAccessToken(t *testing.T) {
 	t.Setenv("RAILWAY_API_TOKEN", "")
 	t.Setenv("RAILWAY_TOKEN", "")
 
-	_, err := auth.ResolveAuth("", store)
+	_, err := auth.ResolveAuth(context.Background(), "", store)
 	if err != auth.ErrNotAuthenticated {
 		t.Errorf("expected ErrNotAuthenticated, got %v", err)
 	}

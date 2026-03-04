@@ -74,7 +74,7 @@ type TokenResponse struct {
 }
 
 // RegisterClient performs dynamic client registration for a native (public) app.
-func (c *OAuthClient) RegisterClient(redirectURI string) (*RegistrationResponse, error) {
+func (c *OAuthClient) RegisterClient(ctx context.Context, redirectURI string) (*RegistrationResponse, error) {
 	reqBody := RegistrationRequest{
 		ClientName:              "Fat Controller CLI",
 		ClientURI:               "https://github.com/hamishmorgan/fat-controller",
@@ -91,14 +91,21 @@ func (c *OAuthClient) RegisterClient(redirectURI string) (*RegistrationResponse,
 		return nil, fmt.Errorf("marshalling registration request: %w", err)
 	}
 
-	resp, err := c.httpClient().Post(c.RegistrationURL, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.RegistrationURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("building registration request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("registration request failed: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("registration failed with status %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var reg RegistrationResponse
@@ -125,7 +132,7 @@ func (c *OAuthClient) AuthorizationURL(clientID, redirectURI, state, codeChallen
 
 // ExchangeCode exchanges an authorization code for tokens.
 // Uses PKCE — no client secret (native client).
-func (c *OAuthClient) ExchangeCode(clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error) {
+func (c *OAuthClient) ExchangeCode(ctx context.Context, clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error) {
 	data := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
@@ -134,14 +141,21 @@ func (c *OAuthClient) ExchangeCode(clientID, code, redirectURI, codeVerifier str
 		"code_verifier": {codeVerifier},
 	}
 
-	resp, err := c.httpClient().PostForm(c.TokenEndpoint, data)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.TokenEndpoint, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("building token exchange request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token exchange failed with status %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("token exchange failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var tok TokenResponse

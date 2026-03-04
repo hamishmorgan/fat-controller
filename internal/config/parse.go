@@ -129,10 +129,10 @@ func parseService(name string, raw map[string]any) (*DesiredService, error) {
 			return nil, fmt.Errorf("invalid [%s.resources]: expected table", name)
 		}
 		res := &DesiredResources{}
-		if v, ok := toFloat64(resMap["vcpus"]); ok {
+		if v, ok := toFloat64(resMap[KeyVCPUs]); ok {
 			res.VCPUs = &v
 		}
-		if v, ok := toFloat64(resMap["memory_gb"]); ok {
+		if v, ok := toFloat64(resMap[KeyMemoryGB]); ok {
 			res.MemoryGB = &v
 		}
 		svc.Resources = res
@@ -144,19 +144,19 @@ func parseService(name string, raw map[string]any) (*DesiredService, error) {
 			return nil, fmt.Errorf("invalid [%s.deploy]: expected table", name)
 		}
 		deploy := &DesiredDeploy{}
-		if v, ok := deployMap["builder"].(string); ok {
+		if v, ok := deployMap[KeyBuilder].(string); ok {
 			deploy.Builder = &v
 		}
-		if v, ok := deployMap["dockerfile_path"].(string); ok {
+		if v, ok := deployMap[KeyDockerfilePath].(string); ok {
 			deploy.DockerfilePath = &v
 		}
-		if v, ok := deployMap["root_directory"].(string); ok {
+		if v, ok := deployMap[KeyRootDirectory].(string); ok {
 			deploy.RootDirectory = &v
 		}
-		if v, ok := deployMap["start_command"].(string); ok {
+		if v, ok := deployMap[KeyStartCommand].(string); ok {
 			deploy.StartCommand = &v
 		}
-		if v, ok := deployMap["healthcheck_path"].(string); ok {
+		if v, ok := deployMap[KeyHealthcheckPath].(string); ok {
 			deploy.HealthcheckPath = &v
 		}
 		svc.Deploy = deploy

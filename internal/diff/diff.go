@@ -187,35 +187,35 @@ func diffDeploy(desired *config.DesiredDeploy, live config.Deploy) []Change {
 	var changes []Change
 
 	if desired.Builder != nil {
-		changes = appendSettingDiff(changes, "builder", live.Builder, *desired.Builder)
+		changes = appendSettingDiff(changes, config.KeyBuilder, live.Builder, *desired.Builder)
 	}
 	if desired.DockerfilePath != nil {
 		liveVal := ""
 		if live.DockerfilePath != nil {
 			liveVal = *live.DockerfilePath
 		}
-		changes = appendSettingDiff(changes, "dockerfile_path", liveVal, *desired.DockerfilePath)
+		changes = appendSettingDiff(changes, config.KeyDockerfilePath, liveVal, *desired.DockerfilePath)
 	}
 	if desired.RootDirectory != nil {
 		liveVal := ""
 		if live.RootDirectory != nil {
 			liveVal = *live.RootDirectory
 		}
-		changes = appendSettingDiff(changes, "root_directory", liveVal, *desired.RootDirectory)
+		changes = appendSettingDiff(changes, config.KeyRootDirectory, liveVal, *desired.RootDirectory)
 	}
 	if desired.StartCommand != nil {
 		liveVal := ""
 		if live.StartCommand != nil {
 			liveVal = *live.StartCommand
 		}
-		changes = appendSettingDiff(changes, "start_command", liveVal, *desired.StartCommand)
+		changes = appendSettingDiff(changes, config.KeyStartCommand, liveVal, *desired.StartCommand)
 	}
 	if desired.HealthcheckPath != nil {
 		liveVal := ""
 		if live.HealthcheckPath != nil {
 			liveVal = *live.HealthcheckPath
 		}
-		changes = appendSettingDiff(changes, "healthcheck_path", liveVal, *desired.HealthcheckPath)
+		changes = appendSettingDiff(changes, config.KeyHealthcheckPath, liveVal, *desired.HealthcheckPath)
 	}
 
 	return changes
@@ -229,14 +229,14 @@ func diffResources(desired *config.DesiredResources) []Change {
 	var changes []Change
 	if desired.VCPUs != nil {
 		changes = append(changes, Change{
-			Key:          "vcpus",
+			Key:          config.KeyVCPUs,
 			Action:       ActionUpdate,
 			DesiredValue: fmt.Sprintf("%.1f", *desired.VCPUs),
 		})
 	}
 	if desired.MemoryGB != nil {
 		changes = append(changes, Change{
-			Key:          "memory_gb",
+			Key:          config.KeyMemoryGB,
 			Action:       ActionUpdate,
 			DesiredValue: fmt.Sprintf("%.1f", *desired.MemoryGB),
 		})

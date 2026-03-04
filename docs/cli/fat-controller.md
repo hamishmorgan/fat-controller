@@ -49,6 +49,7 @@ fat-controller <command> [flags]
 - [fat-controller config delete](fat-controller_config_delete.md) — Delete a single value by dot-path.
 - [fat-controller config diff](fat-controller_config_diff.md) — Compare local config against live state.
 - [fat-controller config apply](fat-controller_config_apply.md) — Push configuration changes to Railway.
+- [fat-controller config validate](fat-controller_config_validate.md) — Check config file for warnings (no API calls).
 
 ### environment — Manage environments
 

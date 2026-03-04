@@ -108,12 +108,16 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher co
 
 // lookupKey retrieves a single value from the config for a fully-qualified path.
 func lookupKey(cfg config.LiveConfig, p config.Path) (string, bool) {
-	svc, ok := cfg.Services[p.Service]
-	if !ok {
-		return "", false
-	}
 	switch p.Section {
 	case "variables":
+		if p.Service == "shared" {
+			val, found := cfg.Shared[p.Key]
+			return val, found
+		}
+		svc, ok := cfg.Services[p.Service]
+		if !ok {
+			return "", false
+		}
 		val, found := svc.Variables[p.Key]
 		return val, found
 	default:
@@ -127,12 +131,16 @@ func filterSection(cfg config.LiveConfig, p config.Path) config.LiveConfig {
 		ProjectID:     cfg.ProjectID,
 		EnvironmentID: cfg.EnvironmentID,
 	}
-	svc, ok := cfg.Services[p.Service]
-	if !ok {
-		return filtered
-	}
 	switch p.Section {
 	case "variables":
+		if p.Service == "shared" {
+			filtered.Shared = cfg.Shared
+			return filtered
+		}
+		svc, ok := cfg.Services[p.Service]
+		if !ok {
+			return filtered
+		}
 		filtered.Services = map[string]*config.ServiceConfig{
 			p.Service: {
 				ID:        svc.ID,

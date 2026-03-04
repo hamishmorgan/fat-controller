@@ -215,6 +215,53 @@ func TestRunConfigGet_FiltersByPathSection(t *testing.T) {
 	}
 }
 
+func TestRunConfigGet_SharedVariablesKeyLookup(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Shared: map[string]string{
+				"GLOBAL": "yes",
+			},
+			Services: map[string]*config.ServiceConfig{},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text", ShowSecrets: true}
+	err := cli.RunConfigGet(context.Background(), globals, "shared.variables.GLOBAL", fetcher, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(buf.String()); got != "yes" {
+		t.Fatalf("expected shared variable value 'yes', got %q", got)
+	}
+}
+
+func TestRunConfigGet_SharedVariablesSectionLookup(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Shared: map[string]string{
+				"A": "1",
+				"B": "2",
+			},
+			Services: map[string]*config.ServiceConfig{
+				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "text", ShowSecrets: true}
+	err := cli.RunConfigGet(context.Background(), globals, "shared.variables", fetcher, &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "A") || !strings.Contains(out, "B") {
+		t.Fatalf("expected shared section output to include A and B, got:\n%s", out)
+	}
+	if strings.Contains(out, "PORT") {
+		t.Fatalf("expected shared section output to exclude service vars, got:\n%s", out)
+	}
+}
+
 func TestRunConfigGet_MasksSecretsByDefault(t *testing.T) {
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{

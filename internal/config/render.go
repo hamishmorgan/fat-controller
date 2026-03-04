@@ -131,7 +131,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		out.WriteString("[shared.variables]\n")
 		keys := sortedKeys(cfg.Shared)
 		for _, k := range keys {
-			out.WriteString(k + " = " + tomlQuote(cfg.Shared[k]) + "\n")
+			out.WriteString(tomlKey(k) + " = " + tomlQuote(cfg.Shared[k]) + "\n")
 		}
 		out.WriteString("\n")
 	}
@@ -146,7 +146,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 			out.WriteString("[" + name + ".variables]\n")
 			keys := sortedKeys(svc.Variables)
 			for _, k := range keys {
-				out.WriteString(k + " = " + tomlQuote(svc.Variables[k]) + "\n")
+				out.WriteString(tomlKey(k) + " = " + tomlQuote(svc.Variables[k]) + "\n")
 			}
 			out.WriteString("\n")
 		}
@@ -204,6 +204,17 @@ func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
 		}
 		out.WriteString("\n")
 	}
+}
+
+// tomlKey returns a bare TOML key if it contains only safe characters
+// (A-Z, a-z, 0-9, -, _), otherwise returns a quoted key.
+func tomlKey(key string) string {
+	for _, r := range key {
+		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+			return tomlQuote(key)
+		}
+	}
+	return key
 }
 
 // tomlQuote returns a TOML basic string with special characters escaped.

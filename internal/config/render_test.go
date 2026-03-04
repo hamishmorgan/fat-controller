@@ -290,6 +290,34 @@ func TestRenderInitTOML_MasksSecrets(t *testing.T) {
 	}
 }
 
+func TestRenderTOML_QuotesSpecialKeys(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"my.dotted.key":   "value1",
+					"key with spaces": "value2",
+					"NORMAL_KEY":      "value3",
+				},
+			},
+		},
+	}
+	output, err := config.Render(cfg, config.RenderOptions{Format: "toml", ShowSecrets: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output, `"my.dotted.key"`) {
+		t.Errorf("dotted key should be quoted:\n%s", output)
+	}
+	if !strings.Contains(output, `"key with spaces"`) {
+		t.Errorf("key with spaces should be quoted:\n%s", output)
+	}
+	if strings.Contains(output, `"NORMAL_KEY"`) {
+		t.Errorf("normal key should not be quoted:\n%s", output)
+	}
+}
+
 func TestRenderInitTOML_SharedVariables(t *testing.T) {
 	cfg := config.LiveConfig{
 		Shared:   map[string]string{"GLOBAL": "value"},

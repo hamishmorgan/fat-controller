@@ -2,7 +2,6 @@ package cli_test
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -17,48 +16,7 @@ import (
 // Note: ConfigGetCmd, ConfigSetCmd, ConfigDeleteCmd tests moved to
 // config_get_test.go, config_set_test.go, config_delete_test.go respectively.
 
-func TestConfigValidateCmd_Run(t *testing.T) {
-	cmd := &cli.ConfigValidateCmd{}
-	if err := cmd.Run(&cli.Globals{}); err != nil {
-		t.Fatalf("ConfigValidateCmd.Run() returned error: %v", err)
-	}
-}
-
-// ---------- Config stubs print expected text ----------
-
-func TestConfigStubs_OutputMessages(t *testing.T) {
-	tests := []struct {
-		name string
-		run  func(*cli.Globals) error
-		want string
-	}{
-		{"Validate", (&cli.ConfigValidateCmd{}).Run, "config validate: not yet implemented"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			err := tt.run(&cli.Globals{})
-
-			_ = w.Close()
-			os.Stdout = old
-
-			if err != nil {
-				t.Fatalf("Run() returned error: %v", err)
-			}
-
-			var buf bytes.Buffer
-			_, _ = buf.ReadFrom(r)
-			got := strings.TrimSpace(buf.String())
-			if got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
+// Note: ConfigValidateCmd.Run tested in config_validate_test.go
 
 // ---------- Auth tests ----------
 

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 	"time"
 
@@ -69,7 +68,7 @@ type ConfigCmd struct {
 	Delete   ConfigDeleteCmd   `cmd:"" help:"Delete a single value by dot-path."`
 	Diff     ConfigDiffCmd     `cmd:"" help:"Compare local config against live state."`
 	Apply    ConfigApplyCmd    `cmd:"" help:"Push configuration changes to Railway."`
-	Validate ConfigValidateCmd `cmd:"" hidden:"" help:"Check config file for warnings (no API calls)."`
+	Validate ConfigValidateCmd `cmd:"" help:"Check config file for warnings (no API calls)."`
 }
 
 // ConfigGetCmd implements `config get`.
@@ -120,7 +119,4 @@ type WorkspaceListCmd struct{}
 // - ConfigDiffCmd.Run   → config_diff.go
 // - ConfigApplyCmd.Run  → config_apply.go
 
-func (c *ConfigValidateCmd) Run(globals *Globals) error {
-	fmt.Println("config validate: not yet implemented")
-	return nil
-}
+// ConfigValidateCmd.Run → config_validate.go

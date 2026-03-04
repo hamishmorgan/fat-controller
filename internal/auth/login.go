@@ -27,7 +27,11 @@ func OpenBrowser(url string) error {
 	default: // linux, freebsd, etc.
 		cmd = browserCommand("xdg-open", url)
 	}
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait() //nolint:errcheck
+	return nil
 }
 
 var browserCommand = exec.Command

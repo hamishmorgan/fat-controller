@@ -25,6 +25,8 @@ jobs:
       - &mise
         uses: jdx/mise-action@e79ddf65a11cec7b0e882bedced08d6e976efb2d # v3.6.2
       - name: Run tests with coverage
+        env:
+          CGO_ENABLED: "1"
         run: |
           mkdir -p .build/coverage
           go test -race -coverprofile=.build/coverage/coverage.out ./...

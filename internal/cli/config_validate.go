@@ -35,7 +35,9 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 	warnings := config.Validate(desired, nil)
 
 	if len(warnings) == 0 {
-		fmt.Fprintln(out, "No warnings found.")
+		if !globals.Quiet {
+			fmt.Fprintln(out, "No warnings found.")
+		}
 		return nil
 	}
 

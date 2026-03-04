@@ -24,6 +24,7 @@ type configPair struct {
 //  6. Filter desired config by --service if set
 func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extraFiles []string, fetcher configFetcher) (*configPair, error) {
 	// 1. Load and merge config files.
+	debug(globals, "loading config from %s", configDir)
 	desired, err := config.LoadConfigs(configDir, extraFiles)
 	if err != nil {
 		return nil, err
@@ -45,12 +46,14 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 	}
 
 	// 4. Resolve project and environment IDs.
+	debug(globals, "resolving project=%q environment=%q", project, environment)
 	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, project, environment)
 	if err != nil {
 		return nil, err
 	}
 
 	// 5. Fetch live state.
+	debug(globals, "fetching live state for project=%s environment=%s", projID, envID)
 	live, err := fetcher.Fetch(ctx, projID, envID, globals.Service)
 	if err != nil {
 		return nil, err

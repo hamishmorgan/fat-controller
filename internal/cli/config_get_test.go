@@ -11,26 +11,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// fakeFetcher implements cli.ConfigFetcher for testing runConfigGet.
-type fakeFetcher struct {
-	cfg        *config.LiveConfig
-	resolveErr error
-	fetchErr   error
-}
-
-func (f *fakeFetcher) Resolve(_ context.Context, _, _, _ string) (string, string, error) {
-	if f.resolveErr != nil {
-		return "", "", f.resolveErr
-	}
-	return "proj-1", "env-1", nil
-}
-
-func (f *fakeFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
-	if f.fetchErr != nil {
-		return nil, f.fetchErr
-	}
-	return f.cfg, nil
-}
+// fakeFetcher and capturingFetcher are defined in helpers_test.go.
 
 func TestConfigGet_PrintsOutput(t *testing.T) {
 	var buf bytes.Buffer

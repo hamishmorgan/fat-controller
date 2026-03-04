@@ -10,108 +10,105 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 )
 
-type fakeDeleter struct {
-	called  bool
-	service string
-	key     string
-}
+func TestRunConfigDelete(t *testing.T) {
+	tests := []struct {
+		name        string
+		globals     *cli.Globals
+		path        string
+		mutatorErr  error  // injected error for the mutator
+		wantErr     string // substring of expected error; empty means no error
+		wantDryRun  bool   // expect "dry run" in output
+		wantCalled  bool   // expect the mutator to be invoked
+		wantService string // expected service arg
+		wantKey     string // expected key arg
+	}{
+		{
+			name:       "dry-run by default",
+			globals:    &cli.Globals{},
+			path:       "api.variables.OLD",
+			wantDryRun: true,
+		},
+		{
+			name:       "dry-run flag overrides confirm",
+			globals:    &cli.Globals{Confirm: true, DryRun: true},
+			path:       "api.variables.OLD",
+			wantDryRun: true,
+		},
+		{
+			name:        "executes with confirm",
+			globals:     &cli.Globals{Confirm: true},
+			path:        "api.variables.OLD",
+			wantCalled:  true,
+			wantService: "api",
+			wantKey:     "OLD",
+		},
+		{
+			name:    "rejects non-variable path",
+			globals: &cli.Globals{Confirm: true},
+			path:    "api.resources.vcpus",
+			wantErr: "variables",
+		},
+		{
+			name:    "rejects path without key",
+			globals: &cli.Globals{Confirm: true},
+			path:    "api.variables",
+			wantErr: "variables",
+		},
+		{
+			name:       "propagates deleter error",
+			globals:    &cli.Globals{Confirm: true},
+			path:       "api.variables.OLD",
+			mutatorErr: errors.New("delete failed"),
+			wantErr:    "delete failed",
+			wantCalled: true,
+		},
+	}
 
-func (f *fakeDeleter) DeleteVar(_ context.Context, service, key string) error {
-	f.called = true
-	f.service = service
-	f.key = key
-	return nil
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &recordingMutator{err: tt.mutatorErr}
+			var buf bytes.Buffer
 
-func TestConfigDelete_DryRunByDefault(t *testing.T) {
-	deleter := &fakeDeleter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigDelete(context.Background(), &cli.Globals{}, "api.variables.OLD", deleter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(buf.String(), "dry run") {
-		t.Errorf("expected dry run message, got: %s", buf.String())
-	}
-	if deleter.called {
-		t.Fatal("deleter should not be called in dry-run mode")
-	}
-}
+			err := cli.RunConfigDelete(context.Background(), tt.globals, tt.path, m, &buf)
 
-func TestConfigDelete_DryRunFlagOverridesConfirm(t *testing.T) {
-	deleter := &fakeDeleter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true, DryRun: true}
-	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", deleter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(buf.String(), "dry run") {
-		t.Errorf("expected dry run message, got: %s", buf.String())
-	}
-	if deleter.called {
-		t.Fatal("deleter should not be called when --dry-run overrides --confirm")
-	}
-}
+			// Check error expectation.
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-func TestConfigDelete_ExecutesWithConfirm(t *testing.T) {
-	deleter := &fakeDeleter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
-	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", deleter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !deleter.called {
-		t.Fatal("expected deleter to be called with --confirm")
-	}
-	if deleter.service != "api" {
-		t.Errorf("expected service=api, got %q", deleter.service)
-	}
-	if deleter.key != "OLD" {
-		t.Errorf("expected key=OLD, got %q", deleter.key)
-	}
-}
+			// Check dry-run output.
+			if tt.wantDryRun {
+				if !strings.Contains(buf.String(), "dry run") {
+					t.Errorf("expected dry run message, got: %s", buf.String())
+				}
+				if m.called {
+					t.Error("mutator should not be called in dry-run mode")
+				}
+				return
+			}
 
-func TestConfigDelete_RejectsNonVariablePath(t *testing.T) {
-	deleter := &fakeDeleter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigDelete(context.Background(), &cli.Globals{Confirm: true}, "api.resources.vcpus", deleter, &buf)
-	if err == nil {
-		t.Fatal("expected error for non-variable path")
-	}
-	if !strings.Contains(err.Error(), "variables") {
-		t.Errorf("expected error about variables, got: %v", err)
-	}
-	if deleter.called {
-		t.Fatal("deleter should not be called for non-variable path")
-	}
-}
-
-func TestConfigDelete_RejectsPathWithoutKey(t *testing.T) {
-	deleter := &fakeDeleter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigDelete(context.Background(), &cli.Globals{Confirm: true}, "api.variables", deleter, &buf)
-	if err == nil {
-		t.Fatal("expected error for path without key")
-	}
-}
-
-type failingDeleter struct{}
-
-func (f *failingDeleter) DeleteVar(_ context.Context, _, _ string) error {
-	return errors.New("delete failed")
-}
-
-func TestConfigDelete_PropagatesDeleterError(t *testing.T) {
-	deleter := &failingDeleter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
-	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", deleter, &buf)
-	if err == nil {
-		t.Fatal("expected error from deleter")
-	}
-	if !strings.Contains(err.Error(), "delete failed") {
-		t.Errorf("unexpected error: %v", err)
+			// Check mutation was invoked with correct args.
+			if tt.wantCalled && !m.called {
+				t.Fatal("expected mutator to be called")
+			}
+			if !tt.wantCalled && m.called {
+				t.Fatal("mutator should not have been called")
+			}
+			if m.service != tt.wantService {
+				t.Errorf("service: got %q, want %q", m.service, tt.wantService)
+			}
+			if m.key != tt.wantKey {
+				t.Errorf("key: got %q, want %q", m.key, tt.wantKey)
+			}
+		})
 	}
 }

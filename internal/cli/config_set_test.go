@@ -10,113 +10,117 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 )
 
-type fakeSetter struct {
-	called  bool
-	service string
-	key     string
-	value   string
-}
+func TestRunConfigSet(t *testing.T) {
+	tests := []struct {
+		name        string
+		globals     *cli.Globals
+		path        string
+		value       string
+		mutatorErr  error  // injected error for the mutator
+		wantErr     string // substring of expected error; empty means no error
+		wantDryRun  bool   // expect "dry run" in output
+		wantCalled  bool   // expect the mutator to be invoked
+		wantService string // expected service arg
+		wantKey     string // expected key arg
+		wantValue   string // expected value arg
+	}{
+		{
+			name:       "dry-run by default",
+			globals:    &cli.Globals{},
+			path:       "api.variables.PORT",
+			value:      "8080",
+			wantDryRun: true,
+		},
+		{
+			name:       "dry-run flag overrides confirm",
+			globals:    &cli.Globals{Confirm: true, DryRun: true},
+			path:       "api.variables.PORT",
+			value:      "8080",
+			wantDryRun: true,
+		},
+		{
+			name:        "executes with confirm",
+			globals:     &cli.Globals{Confirm: true},
+			path:        "api.variables.PORT",
+			value:       "8080",
+			wantCalled:  true,
+			wantService: "api",
+			wantKey:     "PORT",
+			wantValue:   "8080",
+		},
+		{
+			name:    "rejects non-variable path",
+			globals: &cli.Globals{Confirm: true},
+			path:    "api.resources.vcpus",
+			value:   "1",
+			wantErr: "variables",
+		},
+		{
+			name:    "rejects path without key",
+			globals: &cli.Globals{Confirm: true},
+			path:    "api.variables",
+			value:   "1",
+			wantErr: "variables",
+		},
+		{
+			name:       "propagates setter error",
+			globals:    &cli.Globals{Confirm: true},
+			path:       "api.variables.PORT",
+			value:      "8080",
+			mutatorErr: errors.New("mutation failed"),
+			wantErr:    "mutation failed",
+			wantCalled: true,
+		},
+	}
 
-func (f *fakeSetter) SetVar(_ context.Context, service, key, value string) error {
-	f.called = true
-	f.service = service
-	f.key = key
-	f.value = value
-	return nil
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &recordingMutator{err: tt.mutatorErr}
+			var buf bytes.Buffer
 
-func TestConfigSet_DryRunByDefault(t *testing.T) {
-	setter := &fakeSetter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigSet(context.Background(), &cli.Globals{}, "api.variables.PORT", "8080", setter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(buf.String(), "dry run") {
-		t.Errorf("expected dry run message, got: %s", buf.String())
-	}
-	if setter.called {
-		t.Fatal("setter should not be called in dry-run mode")
-	}
-}
+			err := cli.RunConfigSet(context.Background(), tt.globals, tt.path, tt.value, m, &buf)
 
-func TestConfigSet_DryRunFlagOverridesConfirm(t *testing.T) {
-	setter := &fakeSetter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true, DryRun: true}
-	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", setter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(buf.String(), "dry run") {
-		t.Errorf("expected dry run message, got: %s", buf.String())
-	}
-	if setter.called {
-		t.Fatal("setter should not be called when --dry-run overrides --confirm")
-	}
-}
+			// Check error expectation.
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-func TestConfigSet_ExecutesWithConfirm(t *testing.T) {
-	setter := &fakeSetter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
-	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", setter, &buf)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !setter.called {
-		t.Fatal("expected setter to be called with --confirm")
-	}
-	if setter.service != "api" {
-		t.Errorf("expected service=api, got %q", setter.service)
-	}
-	if setter.key != "PORT" {
-		t.Errorf("expected key=PORT, got %q", setter.key)
-	}
-	if setter.value != "8080" {
-		t.Errorf("expected value=8080, got %q", setter.value)
-	}
-}
+			// Check dry-run output.
+			if tt.wantDryRun {
+				if !strings.Contains(buf.String(), "dry run") {
+					t.Errorf("expected dry run message, got: %s", buf.String())
+				}
+				if m.called {
+					t.Error("mutator should not be called in dry-run mode")
+				}
+				return
+			}
 
-func TestConfigSet_RejectsNonVariablePath(t *testing.T) {
-	setter := &fakeSetter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigSet(context.Background(), &cli.Globals{Confirm: true}, "api.resources.vcpus", "1", setter, &buf)
-	if err == nil {
-		t.Fatal("expected error for non-variable path")
-	}
-	if !strings.Contains(err.Error(), "variables") {
-		t.Errorf("expected error about variables, got: %v", err)
-	}
-	if setter.called {
-		t.Fatal("setter should not be called for non-variable path")
-	}
-}
-
-func TestConfigSet_RejectsPathWithoutKey(t *testing.T) {
-	setter := &fakeSetter{}
-	var buf bytes.Buffer
-	err := cli.RunConfigSet(context.Background(), &cli.Globals{Confirm: true}, "api.variables", "1", setter, &buf)
-	if err == nil {
-		t.Fatal("expected error for path without key")
-	}
-}
-
-type failingSetter struct{}
-
-func (f *failingSetter) SetVar(_ context.Context, _, _, _ string) error {
-	return errors.New("mutation failed")
-}
-
-func TestConfigSet_PropagatesSetterError(t *testing.T) {
-	setter := &failingSetter{}
-	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
-	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", setter, &buf)
-	if err == nil {
-		t.Fatal("expected error from setter")
-	}
-	if !strings.Contains(err.Error(), "mutation failed") {
-		t.Errorf("unexpected error: %v", err)
+			// Check mutation was invoked with correct args.
+			if tt.wantCalled && !m.called {
+				t.Fatal("expected mutator to be called")
+			}
+			if !tt.wantCalled && m.called {
+				t.Fatal("mutator should not have been called")
+			}
+			if m.service != tt.wantService {
+				t.Errorf("service: got %q, want %q", m.service, tt.wantService)
+			}
+			if m.key != tt.wantKey {
+				t.Errorf("key: got %q, want %q", m.key, tt.wantKey)
+			}
+			if m.value != tt.wantValue {
+				t.Errorf("value: got %q, want %q", m.value, tt.wantValue)
+			}
+		})
 	}
 }

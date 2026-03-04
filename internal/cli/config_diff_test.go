@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,17 +11,11 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// writeTOMLFile is a test helper that writes a TOML file in dir.
-func writeTOMLFile(t *testing.T, dir, name, content string) {
-	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-		t.Fatalf("write %s: %v", name, err)
-	}
-}
+// writeTOML is defined in helpers_test.go.
 
 func TestRunConfigDiff_ShowsChanges(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 NEW_VAR = "hello"
@@ -57,7 +49,7 @@ NEW_VAR = "hello"
 
 func TestRunConfigDiff_NoChanges(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "8080"
 `)
@@ -88,7 +80,7 @@ PORT = "8080"
 func TestRunConfigDiff_WithInterpolation(t *testing.T) {
 	t.Setenv("MY_PORT_FC_TEST", "9090")
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "${MY_PORT_FC_TEST}"
 `)
@@ -118,7 +110,7 @@ PORT = "${MY_PORT_FC_TEST}"
 
 func TestRunConfigDiff_MissingEnvVarErrors(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 SECRET = "${TOTALLY_MISSING_FC_VAR}"
 `)
@@ -142,7 +134,7 @@ SECRET = "${TOTALLY_MISSING_FC_VAR}"
 
 func TestRunConfigDiff_ResolveError(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "8080"
 `)
@@ -156,7 +148,7 @@ PORT = "8080"
 
 func TestRunConfigDiff_ServiceFilter(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 
@@ -187,26 +179,11 @@ QUEUE = "high"
 	}
 }
 
-// capturingFetcher records the project/environment passed to Resolve.
-type capturingFetcher struct {
-	cfg         *config.LiveConfig
-	project     string
-	environment string
-}
-
-func (f *capturingFetcher) Resolve(_ context.Context, _, project, environment string) (string, string, error) {
-	f.project = project
-	f.environment = environment
-	return "proj-1", "env-1", nil
-}
-
-func (f *capturingFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
-	return f.cfg, nil
-}
+// capturingFetcher is defined in helpers_test.go.
 
 func TestRunConfigDiff_UsesConfigFileProject(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 project = "my-app"
 environment = "production"
 
@@ -240,7 +217,7 @@ PORT = "9090"
 
 func TestRunConfigDiff_FlagOverridesConfigFile(t *testing.T) {
 	dir := t.TempDir()
-	writeTOMLFile(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 project = "my-app"
 environment = "production"
 

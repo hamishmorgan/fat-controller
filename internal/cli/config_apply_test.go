@@ -3,8 +3,6 @@ package cli_test
 import (
 	"bytes"
 	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,16 +35,11 @@ func (c *countingApplier) UpdateServiceResources(_ context.Context, _ string, _ 
 	return nil
 }
 
-func writeApplyTOML(t *testing.T, dir, name, content string) {
-	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-		t.Fatalf("write %s: %v", name, err)
-	}
-}
+// writeTOML is defined in helpers_test.go.
 
 func TestRunConfigApply_DryRunByDefault(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 `)
@@ -77,7 +70,7 @@ PORT = "9090"
 
 func TestRunConfigApply_ConfirmExecutes(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 NEW = "hello"
@@ -109,7 +102,7 @@ NEW = "hello"
 
 func TestRunConfigApply_DryRunOverridesConfirm(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 `)
@@ -136,7 +129,7 @@ PORT = "9090"
 
 func TestRunConfigApply_NoChanges(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "8080"
 `)
@@ -164,7 +157,7 @@ PORT = "8080"
 
 func TestRunConfigApply_ServiceFilter(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
 PORT = "9090"
 
@@ -196,7 +189,7 @@ QUEUE = "high"
 
 func TestRunConfigApply_UsesConfigFileProject(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 project = "my-app"
 environment = "production"
 
@@ -230,7 +223,7 @@ PORT = "9090"
 
 func TestRunConfigApply_FlagOverridesConfigFile(t *testing.T) {
 	dir := t.TempDir()
-	writeApplyTOML(t, dir, "fat-controller.toml", `
+	writeTOML(t, dir, "fat-controller.toml", `
 project = "my-app"
 environment = "production"
 

@@ -622,10 +622,10 @@ func dedent(s string) string {
 	return strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
 }
 
-// writeTOML writes content to fat-controller.toml inside dir.
+// writeConfigTOML writes content to fat-controller.toml inside dir.
 // The content is automatically dedented so callers can indent the
 // TOML literal with the surrounding test code.
-func writeTOML(t *testing.T, dir, content string) {
+func writeConfigTOML(t *testing.T, dir, content string) {
 	t.Helper()
 	p := filepath.Join(dir, config.BaseConfigFile)
 	if err := os.WriteFile(p, []byte(dedent(content)), 0o644); err != nil {
@@ -672,7 +672,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		// RunConfigInit checks for existing file before calling the fetcher,
 		// so no mock server is needed.
 		dir := t.TempDir()
-		writeTOML(t, dir, `project = "existing"`)
+		writeConfigTOML(t, dir, `project = "existing"`)
 
 		var out bytes.Buffer
 		err := cli.RunConfigInit(context.Background(), dir, fixtureProjectName, fixtureEnvironment, nil, &out)
@@ -837,7 +837,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -924,7 +924,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -954,7 +954,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		// Config matches exactly what the mock returns.
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -990,7 +990,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		// Both services have changes, but --service=api should only apply api.
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -1025,7 +1025,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		// Empty string means "delete this variable".
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -1061,7 +1061,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		// Two new shared variables -> two upserts. Second will fail.
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -1091,7 +1091,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -1119,7 +1119,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 
@@ -1198,7 +1198,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		applier := newTestApplier(mock)
 
 		dir := t.TempDir()
-		writeTOML(t, dir, `
+		writeConfigTOML(t, dir, `
 			project = "`+fixtureProjectName+`"
 			environment = "`+fixtureEnvironment+`"
 

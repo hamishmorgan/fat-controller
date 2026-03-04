@@ -327,6 +327,26 @@ suppress_warnings = ["W012", "W030"]
 	}
 }
 
+func TestParse_Workspace(t *testing.T) {
+	cfg, err := config.Parse([]byte(`workspace = "my-team"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Workspace != "my-team" {
+		t.Errorf("expected workspace 'my-team', got %q", cfg.Workspace)
+	}
+}
+
+func TestParse_RejectsNonStringWorkspace(t *testing.T) {
+	_, err := config.Parse([]byte(`workspace = 42`))
+	if err == nil {
+		t.Fatal("expected error for non-string workspace")
+	}
+	if !strings.Contains(err.Error(), "workspace") {
+		t.Errorf("error should mention workspace: %v", err)
+	}
+}
+
 func TestParse_RejectsInvalidSensitiveKeywords(t *testing.T) {
 	_, err := config.Parse([]byte(`sensitive_keywords = "not-an-array"`))
 	if err == nil {

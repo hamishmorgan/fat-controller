@@ -6,6 +6,7 @@ package config
 type DesiredConfig struct {
 	Project     string                     // from top-level `project` key (optional)
 	Environment string                     // from top-level `environment` key (optional)
+	Workspace   string                     // from top-level `workspace` key (optional)
 	Shared      *DesiredVariables          // nil means no shared section in config
 	Services    map[string]*DesiredService // keyed by service name
 

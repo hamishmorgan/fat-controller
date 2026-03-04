@@ -12,6 +12,7 @@ import (
 var knownTopLevelKeys = map[string]bool{
 	"project":             true,
 	"environment":         true,
+	"workspace":           true,
 	"shared":              true,
 	"sensitive_keywords":  true,
 	"sensitive_allowlist": true,
@@ -50,6 +51,13 @@ func Parse(data []byte) (*DesiredConfig, error) {
 			return nil, fmt.Errorf("invalid 'environment': expected string, got %T", v)
 		}
 		cfg.Environment = s
+	}
+	if v, ok := raw["workspace"]; ok {
+		s, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid 'workspace': expected string, got %T", v)
+		}
+		cfg.Workspace = s
 	}
 
 	// Extract sensitive_keywords, sensitive_allowlist, suppress_warnings.

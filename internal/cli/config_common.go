@@ -35,7 +35,7 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 		return nil, err
 	}
 
-	// 3. Use config-file project/environment as fallback for resolution.
+	// 3. Use config-file project/environment/workspace as fallback for resolution.
 	project := globals.Project
 	if project == "" {
 		project = desired.Project
@@ -44,10 +44,14 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 	if environment == "" {
 		environment = desired.Environment
 	}
+	workspace := globals.Workspace
+	if workspace == "" {
+		workspace = desired.Workspace
+	}
 
 	// 4. Resolve project and environment IDs.
 	debug(globals, "resolving project=%q environment=%q", project, environment)
-	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, project, environment)
+	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return nil, err
 	}

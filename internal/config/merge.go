@@ -18,6 +18,9 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 		if cfg.Environment != "" {
 			result.Environment = cfg.Environment
 		}
+		if cfg.Workspace != "" {
+			result.Workspace = cfg.Workspace
+		}
 		if len(cfg.SensitiveKeywords) > 0 {
 			result.SensitiveKeywords = cfg.SensitiveKeywords
 		}

@@ -14,6 +14,7 @@ concurrency:
 
 env:
   CGO_ENABLED: "0"
+  GOTOOLCHAIN: local
 
 jobs:
   test:

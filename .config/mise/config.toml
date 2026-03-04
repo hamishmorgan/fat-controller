@@ -245,6 +245,12 @@ alias = ["docs"]
 description = "Generate CLI reference Markdown from Kong model"
 run = "go run ./internal/tools/docgen -out docs/cli"
 
+[tasks."docs:logo"]
+description = "Regenerate docs/logo.png from docs/logo.svg"
+sources = ["docs/logo.svg"]
+outputs = ["docs/logo.png"]
+run = "rsvg-convert -w 512 -h 512 docs/logo.svg -o docs/logo.png"
+
 [tasks."lint:go"]
 description = "Lint Go code"
 run = """

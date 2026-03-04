@@ -1,17 +1,4 @@
-// Package docgen generates LLM-friendly Markdown reference documentation
-// from a Kong CLI model. It walks the command tree and emits one file per
-// command (leaf or group), plus an index page.
-//
-// Output structure per file:
-//   - Title and short description
-//   - Synopsis (usage line)
-//   - Description (long help)
-//   - Arguments (positional args)
-//   - Flags (command-specific)
-//   - Global flags (inherited from root)
-//   - Subcommands (for group nodes)
-//   - See also (links to parent/children)
-package docgen
+package main
 
 import (
 	"bytes"

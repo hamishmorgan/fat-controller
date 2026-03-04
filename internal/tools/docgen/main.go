@@ -8,7 +8,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
-	"github.com/hamishmorgan/fat-controller/internal/docgen"
 )
 
 func main() {
@@ -24,11 +23,11 @@ func main() {
 		log.Fatalf("build kong model: %v", err)
 	}
 
-	opts := docgen.Options{
+	opts := Options{
 		AppName:        "fat-controller",
 		AppDescription: k.Model.Help,
 	}
-	if err := docgen.Generate(k.Model, *out, opts); err != nil {
+	if err := Generate(k.Model, *out, opts); err != nil {
 		log.Fatalf("generate docs: %v", err)
 	}
 

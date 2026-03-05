@@ -253,6 +253,17 @@ var AllRestartPolicyType = []RestartPolicyType{
 	RestartPolicyTypeOnFailure,
 }
 
+// ServiceInstanceLimitsResponse is returned by ServiceInstanceLimits on success.
+type ServiceInstanceLimitsResponse struct {
+	// Get the merged resource limits for a service instance (includes plan defaults)
+	ServiceInstanceLimits map[string]interface{} `json:"serviceInstanceLimits"`
+}
+
+// GetServiceInstanceLimits returns ServiceInstanceLimitsResponse.ServiceInstanceLimits, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceLimitsResponse) GetServiceInstanceLimits() map[string]interface{} {
+	return v.ServiceInstanceLimits
+}
+
 type ServiceInstanceLimitsUpdateInput struct {
 	EnvironmentId string `json:"environmentId"`
 	// Amount of memory in GB to allocate to the service instance
@@ -595,6 +606,18 @@ func (v *__ServiceInstanceInput) GetEnvironmentId() string { return v.Environmen
 // GetServiceId returns __ServiceInstanceInput.ServiceId, and is useful for accessing the field via an interface.
 func (v *__ServiceInstanceInput) GetServiceId() string { return v.ServiceId }
 
+// __ServiceInstanceLimitsInput is used internally by genqlient
+type __ServiceInstanceLimitsInput struct {
+	EnvironmentId string `json:"environmentId"`
+	ServiceId     string `json:"serviceId"`
+}
+
+// GetEnvironmentId returns __ServiceInstanceLimitsInput.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *__ServiceInstanceLimitsInput) GetEnvironmentId() string { return v.EnvironmentId }
+
+// GetServiceId returns __ServiceInstanceLimitsInput.ServiceId, and is useful for accessing the field via an interface.
+func (v *__ServiceInstanceLimitsInput) GetServiceId() string { return v.ServiceId }
+
 // __ServiceInstanceLimitsUpdateInput is used internally by genqlient
 type __ServiceInstanceLimitsUpdateInput struct {
 	Input ServiceInstanceLimitsUpdateInput `json:"input"`
@@ -874,6 +897,41 @@ func ServiceInstance(
 	}
 
 	data_ = &ServiceInstanceResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ServiceInstanceLimits.
+const ServiceInstanceLimits_Operation = `
+query ServiceInstanceLimits ($environmentId: String!, $serviceId: String!) {
+	serviceInstanceLimits(environmentId: $environmentId, serviceId: $serviceId)
+}
+`
+
+// Service resource limits (merged, includes plan defaults)
+func ServiceInstanceLimits(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	environmentId string,
+	serviceId string,
+) (data_ *ServiceInstanceLimitsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ServiceInstanceLimits",
+		Query:  ServiceInstanceLimits_Operation,
+		Variables: &__ServiceInstanceLimitsInput{
+			EnvironmentId: environmentId,
+			ServiceId:     serviceId,
+		},
+	}
+
+	data_ = &ServiceInstanceLimitsResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

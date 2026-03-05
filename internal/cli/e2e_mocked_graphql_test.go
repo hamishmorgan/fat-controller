@@ -216,6 +216,8 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleServiceInstance(w)
 	case "ServiceInstanceUpdate":
 		m.handleServiceInstanceUpdate(w, req)
+	case "ServiceInstanceLimits":
+		m.handleServiceInstanceLimits(w)
 	case "ServiceInstanceLimitsUpdate":
 		m.handleServiceInstanceLimitsUpdate(w, req)
 	case "ProjectToken":
@@ -366,6 +368,17 @@ func (m *mockGraphQLServer) handleServiceInstance(w http.ResponseWriter) {
 				"rootDirectory":   nil,
 				"startCommand":    nil,
 				"healthcheckPath": nil,
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleServiceInstanceLimits(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"serviceInstanceLimits": map[string]any{
+				"vCPUs":    8.0,
+				"memoryGB": 8.0,
 			},
 		},
 	})

@@ -14,6 +14,8 @@ type ServiceConfig struct {
 	Name      string
 	Variables map[string]string
 	Deploy    Deploy
+	VCPUs     *float64 // live resource limit
+	MemoryGB  *float64 // live resource limit
 }
 
 // Deploy holds service deploy/build settings.

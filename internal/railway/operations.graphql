@@ -80,6 +80,11 @@ query ServiceInstance($environmentId: String!, $serviceId: String!) {
   }
 }
 
+# Service resource limits (merged, includes plan defaults)
+query ServiceInstanceLimits($environmentId: String!, $serviceId: String!) {
+  serviceInstanceLimits(environmentId: $environmentId, serviceId: $serviceId)
+}
+
 # Mutations for set/delete
 mutation VariableUpsert($input: VariableUpsertInput!) {
   variableUpsert(input: $input)

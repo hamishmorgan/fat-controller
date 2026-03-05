@@ -2,6 +2,7 @@ package railway
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -63,9 +64,42 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			HealthcheckPath: si.HealthcheckPath,
 		}
 
+		// Fetch resource limits (non-fatal — may not be available for all services).
+		limits, limitsErr := ServiceInstanceLimits(ctx, client.GQL(), environmentID, edge.Node.Id)
+		if limitsErr != nil {
+			slog.Debug("could not fetch resource limits", "service", edge.Node.Name, "error", limitsErr)
+		} else if limits.ServiceInstanceLimits != nil {
+			if v, ok := limits.ServiceInstanceLimits["vCPUs"]; ok {
+				if f, ok := toFloat64(v); ok {
+					svc.VCPUs = &f
+				}
+			}
+			if v, ok := limits.ServiceInstanceLimits["memoryGB"]; ok {
+				if f, ok := toFloat64(v); ok {
+					svc.MemoryGB = &f
+				}
+			}
+		}
+
 		slog.Debug("fetched service state", "service", edge.Node.Name, "variables", len(svc.Variables))
 		cfg.Services[edge.Node.Name] = svc
 	}
 
 	return cfg, nil
+}
+
+// toFloat64 attempts to convert an interface{} value to float64.
+// Handles float64, int64, and json.Number from GraphQL JSON responses.
+func toFloat64(v interface{}) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int64:
+		return float64(n), true
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
+	default:
+		return 0, false
+	}
 }

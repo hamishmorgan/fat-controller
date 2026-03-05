@@ -176,7 +176,7 @@ func diffService(desired *config.DesiredService, live *config.ServiceConfig) *Se
 
 	// Resources.
 	if desired.Resources != nil {
-		sd.Settings = append(sd.Settings, diffResources(desired.Resources)...)
+		sd.Settings = append(sd.Settings, diffResources(desired.Resources, live)...)
 	}
 
 	return sd
@@ -221,25 +221,46 @@ func diffDeploy(desired *config.DesiredDeploy, live config.Deploy) []Change {
 	return changes
 }
 
-// diffResources compares desired resource limits. Live resource limits aren't
-// currently in the LiveConfig model (they require a separate query), so we
-// treat any specified desired value as a change. This is conservative — the
-// apply step will set the value regardless.
-func diffResources(desired *config.DesiredResources) []Change {
+// diffResources compares desired resource limits against live values.
+func diffResources(desired *config.DesiredResources, live *config.ServiceConfig) []Change {
 	var changes []Change
 	if desired.VCPUs != nil {
-		changes = append(changes, Change{
-			Key:          config.KeyVCPUs,
-			Action:       ActionUpdate,
-			DesiredValue: fmt.Sprintf("%.1f", *desired.VCPUs),
-		})
+		liveVal := ""
+		if live != nil && live.VCPUs != nil {
+			liveVal = fmt.Sprintf("%.1f", *live.VCPUs)
+		}
+		desiredVal := fmt.Sprintf("%.1f", *desired.VCPUs)
+		if liveVal != desiredVal {
+			action := ActionUpdate
+			if liveVal == "" {
+				action = ActionCreate
+			}
+			changes = append(changes, Change{
+				Key:          config.KeyVCPUs,
+				Action:       action,
+				LiveValue:    liveVal,
+				DesiredValue: desiredVal,
+			})
+		}
 	}
 	if desired.MemoryGB != nil {
-		changes = append(changes, Change{
-			Key:          config.KeyMemoryGB,
-			Action:       ActionUpdate,
-			DesiredValue: fmt.Sprintf("%.1f", *desired.MemoryGB),
-		})
+		liveVal := ""
+		if live != nil && live.MemoryGB != nil {
+			liveVal = fmt.Sprintf("%.1f", *live.MemoryGB)
+		}
+		desiredVal := fmt.Sprintf("%.1f", *desired.MemoryGB)
+		if liveVal != desiredVal {
+			action := ActionUpdate
+			if liveVal == "" {
+				action = ActionCreate
+			}
+			changes = append(changes, Change{
+				Key:          config.KeyMemoryGB,
+				Action:       action,
+				LiveValue:    liveVal,
+				DesiredValue: desiredVal,
+			})
+		}
 	}
 	return changes
 }

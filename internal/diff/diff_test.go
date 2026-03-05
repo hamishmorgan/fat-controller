@@ -225,7 +225,7 @@ func TestComputeDiff_DeploySettingsChange(t *testing.T) {
 	}
 }
 
-func TestComputeDiff_ResourcesChange(t *testing.T) {
+func TestComputeDiff_ResourcesChange_NoLive(t *testing.T) {
 	vcpus := 4.0
 	desired := &config.DesiredConfig{
 		Services: map[string]*config.DesiredService{
@@ -234,9 +234,7 @@ func TestComputeDiff_ResourcesChange(t *testing.T) {
 			},
 		},
 	}
-	// Live doesn't have resource data in the current model — diff should
-	// show create for the resource. We'll treat missing live resources as
-	// empty/zero for comparison.
+	// Live service has no resource data — diff should show create.
 	live := &config.LiveConfig{
 		Services: map[string]*config.ServiceConfig{
 			"api": {Name: "api"},
@@ -249,6 +247,59 @@ func TestComputeDiff_ResourcesChange(t *testing.T) {
 	}
 	if svc.Settings[0].Key != "vcpus" {
 		t.Errorf("expected vcpus change, got %s", svc.Settings[0].Key)
+	}
+	if svc.Settings[0].Action != diff.ActionCreate {
+		t.Errorf("expected Create action, got %v", svc.Settings[0].Action)
+	}
+}
+
+func TestComputeDiff_ResourcesNoChange(t *testing.T) {
+	vcpus := 2.0
+	liveVcpus := 2.0
+	desired := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {
+				Resources: &config.DesiredResources{VCPUs: &vcpus},
+			},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", VCPUs: &liveVcpus},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if svc, ok := result.Services["api"]; ok && len(svc.Settings) > 0 {
+		t.Errorf("expected no resource diff when values match, got %d settings", len(svc.Settings))
+	}
+}
+
+func TestComputeDiff_ResourcesUpdate(t *testing.T) {
+	vcpus := 4.0
+	liveVcpus := 2.0
+	desired := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {
+				Resources: &config.DesiredResources{VCPUs: &vcpus},
+			},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", VCPUs: &liveVcpus},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.Settings) != 1 {
+		t.Fatalf("expected 1 setting change, got %d", len(svc.Settings))
+	}
+	ch := svc.Settings[0]
+	if ch.Action != diff.ActionUpdate {
+		t.Errorf("expected Update action, got %v", ch.Action)
+	}
+	if ch.LiveValue != "2.0" || ch.DesiredValue != "4.0" {
+		t.Errorf("unexpected values: live=%q desired=%q", ch.LiveValue, ch.DesiredValue)
 	}
 }
 

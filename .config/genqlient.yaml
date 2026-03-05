@@ -14,3 +14,5 @@ bindings:
     type: map[string]interface{}
   PluginType:
     type: string
+  ServiceInstanceLimit:
+    type: map[string]interface{}

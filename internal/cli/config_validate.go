@@ -35,6 +35,7 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 	// Interpolation is not required for validation — we check the raw config.
 	// No API calls: liveServiceNames is nil (W040 skipped in offline mode).
 	warnings := config.Validate(desired, nil)
+	warnings = append(warnings, config.ValidateFiles(configDir)...)
 
 	if len(warnings) == 0 {
 		if !globals.Quiet {

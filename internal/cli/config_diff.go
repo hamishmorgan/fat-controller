@@ -39,6 +39,9 @@ func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extr
 		return err
 	}
 
+	// Emit validation warnings to stderr.
+	emitWarnings(pair, globals, configDir)
+
 	// Compute diff.
 	result := diff.Compute(pair.Desired, pair.Live)
 	slog.Debug("diff computed", "is_empty", result.IsEmpty())

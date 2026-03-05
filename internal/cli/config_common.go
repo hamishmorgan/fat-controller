@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -82,4 +83,38 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 		ProjectID:     projID,
 		EnvironmentID: envID,
 	}, nil
+}
+
+// emitWarnings runs validation on the config pair and emits warnings to stderr via slog.
+// Respects --quiet to suppress warnings. Callers that always want warnings (e.g. config validate)
+// should call config.Validate directly.
+func emitWarnings(pair *configPair, globals *Globals, configDir string) {
+	if globals.Quiet {
+		return
+	}
+	// Extract live service names for W040.
+	var liveNames []string
+	for name := range pair.Live.Services {
+		liveNames = append(liveNames, name)
+	}
+
+	warnings := config.Validate(pair.Desired, liveNames)
+	warnings = append(warnings, config.ValidateFiles(configDir)...)
+
+	// Filter suppressed warnings (Validate already filters, but ValidateFiles warnings need it too).
+	suppressed := make(map[string]bool, len(pair.Desired.SuppressWarnings))
+	for _, code := range pair.Desired.SuppressWarnings {
+		suppressed[code] = true
+	}
+
+	for _, w := range warnings {
+		if suppressed[w.Code] {
+			continue
+		}
+		path := ""
+		if w.Path != "" {
+			path = " (" + w.Path + ")"
+		}
+		slog.Warn(fmt.Sprintf("[%s]%s %s", w.Code, path, w.Message))
+	}
 }

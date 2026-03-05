@@ -35,6 +35,9 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		return err
 	}
 
+	// Emit validation warnings to stderr.
+	emitWarnings(pair, globals, wd)
+
 	applier := &apply.RailwayApplier{
 		Client:        client,
 		ProjectID:     pair.ProjectID,
@@ -50,6 +53,8 @@ func RunConfigApply(ctx context.Context, globals *Globals, configDir string, ext
 	if err != nil {
 		return err
 	}
+	// Emit validation warnings to stderr.
+	emitWarnings(pair, globals, configDir)
 	return runConfigApplyWithPair(ctx, globals, pair, applier, out)
 }
 

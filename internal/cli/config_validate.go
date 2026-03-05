@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -20,6 +21,7 @@ func (c *ConfigValidateCmd) Run(globals *Globals) error {
 
 // RunConfigValidate is the testable core of `config validate`.
 func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, out io.Writer) error {
+	slog.Debug("starting config validate")
 	if out == nil {
 		out = os.Stdout
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -48,6 +49,7 @@ func (c *ConfigGetCmd) Run(globals *Globals) error {
 
 // RunConfigGet is the testable core of `config get`.
 func RunConfigGet(ctx context.Context, globals *Globals, path string, fetcher configFetcher, out io.Writer) error {
+	slog.Debug("starting config get", "path", path)
 	if out == nil {
 		out = os.Stdout
 	}

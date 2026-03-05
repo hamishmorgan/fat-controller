@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/diff"
@@ -40,6 +41,7 @@ func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extr
 
 	// Compute diff.
 	result := diff.Compute(pair.Desired, pair.Live)
+	slog.Debug("diff computed", "is_empty", result.IsEmpty())
 
 	// Format and display (live values are masked unless --show-secrets is set).
 	formatted := diff.Format(result, globals.ShowSecrets)

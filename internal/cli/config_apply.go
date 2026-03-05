@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -63,6 +64,7 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 
 	// Compute diff.
 	changes := diff.Compute(desired, live)
+	slog.Debug("diff computed", "is_empty", changes.IsEmpty())
 
 	// If no changes, report and return.
 	if changes.IsEmpty() {
@@ -124,6 +126,7 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 	}
 
 	// Apply changes.
+	slog.Debug("executing apply", "fail_fast", globals.FailFast, "skip_deploys", globals.SkipDeploys)
 	applyResult, applyErr := apply.Apply(ctx, desired, live, applier, apply.Options{
 		FailFast:    globals.FailFast,
 		SkipDeploys: globals.SkipDeploys,

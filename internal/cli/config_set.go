@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -21,6 +22,7 @@ type configSetter interface {
 // In dry-run mode (default when --confirm is not set), it writes a preview
 // message to out and returns nil. Pass out=nil to use os.Stdout.
 func RunConfigSet(ctx context.Context, globals *Globals, path, value string, setter configSetter, out io.Writer) error {
+	slog.Debug("starting config set", "path", path)
 	if out == nil {
 		out = os.Stdout
 	}

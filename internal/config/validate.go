@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"unicode"
@@ -25,6 +26,7 @@ var doubleRefRe = regexp.MustCompile(`\$\{\{[^}]+\}\}`)
 // pass nil to skip W040 checks (e.g. for offline validation).
 // Warnings whose codes appear in cfg.SuppressWarnings are filtered out.
 func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
+	slog.Debug("validating config", "services", len(cfg.Services), "has_live_names", liveServiceNames != nil)
 	var warnings []Warning
 
 	// Build suppression set.
@@ -108,6 +110,7 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 		warnings = filtered
 	}
 
+	slog.Debug("validation complete", "warnings", len(warnings))
 	return warnings
 }
 

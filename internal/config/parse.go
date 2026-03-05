@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -117,6 +118,7 @@ func Parse(data []byte) (*DesiredConfig, error) {
 		cfg.Services[key] = svc
 	}
 
+	slog.Debug("parsed config", "project", cfg.Project, "environment", cfg.Environment, "services", len(cfg.Services), "has_shared", cfg.Shared != nil)
 	return cfg, nil
 }
 

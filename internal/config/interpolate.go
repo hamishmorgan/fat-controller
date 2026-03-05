@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"regexp"
 	"strings"
@@ -16,6 +17,7 @@ var localEnvPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 // values in the config. Railway references (${{...}}) are left untouched.
 // Returns an error if any referenced env var is not set.
 func Interpolate(cfg *DesiredConfig) error {
+	slog.Debug("interpolating config variables")
 	if cfg.Shared != nil {
 		if err := interpolateVars(cfg.Shared.Vars, "shared.variables"); err != nil {
 			return err

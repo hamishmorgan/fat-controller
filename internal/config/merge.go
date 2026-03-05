@@ -1,5 +1,7 @@
 package config
 
+import "log/slog"
+
 // Merge combines multiple DesiredConfig values in order (later wins).
 // Variable maps are merged at the key level. Resources/Deploy fields are
 // merged at the field level (non-nil overrides nil).
@@ -13,12 +15,15 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 		}
 		// Merge project/environment: non-empty overrides.
 		if cfg.Project != "" {
+			slog.Debug("config override", "field", "project", "value", cfg.Project)
 			result.Project = cfg.Project
 		}
 		if cfg.Environment != "" {
+			slog.Debug("config override", "field", "environment", "value", cfg.Environment)
 			result.Environment = cfg.Environment
 		}
 		if cfg.Workspace != "" {
+			slog.Debug("config override", "field", "workspace", "value", cfg.Workspace)
 			result.Workspace = cfg.Workspace
 		}
 		if len(cfg.SensitiveKeywords) > 0 {

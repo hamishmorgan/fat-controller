@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +84,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		out = os.Stdout
 	}
 
+	slog.Debug("starting config init", "dir", dir)
 	// 1. Refuse to overwrite existing config.
 	configPath := filepath.Join(dir, config.BaseConfigFile)
 	if _, err := os.Stat(configPath); err == nil {
@@ -104,6 +106,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	// 4. Render and write the config file.
+	slog.Debug("rendering config file", "services", len(live.Services))
 	// project/environment args are names (not IDs) — used as the header values.
 	content := config.RenderInitTOML(workspace, project, environment, *live)
 	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
@@ -128,6 +131,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	if err != nil {
 		return fmt.Errorf("updating .gitignore: %w", err)
 	}
+	slog.Debug("gitignore check", "line", config.LocalConfigFile, "added", added)
 	if added {
 		if _, err := fmt.Fprintf(out, "updated %s (added %s)\n", ".gitignore", config.LocalConfigFile); err != nil {
 			return err

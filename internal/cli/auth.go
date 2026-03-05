@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -11,6 +12,7 @@ import (
 )
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
+	slog.Debug("starting auth login")
 	oauth := auth.NewOAuthClient()
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
@@ -19,6 +21,7 @@ func (c *AuthLoginCmd) Run(globals *Globals) error {
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {
+	slog.Debug("starting auth logout")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
@@ -30,6 +33,7 @@ func (c *AuthLogoutCmd) Run(globals *Globals) error {
 }
 
 func (c *AuthStatusCmd) Run(globals *Globals) error {
+	slog.Debug("checking auth status")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
@@ -68,6 +72,7 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	oauth := auth.NewOAuthClient()
 	oauth.HTTPClient = &http.Client{Transport: transport}
 
+	slog.Debug("fetching user info via refresh-aware transport")
 	info, err := oauth.FetchUserInfo(context.Background())
 	if err != nil {
 		fmt.Println("Authenticated (stored OAuth token).")

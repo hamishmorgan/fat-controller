@@ -13,11 +13,13 @@ import (
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
 	slog.Debug("starting auth login")
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	oauth := auth.NewOAuthClient()
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
-	return auth.Login(context.Background(), oauth, store, auth.OpenBrowser)
+	return auth.Login(ctx, oauth, store, auth.OpenBrowser)
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {
@@ -34,11 +36,13 @@ func (c *AuthLogoutCmd) Run(globals *Globals) error {
 
 func (c *AuthStatusCmd) Run(globals *Globals) error {
 	slog.Debug("checking auth status")
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
 
-	resolved, err := auth.ResolveAuth(context.Background(), globals.Token, store)
+	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)
 	if err != nil {
 		fmt.Println("Not authenticated.")
 		fmt.Println("Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
@@ -73,7 +77,7 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	oauth.HTTPClient = &http.Client{Transport: transport}
 
 	slog.Debug("fetching user info via refresh-aware transport")
-	info, err := oauth.FetchUserInfo(context.Background())
+	info, err := oauth.FetchUserInfo(ctx)
 	if err != nil {
 		fmt.Println("Authenticated (stored OAuth token).")
 		fmt.Printf("Could not fetch user info: %v\n", err)

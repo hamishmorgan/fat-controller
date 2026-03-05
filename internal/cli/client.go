@@ -11,8 +11,10 @@ import (
 
 func newClient(globals *Globals) (*railway.Client, error) {
 	slog.Debug("creating Railway client")
+	ctx, cancel := globals.TimeoutContext(context.Background())
+	defer cancel()
 	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
-	resolved, err := auth.ResolveAuth(context.Background(), globals.Token, store)
+	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)
 	if err != nil {
 		return nil, err
 	}

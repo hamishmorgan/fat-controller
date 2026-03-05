@@ -72,7 +72,7 @@ func (r *railwayDeleter) DeleteVar(ctx context.Context, service, key string) err
 
 // Run implements `config delete`.
 func (c *ConfigDeleteCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

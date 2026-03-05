@@ -62,7 +62,7 @@ const localConfigStub = `# Local overrides (gitignored). Use for secrets and per
 
 // Run implements `config init`.
 func (c *ConfigInitCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

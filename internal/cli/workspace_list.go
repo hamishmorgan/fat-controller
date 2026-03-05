@@ -79,7 +79,7 @@ func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLis
 
 // Run implements `workspace list`.
 func (c *WorkspaceListCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

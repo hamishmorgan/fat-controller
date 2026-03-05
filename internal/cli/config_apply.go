@@ -17,7 +17,7 @@ import (
 
 // Run implements `config apply`.
 func (c *ConfigApplyCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

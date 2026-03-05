@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/lipgloss"
@@ -18,8 +22,13 @@ func main() {
 	// output (triggered via BeforeReset on --help) respects the setting.
 	applyColorMode()
 
+	// Create a root context that gets cancelled on SIGINT (Ctrl+C) or SIGTERM.
+	// This allows in-flight API calls and operations to be cancelled gracefully.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	var c cli.CLI
-	ctx := kong.Parse(&c,
+	kongCtx := kong.Parse(&c,
 		kong.Name("fat-controller"),
 		kong.Description("CLI for managing Railway projects. Pull live config, diff against desired state, apply the difference."),
 		kong.Vars{"version": version.String()},
@@ -30,8 +39,14 @@ func main() {
 	// Configure structured logging based on --verbose / --quiet.
 	slog.SetDefault(c.Logger())
 
-	if err := ctx.Run(&c.Globals); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+	// Thread the signal-aware context through to all commands.
+	c.Globals.BaseCtx = ctx
+
+	if err := kongCtx.Run(&c.Globals); err != nil {
+		// Don't print error for context cancellation (user pressed Ctrl+C).
+		if !errors.Is(err, context.Canceled) {
+			fmt.Fprintln(os.Stderr, "error:", err)
+		}
 		os.Exit(1)
 	}
 }

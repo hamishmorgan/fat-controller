@@ -83,7 +83,7 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 
 // Run implements `project list`.
 func (c *ProjectListCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"log/slog"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
@@ -11,7 +10,7 @@ import (
 
 func newClient(globals *Globals) (*railway.Client, error) {
 	slog.Debug("creating Railway client")
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	store := auth.NewTokenStore(auth.WithFallbackPath(platform.AuthFilePath()))
 	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)

@@ -80,7 +80,7 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 // Run implements `environment list`.
 // Requires --project flag (or env var) to know which project to list environments for.
 func (c *EnvironmentListCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

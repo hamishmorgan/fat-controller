@@ -30,16 +30,25 @@ type Globals struct {
 	Full        bool          `help:"Include IDs and read-only fields (get only)."`
 	Verbose     bool          `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
 	Quiet       bool          `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
+
+	// BaseCtx is the root context for all commands. Set by main() with
+	// signal.NotifyContext so that SIGINT/SIGTERM cancels in-flight work.
+	// Commands use this as the parent for TimeoutContext.
+	BaseCtx context.Context `kong:"-"`
 }
 
 // TimeoutContext returns a context with the configured timeout applied.
 // If Timeout is zero (or negative), it returns ctx and a no-op cancel func
 // so callers always get a valid cancel to defer.
-func (g *Globals) TimeoutContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	if g.Timeout > 0 {
-		return context.WithTimeout(ctx, g.Timeout)
+// A nil parent is treated as context.Background() for safety in tests.
+func (g *Globals) TimeoutContext(parent context.Context) (context.Context, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
 	}
-	return ctx, func() {}
+	if g.Timeout > 0 {
+		return context.WithTimeout(parent, g.Timeout)
+	}
+	return parent, func() {}
 }
 
 // Logger returns a slog.Logger configured for the current verbosity level.

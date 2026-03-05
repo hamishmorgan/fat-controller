@@ -12,7 +12,7 @@ import (
 
 // Run implements `config diff`.
 func (c *ConfigDiffCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

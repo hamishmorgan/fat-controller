@@ -14,7 +14,7 @@ import (
 )
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	return RunAuthLogin(ctx, globals, os.Stdout)
 }
@@ -47,7 +47,7 @@ func RunAuthLogout(out io.Writer) error {
 }
 
 func (c *AuthStatusCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	return RunAuthStatus(ctx, globals, os.Stdout)
 }

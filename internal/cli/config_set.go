@@ -73,7 +73,7 @@ func (r *railwaySetter) SetVar(ctx context.Context, service, key, value string) 
 
 // Run implements `config set`.
 func (c *ConfigSetCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(context.Background())
+	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(globals)
 	if err != nil {

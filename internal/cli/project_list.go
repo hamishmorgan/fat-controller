@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -50,10 +51,12 @@ func RunProjectList(ctx context.Context, globals *Globals, lister projectLister,
 	if out == nil {
 		out = os.Stdout
 	}
+	slog.Debug("listing projects")
 	projects, err := lister.ListProjects(ctx, globals.Workspace)
 	if err != nil {
 		return err
 	}
+	slog.Debug("listed projects", "count", len(projects))
 	if len(projects) == 0 {
 		_, err := fmt.Fprintln(out, "No projects found.")
 		return err

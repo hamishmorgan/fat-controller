@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -46,10 +47,12 @@ func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLis
 	if out == nil {
 		out = os.Stdout
 	}
+	slog.Debug("listing workspaces")
 	workspaces, err := lister.ListWorkspaces(ctx)
 	if err != nil {
 		return err
 	}
+	slog.Debug("listed workspaces", "count", len(workspaces))
 	if len(workspaces) == 0 {
 		_, err := fmt.Fprintln(out, "No workspaces found.")
 		return err

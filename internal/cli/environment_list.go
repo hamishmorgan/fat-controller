@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -46,10 +47,12 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 	if out == nil {
 		out = os.Stdout
 	}
+	slog.Debug("listing environments")
 	envs, err := lister.ListEnvironments(ctx, projectID)
 	if err != nil {
 		return err
 	}
+	slog.Debug("listed environments", "count", len(envs))
 	if len(envs) == 0 {
 		_, err := fmt.Fprintln(out, "No environments found.")
 		return err

@@ -2,6 +2,7 @@ package apply
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -28,9 +29,11 @@ func (r *RailwayApplier) resolveServiceID(ctx context.Context, name string) (str
 	r.mu.Lock()
 	if id, ok := r.serviceIDs[name]; ok {
 		r.mu.Unlock()
+		slog.Debug("service ID cache hit", "name", name, "id", id)
 		return id, nil
 	}
 	r.mu.Unlock()
+	slog.Debug("resolving service ID", "name", name)
 
 	id, err := railway.ResolveServiceID(ctx, r.Client, r.ProjectID, name)
 	if err != nil {
@@ -43,6 +46,7 @@ func (r *RailwayApplier) resolveServiceID(ctx context.Context, name string) (str
 	}
 	r.serviceIDs[name] = id
 	r.mu.Unlock()
+	slog.Debug("cached service ID", "name", name, "id", id)
 	return id, nil
 }
 

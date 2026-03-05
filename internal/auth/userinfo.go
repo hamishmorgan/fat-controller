@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -19,6 +20,7 @@ type UserInfo struct {
 // Auth is handled by the OAuthClient's HTTPClient transport —
 // callers must set HTTPClient to a client with an auth-injecting transport.
 func (c *OAuthClient) FetchUserInfo(ctx context.Context) (*UserInfo, error) {
+	slog.Debug("fetching userinfo", "url", c.UserinfoURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.UserinfoURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("building userinfo request: %w", err)
@@ -31,6 +33,7 @@ func (c *OAuthClient) FetchUserInfo(ctx context.Context) (*UserInfo, error) {
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
+		slog.Debug("userinfo request failed", "status", resp.StatusCode)
 		return nil, fmt.Errorf("userinfo failed with status %d", resp.StatusCode)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -75,6 +76,7 @@ type TokenResponse struct {
 
 // RegisterClient performs dynamic client registration for a native (public) app.
 func (c *OAuthClient) RegisterClient(ctx context.Context, redirectURI string) (*RegistrationResponse, error) {
+	slog.Debug("registering OAuth client", "registration_url", c.RegistrationURL)
 	reqBody := RegistrationRequest{
 		ClientName:              "Fat Controller CLI",
 		ClientURI:               "https://github.com/hamishmorgan/fat-controller",
@@ -104,10 +106,12 @@ func (c *OAuthClient) RegisterClient(ctx context.Context, redirectURI string) (*
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		slog.Debug("client registration failed", "status", resp.StatusCode)
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return nil, fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
+	slog.Debug("client registration succeeded", "status", resp.StatusCode)
 	var reg RegistrationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reg); err != nil {
 		return nil, fmt.Errorf("decoding registration response: %w", err)
@@ -133,6 +137,7 @@ func (c *OAuthClient) AuthorizationURL(clientID, redirectURI, state, codeChallen
 // ExchangeCode exchanges an authorization code for tokens.
 // Uses PKCE — no client secret (native client).
 func (c *OAuthClient) ExchangeCode(ctx context.Context, clientID, code, redirectURI, codeVerifier string) (*TokenResponse, error) {
+	slog.Debug("exchanging authorization code", "token_endpoint", c.TokenEndpoint)
 	data := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
@@ -154,6 +159,7 @@ func (c *OAuthClient) ExchangeCode(ctx context.Context, clientID, code, redirect
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
+		slog.Debug("token exchange failed", "status", resp.StatusCode)
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return nil, fmt.Errorf("token exchange failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -168,6 +174,7 @@ func (c *OAuthClient) ExchangeCode(ctx context.Context, clientID, code, redirect
 // RefreshToken exchanges a refresh token for a new access + refresh token pair.
 // Important: Railway rotates refresh tokens. Always store the new one.
 func (c *OAuthClient) RefreshToken(ctx context.Context, clientID, refreshToken string) (*TokenResponse, error) {
+	slog.Debug("refreshing OAuth token", "token_endpoint", c.TokenEndpoint)
 	data := url.Values{
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {refreshToken},
@@ -187,6 +194,7 @@ func (c *OAuthClient) RefreshToken(ctx context.Context, clientID, refreshToken s
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
+		slog.Debug("token refresh failed", "status", resp.StatusCode)
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return nil, fmt.Errorf("refresh failed with status %d: %s", resp.StatusCode, string(body))
 	}

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"sync"
@@ -34,6 +35,7 @@ func StartCallbackServer() (*CallbackServer, error) {
 	}
 
 	port := listener.Addr().(*net.TCPAddr).Port
+	slog.Debug("starting OAuth callback server", "port", port)
 	result := make(chan CallbackResult, 1)
 
 	mux := http.NewServeMux()
@@ -80,6 +82,7 @@ func (s *CallbackServer) RedirectURI() string {
 
 // Shutdown gracefully stops the callback server.
 func (s *CallbackServer) Shutdown() {
+	slog.Debug("shutting down callback server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	s.server.Shutdown(ctx) //nolint:errcheck

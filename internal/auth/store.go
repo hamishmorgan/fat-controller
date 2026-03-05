@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -64,8 +65,10 @@ func (s *TokenStore) Save(tokens *StoredTokens) error {
 
 	if err := keyring.Set(s.keyringService, s.keyringUser, string(data)); err != nil {
 		// Keyring unavailable — fall back to file.
+		slog.Debug("keyring unavailable, falling back to file", "path", s.fallbackPath)
 		return s.saveToFile(data)
 	}
+	slog.Debug("tokens saved to keyring")
 	return nil
 }
 
@@ -79,15 +82,18 @@ func (s *TokenStore) Load() (*StoredTokens, error) {
 		if err := json.Unmarshal([]byte(data), &tokens); err != nil {
 			return nil, fmt.Errorf("unmarshalling keyring data: %w", err)
 		}
+		slog.Debug("tokens loaded from keyring")
 		return &tokens, nil
 	}
 
 	// Keyring miss — try file fallback.
+	slog.Debug("keyring miss, trying file fallback", "path", s.fallbackPath)
 	return s.loadFromFile()
 }
 
 // Delete removes stored tokens from both keyring and file.
 func (s *TokenStore) Delete() error {
+	slog.Debug("deleting stored tokens")
 	// Delete from keyring (ignore ErrNotFound and other keyring errors).
 	// Keyring failures are not fatal — we still clean up the file fallback.
 	_ = keyring.Delete(s.keyringService, s.keyringUser)
@@ -125,6 +131,7 @@ func (s *TokenStore) loadFromFile() (*StoredTokens, error) {
 	data, err := os.ReadFile(s.fallbackPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			slog.Debug("no fallback file found", "path", s.fallbackPath)
 			return nil, ErrNoStoredTokens
 		}
 		return nil, fmt.Errorf("reading fallback file: %w", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"runtime"
 )
@@ -63,11 +64,13 @@ func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrows
 		return err
 	}
 
+	slog.Debug("retrying login with fresh client registration")
 	fmt.Println("Token exchange failed; retrying with fresh client registration...")
 	return loginAttempt(ctx, oauth, store, openBrowser, true)
 }
 
 func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
+	slog.Debug("starting login attempt", "force_new_client", forceNewClient)
 	// Start callback server.
 	srv, err := StartCallbackServer()
 	if err != nil {
@@ -76,6 +79,7 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 	defer srv.Shutdown()
 
 	redirectURI := srv.RedirectURI()
+	slog.Debug("callback server started", "port", srv.Port, "redirect_uri", redirectURI)
 
 	// Check for existing client registration.
 	clientID, err := loadOrRegisterClient(ctx, oauth, store, redirectURI, forceNewClient)
@@ -110,6 +114,7 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 	var result CallbackResult
 	select {
 	case result = <-srv.Result:
+		slog.Debug("OAuth callback received", "has_error", result.Error != "")
 	case <-ctx.Done():
 		srv.Shutdown()
 		return ctx.Err()
@@ -124,6 +129,7 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 	}
 
 	// Exchange code for tokens.
+	slog.Debug("exchanging authorization code")
 	tokenResp, err := oauth.ExchangeCode(ctx, clientID, result.Code, redirectURI, verifier)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errCodeExchange, err)
@@ -138,6 +144,7 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 		return fmt.Errorf("storing tokens: %w", err)
 	}
 
+	slog.Debug("tokens stored successfully")
 	fmt.Println("Login successful!")
 	return nil
 }
@@ -149,11 +156,13 @@ func loadOrRegisterClient(ctx context.Context, oauth *OAuthClient, store *TokenS
 	if !forceNew {
 		existing, err := store.Load()
 		if err == nil && existing.ClientID != "" {
+			slog.Debug("using existing client ID")
 			return existing.ClientID, nil
 		}
 	}
 
 	// Register a new client.
+	slog.Debug("registering new OAuth client")
 	reg, err := oauth.RegisterClient(ctx, redirectURI)
 	if err != nil {
 		return "", err

@@ -10,17 +10,21 @@ hitting the API).
 
 | Code | Warning | When |
 |------|---------|------|
-| `W001` | Unknown top-level key | Key is not `shared`, a known service name, or a known setting (catches typos like `shaerd`) |
-| `W002` | Unknown key in service block | Key inside `[X.variables]` or `[X.resources]` is not recognized |
-| `W003` | Empty service block | `[X.variables]` exists but defines no variables |
+| `W002` | Unknown key in service block | Key inside a service block is not `variables`, `resources`, or `deploy` |
+| `W003` | Empty service block | Service block exists but defines no variables, resources, or deploy settings |
+
+> **Note:** Unknown non-table top-level keys (e.g. `shaerd = ...`) are rejected
+> as parse errors, not warnings.
 
 ## Variable value warnings
 
 | Code | Warning | When |
 |------|---------|------|
-| `W010` | Unresolved local interpolation | `${VAR}` where `VAR` is not set in the local environment |
 | `W011` | Suspicious reference syntax | `${service.X}` looks like it was meant to be `${{service.X}}` (single vs double braces) |
 | `W012` | Empty string is explicit delete | `VAR = ""` — reminder that this will delete the variable in Railway |
+
+> **Note:** Unresolved local environment variables (`${VAR}` where `VAR` is not
+> set) are treated as errors, not warnings.
 
 ## Duplicate / conflict warnings
 

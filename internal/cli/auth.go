@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
@@ -12,17 +14,27 @@ import (
 )
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
-	slog.Debug("starting auth login")
 	ctx, cancel := globals.TimeoutContext(context.Background())
 	defer cancel()
+	return RunAuthLogin(ctx, globals, os.Stdout)
+}
+
+// RunAuthLogin is the testable core of `auth login`.
+func RunAuthLogin(ctx context.Context, globals *Globals, out io.Writer) error {
+	slog.Debug("starting auth login")
 	oauth := auth.NewOAuthClient()
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
-	return auth.Login(ctx, oauth, store, auth.OpenBrowser)
+	return auth.Login(ctx, oauth, store, auth.OpenBrowser, out)
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {
+	return RunAuthLogout(os.Stdout)
+}
+
+// RunAuthLogout is the testable core of `auth logout`.
+func RunAuthLogout(out io.Writer) error {
 	slog.Debug("starting auth logout")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
@@ -30,36 +42,41 @@ func (c *AuthLogoutCmd) Run(globals *Globals) error {
 	if err := store.Delete(); err != nil {
 		return fmt.Errorf("clearing credentials: %w", err)
 	}
-	fmt.Println("Logged out successfully.")
+	fmt.Fprintln(out, "Logged out successfully.")
 	return nil
 }
 
 func (c *AuthStatusCmd) Run(globals *Globals) error {
-	slog.Debug("checking auth status")
 	ctx, cancel := globals.TimeoutContext(context.Background())
 	defer cancel()
+	return RunAuthStatus(ctx, globals, os.Stdout)
+}
+
+// RunAuthStatus is the testable core of `auth status`.
+func RunAuthStatus(ctx context.Context, globals *Globals, out io.Writer) error {
+	slog.Debug("checking auth status")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
 
 	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)
 	if err != nil {
-		fmt.Println("Not authenticated.")
-		fmt.Println("Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
+		fmt.Fprintln(out, "Not authenticated.")
+		fmt.Fprintln(out, "Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
 		return nil
 	}
 
-	fmt.Printf("Authenticated via: %s\n", resolved.Source)
+	fmt.Fprintf(out, "Authenticated via: %s\n", resolved.Source)
 
 	switch resolved.Source {
 	case auth.SourceEnvToken:
-		fmt.Println("Using RAILWAY_TOKEN environment variable (project access token).")
+		fmt.Fprintln(out, "Using RAILWAY_TOKEN environment variable (project access token).")
 		return nil
 	case auth.SourceEnvAPIToken:
-		fmt.Println("Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
+		fmt.Fprintln(out, "Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
 		return nil
 	case auth.SourceFlag:
-		fmt.Println("Using --token flag.")
+		fmt.Fprintln(out, "Using --token flag.")
 		return nil
 	}
 
@@ -79,13 +96,13 @@ func (c *AuthStatusCmd) Run(globals *Globals) error {
 	slog.Debug("fetching user info via refresh-aware transport")
 	info, err := oauth.FetchUserInfo(ctx)
 	if err != nil {
-		fmt.Println("Authenticated (stored OAuth token).")
-		fmt.Printf("Could not fetch user info: %v\n", err)
-		fmt.Println("If your session expired, run 'fat-controller auth login' to re-authenticate.")
+		fmt.Fprintln(out, "Authenticated (stored OAuth token).")
+		fmt.Fprintf(out, "Could not fetch user info: %v\n", err)
+		fmt.Fprintln(out, "If your session expired, run 'fat-controller auth login' to re-authenticate.")
 		return nil
 	}
 
-	fmt.Printf("User: %s\n", info.Name)
-	fmt.Printf("Email: %s\n", info.Email)
+	fmt.Fprintf(out, "User: %s\n", info.Name)
+	fmt.Fprintf(out, "Email: %s\n", info.Email)
 	return nil
 }

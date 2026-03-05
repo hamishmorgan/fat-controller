@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os/exec"
 	"runtime"
@@ -50,8 +51,8 @@ func OpenBrowser(url string) error {
 //
 // The openBrowser parameter controls how the authorization URL is opened.
 // Pass OpenBrowser for production use, or a fake for testing.
-func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener) error {
-	err := loginAttempt(ctx, oauth, store, openBrowser, false)
+func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, out io.Writer) error {
+	err := loginAttempt(ctx, oauth, store, openBrowser, false, out)
 	if err == nil {
 		return nil
 	}
@@ -65,11 +66,11 @@ func Login(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrows
 	}
 
 	slog.Debug("retrying login with fresh client registration")
-	fmt.Println("Token exchange failed; retrying with fresh client registration...")
-	return loginAttempt(ctx, oauth, store, openBrowser, true)
+	fmt.Fprintln(out, "Token exchange failed; retrying with fresh client registration...")
+	return loginAttempt(ctx, oauth, store, openBrowser, true, out)
 }
 
-func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool) error {
+func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, openBrowser BrowserOpener, forceNewClient bool, out io.Writer) error {
 	slog.Debug("starting login attempt", "force_new_client", forceNewClient)
 	// Start callback server.
 	srv, err := StartCallbackServer()
@@ -101,16 +102,16 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 
 	// Build authorization URL and open browser.
 	authURL := oauth.AuthorizationURL(clientID, redirectURI, state, challenge)
-	fmt.Println("Opening browser to log in...")
-	fmt.Printf("If the browser doesn't open, visit:\n%s\n\n", authURL)
+	fmt.Fprintln(out, "Opening browser to log in...")
+	fmt.Fprintf(out, "If the browser doesn't open, visit:\n%s\n\n", authURL)
 
 	if err := openBrowser(authURL); err != nil {
 		// Non-fatal — user can copy the URL.
-		fmt.Printf("Could not open browser: %v\n", err)
+		fmt.Fprintf(out, "Could not open browser: %v\n", err)
 	}
 
 	// Wait for callback.
-	fmt.Println("Waiting for authorization...")
+	fmt.Fprintln(out, "Waiting for authorization...")
 	var result CallbackResult
 	select {
 	case result = <-srv.Result:
@@ -145,7 +146,7 @@ func loginAttempt(ctx context.Context, oauth *OAuthClient, store *TokenStore, op
 	}
 
 	slog.Debug("tokens stored successfully")
-	fmt.Println("Login successful!")
+	fmt.Fprintln(out, "Login successful!")
 	return nil
 }
 

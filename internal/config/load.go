@@ -42,6 +42,8 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 	}
 	configs = append(configs, base)
 
+	var overrides []Override
+
 	localPath := filepath.Join(dir, LocalConfigFile)
 	if _, err := os.Stat(localPath); err == nil {
 		slog.Debug("loading local override", "path", localPath)
@@ -49,6 +51,7 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", localPath, err)
 		}
+		overrides = append(overrides, findOverrides(base, local, "local override")...)
 		configs = append(configs, local)
 	}
 
@@ -58,9 +61,45 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", path, err)
 		}
+		// Compare against the accumulated merge so far.
+		accumulated := Merge(configs...)
+		overrides = append(overrides, findOverrides(accumulated, extra, filepath.Base(path))...)
 		configs = append(configs, extra)
 	}
 
 	slog.Debug("merged config files", "count", len(configs))
-	return Merge(configs...), nil
+	result := Merge(configs...)
+	result.Overrides = overrides
+	return result, nil
+}
+
+// findOverrides detects variables in overlay that override variables in base.
+func findOverrides(base, overlay *DesiredConfig, sourceName string) []Override {
+	var overrides []Override
+	if base.Shared != nil && overlay.Shared != nil {
+		for k := range overlay.Shared.Vars {
+			if _, ok := base.Shared.Vars[k]; ok {
+				overrides = append(overrides, Override{
+					Path: "shared.variables." + k, Source: sourceName,
+				})
+			}
+		}
+	}
+	for svcName, overlaySvc := range overlay.Services {
+		if overlaySvc == nil {
+			continue
+		}
+		baseSvc, ok := base.Services[svcName]
+		if !ok || baseSvc == nil {
+			continue
+		}
+		for k := range overlaySvc.Variables {
+			if _, ok := baseSvc.Variables[k]; ok {
+				overrides = append(overrides, Override{
+					Path: svcName + ".variables." + k, Source: sourceName,
+				})
+			}
+		}
+	}
+	return overrides
 }

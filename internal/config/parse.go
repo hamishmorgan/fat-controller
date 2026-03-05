@@ -122,6 +122,13 @@ func Parse(data []byte) (*DesiredConfig, error) {
 	return cfg, nil
 }
 
+// knownServiceKeys are valid keys inside a service block.
+var knownServiceKeys = map[string]bool{
+	"variables": true,
+	"resources": true,
+	"deploy":    true,
+}
+
 func parseService(name string, raw map[string]any) (*DesiredService, error) {
 	svc := &DesiredService{}
 
@@ -170,6 +177,13 @@ func parseService(name string, raw map[string]any) (*DesiredService, error) {
 			deploy.HealthcheckPath = &v
 		}
 		svc.Deploy = deploy
+	}
+
+	// Track unknown keys for W002 warnings.
+	for key := range raw {
+		if !knownServiceKeys[key] {
+			svc.UnknownKeys = append(svc.UnknownKeys, key)
+		}
 	}
 
 	return svc, nil

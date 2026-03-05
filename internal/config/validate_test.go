@@ -1,6 +1,8 @@
 package config_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -322,4 +324,292 @@ func TestValidate_SuppressedWarnings_OthersStillEmitted(t *testing.T) {
 	warnings := config.Validate(cfg, nil)
 	assertNoWarning(t, warnings, "W030")
 	assertHasWarning(t, warnings, "W012")
+}
+
+// --- W002: Unknown key in service block ---
+
+func TestValidate_W002_UnknownServiceKey(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {
+				Variables:   map[string]string{"PORT": "8080"},
+				UnknownKeys: []string{"foo"},
+			},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W002")
+	for _, w := range warnings {
+		if w.Code == "W002" {
+			if w.Path != "api.foo" {
+				t.Errorf("W002 path = %q, want %q", w.Path, "api.foo")
+			}
+		}
+	}
+}
+
+func TestValidate_W002_NoWarningWithKnownKeys(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {
+				Variables: map[string]string{"PORT": "8080"},
+				// No unknown keys
+			},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W002")
+}
+
+// --- W021: Variable overridden by local file ---
+
+func TestValidate_W021_VariableOverriddenByLocal(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"PORT": "4000"}},
+		},
+		Overrides: []config.Override{
+			{Path: "api.variables.PORT", Source: "local override"},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W021")
+}
+
+func TestValidate_W021_NoOverridesNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"PORT": "4000"}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W021")
+}
+
+// --- W031: Invalid variable name characters ---
+
+func TestValidate_W031_SpaceInVarName(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"MY VAR": "value",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W031")
+}
+
+func TestValidate_W031_SpecialCharsInVarName(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"PORT@8080": "value",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W031")
+}
+
+func TestValidate_W031_ValidNameNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"MY_VAR_123": "value",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W031")
+}
+
+// --- W050: Hardcoded secret in config ---
+
+func TestValidate_W050_HardcodedSecret(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				// ENCRYPTION_KEY matches sensitive keyword → masker returns MaskedValue
+				// regardless of value content. Short value avoids gitleaks false positive.
+				"ENCRYPTION_KEY": "my-secret-value",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W050")
+}
+
+func TestValidate_W050_InterpolatedNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"API_KEY": "${API_KEY}",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W050")
+}
+
+func TestValidate_W050_NonSensitiveNameNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"PORT": "8080",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W050")
+}
+
+// --- W051: Local override file not gitignored ---
+
+func TestValidateFiles_W051_LocalNotGitignored(t *testing.T) {
+	dir := t.TempDir()
+	// Create local config file but no .gitignore.
+	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warnings := config.ValidateFiles(dir)
+	assertHasWarning(t, warnings, "W051")
+}
+
+func TestValidateFiles_W051_GitignoreContainsLocal(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(config.LocalConfigFile+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warnings := config.ValidateFiles(dir)
+	assertNoWarning(t, warnings, "W051")
+}
+
+func TestValidateFiles_W051_NoLocalFile(t *testing.T) {
+	dir := t.TempDir()
+	warnings := config.ValidateFiles(dir)
+	assertNoWarning(t, warnings, "W051")
+}
+
+func TestValidateFiles_W051_GitignoreWithoutLocal(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("node_modules\n.env\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	warnings := config.ValidateFiles(dir)
+	assertHasWarning(t, warnings, "W051")
+}
+
+// --- W060: Reference to unknown service ---
+
+func TestValidate_W060_UnknownServiceRef(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"DB_URL": "${{postgres.DATABASE_URL}}",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W060")
+}
+
+func TestValidate_W060_KnownServiceRefNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{
+				"DB_URL": "${{postgres.DATABASE_URL}}",
+			}},
+			"postgres": {Variables: map[string]string{"PORT": "5432"}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W060")
+}
+
+func TestValidate_W060_SharedVarUnknownServiceRef(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Shared: &config.DesiredVariables{Vars: map[string]string{
+			"DB_URL": "${{postgres.DATABASE_URL}}",
+		}},
+		Services: map[string]*config.DesiredService{
+			"api": {Variables: map[string]string{"PORT": "8080"}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W060")
+}
+
+// --- W002 via parser integration ---
+
+func TestParse_W002_UnknownServiceKey(t *testing.T) {
+	data := []byte(`
+[api]
+foo = "bar"
+
+[api.variables]
+PORT = "8080"
+`)
+	cfg, err := config.Parse(data)
+	if err != nil {
+		t.Fatalf("Parse() error: %v", err)
+	}
+	svc := cfg.Services["api"]
+	if len(svc.UnknownKeys) == 0 {
+		t.Fatal("expected UnknownKeys to contain 'foo'")
+	}
+	found := false
+	for _, k := range svc.UnknownKeys {
+		if k == "foo" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected 'foo' in UnknownKeys, got %v", svc.UnknownKeys)
+	}
+}
+
+// --- W021 via LoadConfigs integration ---
+
+func TestLoadConfigs_W021_LocalOverride(t *testing.T) {
+	dir := t.TempDir()
+	// Base config.
+	if err := os.WriteFile(filepath.Join(dir, config.BaseConfigFile), []byte(`
+[api.variables]
+PORT = "3000"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Local override.
+	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte(`
+[api.variables]
+PORT = "4000"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.LoadConfigs(dir, nil)
+	if err != nil {
+		t.Fatalf("LoadConfigs() error: %v", err)
+	}
+	if len(cfg.Overrides) == 0 {
+		t.Fatal("expected overrides to be populated")
+	}
+	found := false
+	for _, ov := range cfg.Overrides {
+		if ov.Path == "api.variables.PORT" && ov.Source == "local override" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected override for api.variables.PORT from local, got %+v", cfg.Overrides)
+	}
+	// Validate should produce W021.
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W021")
 }

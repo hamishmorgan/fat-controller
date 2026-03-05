@@ -1,5 +1,11 @@
 package config
 
+// Override records that a variable was overridden by a later config file.
+type Override struct {
+	Path   string // dot-path e.g. "api.variables.PORT"
+	Source string // e.g. "local override"
+}
+
 // DesiredConfig represents the desired state parsed from fat-controller.toml.
 // It contains only the fields the user explicitly specified — omitted fields
 // mean "don't touch".
@@ -13,13 +19,16 @@ type DesiredConfig struct {
 	SensitiveKeywords  []string
 	SensitiveAllowlist []string
 	SuppressWarnings   []string
+
+	Overrides []Override `toml:"-"` // populated by LoadConfigs, checked by Validate
 }
 
 // DesiredService holds one service's desired configuration.
 type DesiredService struct {
-	Variables map[string]string // nil means no [svc.variables] section
-	Resources *DesiredResources // nil means no [svc.resources] section
-	Deploy    *DesiredDeploy    // nil means no [svc.deploy] section
+	Variables   map[string]string // nil means no [svc.variables] section
+	Resources   *DesiredResources // nil means no [svc.resources] section
+	Deploy      *DesiredDeploy    // nil means no [svc.deploy] section
+	UnknownKeys []string          `toml:"-"` // populated by parser, used by validator
 }
 
 // DesiredVariables holds shared or per-service variables from config.

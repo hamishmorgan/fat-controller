@@ -27,7 +27,7 @@ fat-controller config delete <path> [flags]
 | `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |
 | `--confirm` | bool |  | `FAT_CONTROLLER_CONFIRM` | Auto-execute mutations (skip confirmation). |
 | `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Force preview of mutations. |
-| `-c`, `--config` | string[] |  | `FAT_CONTROLLER_CONFIG` | Railway config file paths. Repeatable. |
+| `-f`, `--file` | string[] |  | `FAT_CONTROLLER_CONFIG` | Railway config file paths. Repeatable. |
 | `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
 | `--skip-deploys` | bool |  | `FAT_CONTROLLER_SKIP_DEPLOYS` | Don't trigger redeployments. |
 | `--fail-fast` | bool |  | `FAT_CONTROLLER_FAIL_FAST` | Stop on first error during apply. |

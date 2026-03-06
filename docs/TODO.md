@@ -12,20 +12,22 @@
 ## Code Quality & Testing
 
 - [ ] Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (currently ~0-60%).
-- [ ] Tie auth callback server goroutine lifecycle to context/cancellation.
-- [ ] Add shell completions (kong custom completers or external generator).
 
 ## Docs & UX Polish
 
-- [ ] Align `docs/WARNINGS.md` warning codes with `internal/config/validate.go` (or implement the missing warnings).
-- [ ] Decide whether warnings should run during `config diff`/`config apply` (docs say yes); wire validation in or update docs.
 - [ ] Clarify configuration layering and file support (global `$XDG_CONFIG_HOME/...` vs local `.fat-controller.toml` vs `fat-controller.toml`).
 - [ ] Clarify `config validate --quiet` behavior in docs vs implementation.
 - [ ] Improve `config get` path parsing to support keys containing `.` (quoted TOML keys), or document the limitation.
-- [ ] Fetch/include live `serviceInstanceLimits` (resource limits) so specified limits do not always diff.
 
 ## Done
 
+- [x] Align `docs/WARNINGS.md` warning codes with `internal/config/validate.go` (implement missing W002, W021, W031, W050, W051, W060).
+- [x] Wire warnings into `config diff` and `config apply` via shared `loadAndFetch` pipeline.
+- [x] Fetch/include live `serviceInstanceLimits` (resource limits) so specified limits do not always diff.
+- [x] Add shell completions (bash, zsh, fish) via `jotaen/kong-completion`.
+- [x] Tie auth callback server goroutine lifecycle to context/cancellation (auth respects `--timeout` and signal cancellation).
+- [x] Add SIGINT/SIGTERM signal handling with graceful context cancellation.
+- [x] Make auth commands testable with injectable `io.Writer`.
 - [x] Implement config validation warnings (W003-W041) and wire up `config validate` command.
 - [x] Include deploy/build settings in live state fetches so `config get --full` and diffs reflect them.
 - [x] Batch variable updates in apply using `variableCollectionUpsert` instead of per-variable mutations.

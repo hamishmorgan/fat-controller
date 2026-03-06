@@ -10,14 +10,19 @@ Log in to Railway via browser-based OAuth.
 fat-controller auth login [flags]
 ```
 
-## Global Flags
+## Flags
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
 | `--token` | string |  |  | Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence. |
+| `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |
+
+## Global Flags
+
+| Flag | Type | Default | Env | Description |
+|------|------|---------|-----|-------------|
 | `-o`, `--output` | text\|json\|toml | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml. |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
-| `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |
 | `-v`, `--verbose` | bool |  |  | Enable debug logging (config loading, auth, HTTP requests, apply operations). |
 | `-q`, `--quiet` | bool |  |  | Suppress informational and debug output (warnings and errors only). |
 | `-V`, `--version` | bool |  |  | Print version. |

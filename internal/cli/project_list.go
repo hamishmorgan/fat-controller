@@ -83,9 +83,9 @@ func RunProjectList(ctx context.Context, globals *Globals, workspace string, lis
 
 // Run implements `project list`.
 func (c *ProjectListCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
-	client, err := newClient(globals)
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
 	if err != nil {
 		return err
 	}

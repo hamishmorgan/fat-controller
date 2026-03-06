@@ -50,8 +50,8 @@ func TestAuthStatusCmd_ViaFlagToken(t *testing.T) {
 	clearAuthEnv(t)
 
 	cmd := &cli.AuthStatusCmd{}
-	globals := &cli.Globals{Token: "test-flag-token"}
-	if err := cmd.Run(globals); err != nil {
+	cmd.Token = "test-flag-token"
+	if err := cmd.Run(&cli.Globals{}); err != nil {
 		t.Fatalf("AuthStatusCmd.Run() returned error: %v", err)
 	}
 }

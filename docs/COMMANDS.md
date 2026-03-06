@@ -73,13 +73,13 @@ The full settings table:
 
 | Setting | CLI flag | Env var | Config key | Default | Description |
 |---------|----------|---------|------------|---------|-------------|
-| Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token. `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
+| Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token (all API commands). `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
 | Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | — | Workspace ID or name (config/get/set/delete/init/diff/apply, project list, environment list). |
 | Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name (config/get/set/delete/init/diff/apply, environment list). |
 | Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name (config/get/set/delete/init/diff/apply). |
 | Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
 | Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR`. |
-| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout. |
+| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout (all API commands). |
 | Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Answer yes to all confirmation prompts (set/delete/init/apply). |
 | Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Force preview of mutations (set/delete/init/apply). |
 | Config file | `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Railway config file path. Repeatable (diff/apply/validate). |

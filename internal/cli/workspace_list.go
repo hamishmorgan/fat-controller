@@ -79,9 +79,9 @@ func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLis
 
 // Run implements `workspace list`.
 func (c *WorkspaceListCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
-	client, err := newClient(globals)
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
 	if err != nil {
 		return err
 	}

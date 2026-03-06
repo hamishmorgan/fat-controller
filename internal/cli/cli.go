@@ -12,16 +12,15 @@ import (
 
 // Globals holds values that are available to every command's Run() method.
 // Kong tags are here so CLI can embed Globals directly.
-// Command-specific flags live in mixin structs (MutationFlags, ConfigFileFlags,
-// ServiceFlags/EnvironmentFlags/ProjectFlags/WorkspaceFlags hierarchy)
+// Command-specific flags live in mixin structs (ApiFlags, MutationFlags,
+// ConfigFileFlags, and the resolution hierarchy
+// ApiFlags → WorkspaceFlags → ProjectFlags → EnvironmentFlags → ServiceFlags)
 // or directly on command structs — not here.
 type Globals struct {
-	Token   string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
-	Output  string        `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
-	Color   string        `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
-	Timeout time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
-	Verbose bool          `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
-	Quiet   bool          `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
+	Output  string `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
+	Color   string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
+	Verbose bool   `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
+	Quiet   bool   `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
 
 	// BaseCtx is the root context for all commands. Set by main() with
 	// signal.NotifyContext so that SIGINT/SIGTERM cancels in-flight work.
@@ -32,13 +31,36 @@ type Globals struct {
 // Resolution flag hierarchy: each level embeds its parent so that a command
 // only needs to embed one struct to get the full ancestry.
 //
-//	WorkspaceFlags
-//	  └── ProjectFlags     (+ --workspace)
-//	        └── EnvironmentFlags  (+ --workspace, --project)
-//	              └── ServiceFlags        (+ --workspace, --project, --environment)
+//	ApiFlags        (--token, --timeout)
+//	  └── WorkspaceFlags   (+ --workspace)
+//	        └── ProjectFlags      (+ --project)
+//	              └── EnvironmentFlags   (+ --environment)
+//	                    └── ServiceFlags        (+ --service)
+
+// ApiFlags is embedded by commands that make API calls. It provides
+// --token and --timeout. It is the base of the resolution hierarchy.
+type ApiFlags struct {
+	Token   string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
+	Timeout time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
+}
+
+// TimeoutContext returns a context with the configured timeout applied.
+// If Timeout is zero (or negative), it returns ctx and a no-op cancel func
+// so callers always get a valid cancel to defer.
+// A nil parent is treated as context.Background() for safety in tests.
+func (a *ApiFlags) TimeoutContext(parent context.Context) (context.Context, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	if a.Timeout > 0 {
+		return context.WithTimeout(parent, a.Timeout)
+	}
+	return parent, func() {}
+}
 
 // WorkspaceFlags is embedded by commands that need --workspace only.
 type WorkspaceFlags struct {
+	ApiFlags  `kong:"embed"`
 	Workspace string `help:"Workspace ID or name." env:"FAT_CONTROLLER_WORKSPACE"`
 }
 
@@ -70,20 +92,6 @@ type MutationFlags struct {
 // ConfigFileFlags are embedded by commands that read config files (diff, apply, validate).
 type ConfigFileFlags struct {
 	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
-}
-
-// TimeoutContext returns a context with the configured timeout applied.
-// If Timeout is zero (or negative), it returns ctx and a no-op cancel func
-// so callers always get a valid cancel to defer.
-// A nil parent is treated as context.Background() for safety in tests.
-func (g *Globals) TimeoutContext(parent context.Context) (context.Context, context.CancelFunc) {
-	if parent == nil {
-		parent = context.Background()
-	}
-	if g.Timeout > 0 {
-		return context.WithTimeout(parent, g.Timeout)
-	}
-	return parent, func() {}
 }
 
 // Logger returns a slog.Logger configured for the current verbosity level.
@@ -132,13 +140,17 @@ type AuthCmd struct {
 }
 
 // AuthLoginCmd implements `auth login`.
-type AuthLoginCmd struct{}
+type AuthLoginCmd struct {
+	ApiFlags `kong:"embed"`
+}
 
 // AuthLogoutCmd implements `auth logout`.
 type AuthLogoutCmd struct{}
 
 // AuthStatusCmd implements `auth status`.
-type AuthStatusCmd struct{}
+type AuthStatusCmd struct {
+	ApiFlags `kong:"embed"`
+}
 
 // ConfigCmd is the `config` command group.
 type ConfigCmd struct {
@@ -224,7 +236,9 @@ type WorkspaceCmd struct {
 	List WorkspaceListCmd `cmd:"" help:"List available workspaces."`
 }
 
-type WorkspaceListCmd struct{}
+type WorkspaceListCmd struct {
+	ApiFlags `kong:"embed"`
+}
 
 // Run methods:
 // - ConfigInitCmd.Run   → config_init.go

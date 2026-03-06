@@ -14,7 +14,7 @@ import (
 )
 
 func (c *AuthLoginCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	return RunAuthLogin(ctx, globals, os.Stdout)
 }
@@ -47,19 +47,19 @@ func RunAuthLogout(out io.Writer) error {
 }
 
 func (c *AuthStatusCmd) Run(globals *Globals) error {
-	ctx, cancel := globals.TimeoutContext(globals.BaseCtx)
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
-	return RunAuthStatus(ctx, globals, os.Stdout)
+	return RunAuthStatus(ctx, c.Token, globals, os.Stdout)
 }
 
 // RunAuthStatus is the testable core of `auth status`.
-func RunAuthStatus(ctx context.Context, globals *Globals, out io.Writer) error {
+func RunAuthStatus(ctx context.Context, token string, globals *Globals, out io.Writer) error {
 	slog.Debug("checking auth status")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
 
-	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)
+	resolved, err := auth.ResolveAuth(ctx, token, store)
 	if err != nil {
 		_, _ = fmt.Fprintln(out, "Not authenticated.")
 		_, _ = fmt.Fprintln(out, "Run 'fat-controller auth login' or set RAILWAY_TOKEN.")

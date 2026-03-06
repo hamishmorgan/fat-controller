@@ -192,3 +192,31 @@ func TestMaskValue_BoardingPassMasked(t *testing.T) {
 		t.Errorf("BOARDING_PASS should trigger PASS match, got %q", got)
 	}
 }
+
+func TestIsSensitive_MatchesSensitiveNames(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	sensitive := []string{"DATABASE_URL", "API_KEY", "SESSION_SECRET", "AUTH_TOKEN", "STRIPE_API_KEY"}
+	for _, name := range sensitive {
+		if !m.IsSensitive(name) {
+			t.Errorf("IsSensitive(%q) = false, want true", name)
+		}
+	}
+}
+
+func TestIsSensitive_IgnoresNonSensitiveNames(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	nonSensitive := []string{"PORT", "APP_NAME", "HOST", "LOG_LEVEL", "QUEUE"}
+	for _, name := range nonSensitive {
+		if m.IsSensitive(name) {
+			t.Errorf("IsSensitive(%q) = true, want false", name)
+		}
+	}
+}
+
+func TestIsSensitive_RespectsAllowlist(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	// PRIMARY_KEY is on the allowlist — should not be sensitive.
+	if m.IsSensitive("PRIMARY_KEY") {
+		t.Error("IsSensitive(PRIMARY_KEY) = true, want false (allowlisted)")
+	}
+}

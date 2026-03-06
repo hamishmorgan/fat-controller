@@ -18,6 +18,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/config"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 	"github.com/zalando/go-keyring"
 )
@@ -671,6 +672,14 @@ func newTestFetcher(t *testing.T, opts ...mockServerOption) (*mockGraphQLServer,
 	return mock, &e2eFetcher{client: client}
 }
 
+// newTestInitResolver creates an e2eInitResolver pointed at a mock server.
+func newTestInitResolver(t *testing.T, opts ...mockServerOption) (*mockGraphQLServer, *e2eInitResolver) {
+	t.Helper()
+	mock := newMockGraphQLServer(t, opts...)
+	client := newTestClient(mock.URL())
+	return mock, &e2eInitResolver{client: client}
+}
+
 // newTestApplier creates a RailwayApplier pointed at the mock server with
 // fixture project/environment IDs.
 func newTestApplier(mock *mockGraphQLServer) *apply.RailwayApplier {
@@ -694,6 +703,40 @@ func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environmen
 
 func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {
 	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, service)
+}
+
+// e2eInitResolver implements initResolver for e2e tests, delegating to the
+// Named resolve functions pointed at the mock server.
+type e2eInitResolver struct {
+	client *railway.Client
+}
+
+func (e *e2eInitResolver) ResolveWorkspace(ctx context.Context, workspace string) (string, string, error) {
+	r, err := railway.ResolveWorkspaceNamed(ctx, e.client, workspace, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return r.Name, r.ID, nil
+}
+
+func (e *e2eInitResolver) ResolveProject(ctx context.Context, workspaceID, project string) (string, string, error) {
+	r, err := railway.ResolveProjectNamed(ctx, e.client, workspaceID, project, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return r.Name, r.ID, nil
+}
+
+func (e *e2eInitResolver) ResolveEnvironment(ctx context.Context, projectID, env string) (string, string, error) {
+	r, err := railway.ResolveEnvironmentNamed(ctx, e.client, projectID, env, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return r.Name, r.ID, nil
+}
+
+func (e *e2eInitResolver) Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, "")
 }
 
 // dedent strips the common leading whitespace from all non-empty lines
@@ -739,11 +782,11 @@ func writeConfigTOML(t *testing.T, dir, content string) {
 // credentials or network calls are required.
 func TestCLIE2E_MockedGraphQL(t *testing.T) {
 	t.Run("config init generates expected file", func(t *testing.T) {
-		_, fetcher := newTestFetcher(t)
+		_, resolver := newTestInitResolver(t)
 
 		dir := t.TempDir()
 		var out bytes.Buffer
-		if err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, fetcher, &out); err != nil {
+		if err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, &out); err != nil {
 			t.Fatalf("RunConfigInit() error: %v", err)
 		}
 
@@ -766,13 +809,13 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 	})
 
 	t.Run("config init refuses overwrite of existing file", func(t *testing.T) {
-		// RunConfigInit checks for existing file before calling the fetcher,
+		// RunConfigInit checks for existing file before calling the resolver,
 		// so no mock server is needed.
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `project = "existing"`)
 
 		var out bytes.Buffer
-		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, nil, &out)
+		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, nil, false, &out)
 		if err == nil {
 			t.Fatal("expected error when config file already exists")
 		}
@@ -782,14 +825,14 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 	})
 
 	t.Run("config init fails with ambiguous workspace in non-tty", func(t *testing.T) {
-		_, fetcher := newTestFetcher(t, withWorkspaces(
+		_, resolver := newTestInitResolver(t, withWorkspaces(
 			mockWorkspace{ID: fixtureWorkspaceID, Name: fixtureWorkspaceName},
 			mockWorkspace{ID: "ws-2", Name: "Contoso"},
 		))
 
 		dir := t.TempDir()
 		var out bytes.Buffer
-		err := cli.RunConfigInit(context.Background(), dir, "", "", "", fetcher, &out)
+		err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &out)
 		if err == nil {
 			t.Fatal("expected error for ambiguous workspace selection in non-tty")
 		}

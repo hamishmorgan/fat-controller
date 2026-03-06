@@ -13,24 +13,75 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// NOTE: These tests reuse fakeFetcher from config_get_test.go (same package).
+// fakeInitResolver implements cli.InitResolver for testing.
+type fakeInitResolver struct {
+	wsName   string
+	wsID     string
+	wsErr    error
+	projName string
+	projID   string
+	projErr  error
+	envName  string
+	envID    string
+	envErr   error
+	cfg      *config.LiveConfig
+	fetchErr error
+}
+
+func (f *fakeInitResolver) ResolveWorkspace(_ context.Context, _ string) (string, string, error) {
+	if f.wsErr != nil {
+		return "", "", f.wsErr
+	}
+	return f.wsName, f.wsID, nil
+}
+
+func (f *fakeInitResolver) ResolveProject(_ context.Context, _, _ string) (string, string, error) {
+	if f.projErr != nil {
+		return "", "", f.projErr
+	}
+	return f.projName, f.projID, nil
+}
+
+func (f *fakeInitResolver) ResolveEnvironment(_ context.Context, _, _ string) (string, string, error) {
+	if f.envErr != nil {
+		return "", "", f.envErr
+	}
+	return f.envName, f.envID, nil
+}
+
+func (f *fakeInitResolver) Fetch(_ context.Context, _, _ string) (*config.LiveConfig, error) {
+	if f.fetchErr != nil {
+		return nil, f.fetchErr
+	}
+	return f.cfg, nil
+}
+
+func newFakeResolver(cfg *config.LiveConfig) *fakeInitResolver {
+	return &fakeInitResolver{
+		wsName:   "acme-corp",
+		wsID:     "ws-1",
+		projName: "my-app",
+		projID:   "proj-1",
+		envName:  "production",
+		envID:    "env-1",
+		cfg:      cfg,
+	}
+}
 
 func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 	dir := t.TempDir()
-	fetcher := &fakeFetcher{
-		cfg: &config.LiveConfig{
-			ProjectID:     "proj-1",
-			EnvironmentID: "env-1",
-			Services: map[string]*config.ServiceConfig{
-				"api": {
-					Name:      "api",
-					Variables: map[string]string{"PORT": "8080", "APP_ENV": "production"},
-				},
+	resolver := newFakeResolver(&config.LiveConfig{
+		ProjectID:     "proj-1",
+		EnvironmentID: "env-1",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080", "APP_ENV": "production"},
 			},
 		},
-	}
+	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "my-app", "production", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -41,8 +92,9 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 		t.Fatalf("reading config file: %v", err)
 	}
 	got := string(content)
-	if strings.Contains(got, `workspace = `) {
-		t.Errorf("did not expect workspace header when not provided, got:\n%s", got)
+	// Uses resolved names from the fakeInitResolver.
+	if !strings.Contains(got, `workspace = "acme-corp"`) {
+		t.Errorf("expected workspace header in file:\n%s", got)
 	}
 	if !strings.Contains(got, `project = "my-app"`) {
 		t.Errorf("expected project header in file:\n%s", got)
@@ -58,6 +110,34 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 	}
 }
 
+func TestRunConfigInit_PrintsSummaryLines(t *testing.T) {
+	dir := t.TempDir()
+	resolver := newFakeResolver(&config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api":    {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			"worker": {Name: "worker", Variables: map[string]string{"QUEUE": "default"}},
+		},
+	})
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigInit() error: %v", err)
+	}
+	got := buf.String()
+
+	// Should print summary lines for each resolved entity.
+	for _, want := range []string{
+		"Workspace: acme-corp",
+		"Project: my-app",
+		"Environment: production",
+		"Services: api, worker (2 selected)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
 func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 	dir := t.TempDir()
 	// Create an existing config file.
@@ -66,11 +146,9 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 		t.Fatalf("write existing: %v", err)
 	}
 
-	fetcher := &fakeFetcher{
-		cfg: &config.LiveConfig{Services: map[string]*config.ServiceConfig{}},
-	}
+	resolver := newFakeResolver(&config.LiveConfig{Services: map[string]*config.ServiceConfig{}})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
 	if err == nil {
 		t.Fatal("expected error when config file already exists")
 	}
@@ -79,58 +157,190 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 	}
 }
 
-func TestRunConfigInit_CreatesLocalTOMLStub(t *testing.T) {
+func TestRunConfigInit_CreatesLocalTOMLWithSecrets(t *testing.T) {
 	dir := t.TempDir()
-	fetcher := &fakeFetcher{
-		cfg: &config.LiveConfig{
-			Services: map[string]*config.ServiceConfig{
-				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+	resolver := newFakeResolver(&config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"PORT":           "8080",
+					"DATABASE_URL":   "postgres://...",
+					"STRIPE_API_KEY": "sk_live_xxx",
+					"SESSION_SECRET": "abc123",
+					"APP_NAME":       "my-app",
+				},
 			},
 		},
-	}
+	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	// Verify .local.toml stub was created.
+	// Verify .local.toml was created with interpolation refs for secrets.
 	localPath := filepath.Join(dir, "fat-controller.local.toml")
 	content, err := os.ReadFile(localPath)
 	if err != nil {
 		t.Fatalf("reading local config: %v", err)
 	}
-	if !strings.Contains(string(content), "Local overrides") {
-		t.Errorf("expected comment in local stub:\n%s", string(content))
+	got := string(content)
+
+	// Should contain interpolation refs for sensitive vars.
+	for _, want := range []string{
+		"[api.variables]",
+		`DATABASE_URL = "${DATABASE_URL}"`,
+		`SESSION_SECRET = "${SESSION_SECRET}"`,
+		`STRIPE_API_KEY = "${STRIPE_API_KEY}"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in local config, got:\n%s", want, got)
+		}
+	}
+
+	// Should NOT contain non-sensitive vars.
+	if strings.Contains(got, "PORT") {
+		t.Errorf("PORT is not sensitive — should not be in local config:\n%s", got)
+	}
+	if strings.Contains(got, "APP_NAME") {
+		t.Errorf("APP_NAME is not sensitive — should not be in local config:\n%s", got)
 	}
 }
 
-func TestRunConfigInit_PrintsSummary(t *testing.T) {
+func TestRunConfigInit_LocalTOMLSharedSecrets(t *testing.T) {
 	dir := t.TempDir()
-	fetcher := &fakeFetcher{
-		cfg: &config.LiveConfig{
-			Services: map[string]*config.ServiceConfig{
-				"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
-			},
+	resolver := newFakeResolver(&config.LiveConfig{
+		Shared: map[string]string{
+			"GLOBAL_SECRET": "s3cr3t",
+			"APP_MODE":      "production",
 		},
-	}
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+		},
+	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
-	got := buf.String()
-	if !strings.Contains(got, "fat-controller.toml") {
-		t.Errorf("expected filename in output:\n%s", got)
+
+	localPath := filepath.Join(dir, "fat-controller.local.toml")
+	content, err := os.ReadFile(localPath)
+	if err != nil {
+		t.Fatalf("reading local config: %v", err)
+	}
+	got := string(content)
+
+	if !strings.Contains(got, "[shared.variables]") {
+		t.Errorf("expected shared section in local config:\n%s", got)
+	}
+	if !strings.Contains(got, `GLOBAL_SECRET = "${GLOBAL_SECRET}"`) {
+		t.Errorf("expected GLOBAL_SECRET interpolation ref:\n%s", got)
+	}
+	if strings.Contains(got, "APP_MODE") {
+		t.Errorf("APP_MODE is not sensitive — should not be in local config:\n%s", got)
 	}
 }
 
-func TestRunConfigInit_ResolveError(t *testing.T) {
+func TestRunConfigInit_LocalTOMLNoSecretsFallsBack(t *testing.T) {
 	dir := t.TempDir()
-	fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
+	resolver := newFakeResolver(&config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"PORT": "8080", "APP_NAME": "hello"}},
+		},
+	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "proj", "env", fetcher, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigInit() error: %v", err)
+	}
+
+	localPath := filepath.Join(dir, "fat-controller.local.toml")
+	content, err := os.ReadFile(localPath)
+	if err != nil {
+		t.Fatalf("reading local config: %v", err)
+	}
+	got := string(content)
+
+	// No secrets found — should contain the fallback stub.
+	if !strings.Contains(got, "No secrets detected") {
+		t.Errorf("expected fallback stub when no secrets, got:\n%s", got)
+	}
+	if !strings.Contains(got, "STRIPE_KEY") {
+		t.Errorf("expected example in fallback stub:\n%s", got)
+	}
+}
+
+func TestRunConfigInit_NonInteractiveIncludesAllServices(t *testing.T) {
+	dir := t.TempDir()
+	resolver := newFakeResolver(&config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api":    {Name: "api", Variables: map[string]string{"PORT": "8080"}},
+			"worker": {Name: "worker", Variables: map[string]string{"QUEUE": "default"}},
+			"web":    {Name: "web", Variables: map[string]string{"HOST": "0.0.0.0"}},
+		},
+	})
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigInit() error: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "fat-controller.toml"))
+	if err != nil {
+		t.Fatalf("reading config: %v", err)
+	}
+	got := string(content)
+
+	for _, svc := range []string{"api", "worker", "web"} {
+		if !strings.Contains(got, "["+svc+".variables]") {
+			t.Errorf("expected [%s.variables] section, got:\n%s", svc, got)
+		}
+	}
+
+	// Output should mention 3 services.
+	if !strings.Contains(buf.String(), "3 services") {
+		t.Errorf("expected '3 services' in output, got: %s", buf.String())
+	}
+}
+
+func TestRunConfigInit_ResolveWorkspaceError(t *testing.T) {
+	dir := t.TempDir()
+	resolver := &fakeInitResolver{wsErr: errors.New("no workspace")}
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
 	if err == nil {
-		t.Fatal("expected error from resolve failure")
+		t.Fatal("expected error from workspace resolve failure")
+	}
+	if !strings.Contains(err.Error(), "no workspace") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestRunConfigInit_ResolveProjectError(t *testing.T) {
+	dir := t.TempDir()
+	resolver := &fakeInitResolver{
+		wsName: "acme", wsID: "ws-1",
+		projErr: errors.New("no project"),
+	}
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	if err == nil {
+		t.Fatal("expected error from project resolve failure")
+	}
+}
+
+func TestRunConfigInit_ResolveEnvironmentError(t *testing.T) {
+	dir := t.TempDir()
+	resolver := &fakeInitResolver{
+		wsName: "acme", wsID: "ws-1",
+		projName: "app", projID: "proj-1",
+		envErr: errors.New("no environment"),
+	}
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	if err == nil {
+		t.Fatal("expected error from environment resolve failure")
 	}
 }

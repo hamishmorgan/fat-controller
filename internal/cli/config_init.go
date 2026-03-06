@@ -7,9 +7,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 func ensureGitignoreHasLine(dir, line string) (bool, error) {
@@ -54,11 +57,47 @@ func ensureGitignoreHasLine(dir, line string) (bool, error) {
 	return true, nil
 }
 
-const localConfigStub = `# Local overrides (gitignored). Use for secrets and per-developer settings.
-# Example:
-#   [api.variables]
-#   STRIPE_KEY = "${STRIPE_KEY}"
-`
+// initResolver provides step-by-step resolution for `config init`,
+// returning both name and ID for each entity so summaries can be printed.
+type initResolver interface {
+	ResolveWorkspace(ctx context.Context, workspace string) (name, id string, err error)
+	ResolveProject(ctx context.Context, workspaceID, project string) (name, id string, err error)
+	ResolveEnvironment(ctx context.Context, projectID, env string) (name, id string, err error)
+	Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error)
+}
+
+// railwayInitResolver implements initResolver using the Railway API.
+type railwayInitResolver struct {
+	client *railway.Client
+}
+
+func (r *railwayInitResolver) ResolveWorkspace(ctx context.Context, workspace string) (string, string, error) {
+	e, err := railway.ResolveWorkspaceNamed(ctx, r.client, workspace, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return e.Name, e.ID, nil
+}
+
+func (r *railwayInitResolver) ResolveProject(ctx context.Context, workspaceID, project string) (string, string, error) {
+	e, err := railway.ResolveProjectNamed(ctx, r.client, workspaceID, project, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return e.Name, e.ID, nil
+}
+
+func (r *railwayInitResolver) ResolveEnvironment(ctx context.Context, projectID, env string) (string, string, error) {
+	e, err := railway.ResolveEnvironmentNamed(ctx, r.client, projectID, env, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	return e.Name, e.ID, nil
+}
+
+func (r *railwayInitResolver) Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, "")
+}
 
 // Run implements `config init`.
 func (c *ConfigInitCmd) Run(globals *Globals) error {
@@ -68,18 +107,18 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 	if err != nil {
 		return err
 	}
-	fetcher := &defaultConfigFetcher{client: client}
+	resolver := &railwayInitResolver{client: client}
 
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, fetcher, os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), os.Stdout)
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, fetcher configFetcher, out io.Writer) error {
+func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive bool, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -93,38 +132,78 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
 	}
 
-	// 2. Resolve project/environment (may prompt interactively).
-	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
+	// 2. Resolve workspace → project → environment step by step,
+	//    printing a summary line after each selection.
+	wsName, wsID, err := resolver.ResolveWorkspace(ctx, workspace)
 	if err != nil {
 		return err
 	}
+	_, _ = fmt.Fprintf(out, "  Workspace: %s\n", wsName)
+
+	projName, projID, err := resolver.ResolveProject(ctx, wsID, project)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(out, "  Project: %s\n", projName)
+
+	envName, envID, err := resolver.ResolveEnvironment(ctx, projID, environment)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(out, "  Environment: %s\n", envName)
 
 	// 3. Fetch live state.
-	live, err := fetcher.Fetch(ctx, projID, envID, "")
+	live, err := resolver.Fetch(ctx, projID, envID)
 	if err != nil {
 		return err
 	}
 
-	// 4. Render and write the config file.
-	slog.Debug("rendering config file", "services", len(live.Services))
-	// project/environment args are names (not IDs) — used as the header values.
-	content := config.RenderInitTOML(workspace, project, environment, *live)
+	// 4. Let the user choose which services to include.
+	serviceNames := make([]string, 0, len(live.Services))
+	for name := range live.Services {
+		serviceNames = append(serviceNames, name)
+	}
+	selected, err := prompt.PickServices(serviceNames, interactive)
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(out, "  Services: %s (%d selected)\n", strings.Join(selected, ", "), len(selected))
+
+	selectedSet := make(map[string]bool, len(selected))
+	for _, name := range selected {
+		selectedSet[name] = true
+	}
+	// Filter live config to only selected services.
+	filtered := &config.LiveConfig{
+		ProjectID:     live.ProjectID,
+		EnvironmentID: live.EnvironmentID,
+		Shared:        live.Shared,
+		Services:      make(map[string]*config.ServiceConfig, len(selected)),
+	}
+	for name, svc := range live.Services {
+		if selectedSet[name] {
+			filtered.Services[name] = svc
+		}
+	}
+
+	_, _ = fmt.Fprintln(out)
+
+	// 5. Render and write the config file.
+	slog.Debug("rendering config file", "services", len(filtered.Services))
+	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
 	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
 	}
-	if _, err := fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(live.Services)); err != nil {
-		return err
-	}
+	_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
 
-	// 5. Create .local.toml stub if it doesn't exist.
+	// 6. Create .local.toml with interpolation refs for secrets.
 	localPath := filepath.Join(dir, config.LocalConfigFile)
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
-		if err := os.WriteFile(localPath, []byte(localConfigStub), 0o644); err != nil {
+		localContent := renderLocalTOML(filtered)
+		if err := os.WriteFile(localPath, []byte(localContent), 0o644); err != nil {
 			return fmt.Errorf("writing %s: %w", config.LocalConfigFile, err)
 		}
-		if _, err := fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile); err != nil {
-			return err
-		}
+		_, _ = fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile)
 	}
 
 	added, err := ensureGitignoreHasLine(dir, config.LocalConfigFile)
@@ -133,10 +212,79 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 	slog.Debug("gitignore check", "line", config.LocalConfigFile, "added", added)
 	if added {
-		if _, err := fmt.Fprintf(out, "updated %s (added %s)\n", ".gitignore", config.LocalConfigFile); err != nil {
-			return err
-		}
+		_, _ = fmt.Fprintf(out, "updated %s (added %s)\n", ".gitignore", config.LocalConfigFile)
 	}
 
 	return nil
+}
+
+// renderLocalTOML generates the contents of the .local.toml file.
+// For each service (and shared), any variable whose name matches sensitive
+// keywords gets a `VAR = "${VAR}"` interpolation reference. If no secrets
+// are found, returns a commented stub.
+func renderLocalTOML(cfg *config.LiveConfig) string {
+	masker := config.NewMasker(nil, nil)
+
+	var out strings.Builder
+	out.WriteString("# Local overrides (gitignored). Use for secrets and per-developer settings.\n")
+	out.WriteString("# Values use ${VAR} syntax to read from your local environment.\n\n")
+
+	wrote := false
+
+	// Shared variables.
+	if len(cfg.Shared) > 0 {
+		var secrets []string
+		for name := range cfg.Shared {
+			if masker.IsSensitive(name) {
+				secrets = append(secrets, name)
+			}
+		}
+		if len(secrets) > 0 {
+			sort.Strings(secrets)
+			out.WriteString("[shared.variables]\n")
+			for _, name := range secrets {
+				_, _ = fmt.Fprintf(&out, "%s = \"${%s}\"\n", name, name)
+			}
+			out.WriteString("\n")
+			wrote = true
+		}
+	}
+
+	// Per-service variables.
+	serviceNames := make([]string, 0, len(cfg.Services))
+	for name := range cfg.Services {
+		serviceNames = append(serviceNames, name)
+	}
+	sort.Strings(serviceNames)
+
+	for _, svcName := range serviceNames {
+		svc := cfg.Services[svcName]
+		if len(svc.Variables) == 0 {
+			continue
+		}
+		var secrets []string
+		for name := range svc.Variables {
+			if masker.IsSensitive(name) {
+				secrets = append(secrets, name)
+			}
+		}
+		if len(secrets) > 0 {
+			sort.Strings(secrets)
+			_, _ = fmt.Fprintf(&out, "[%s.variables]\n", svcName)
+			for _, name := range secrets {
+				_, _ = fmt.Fprintf(&out, "%s = \"${%s}\"\n", name, name)
+			}
+			out.WriteString("\n")
+			wrote = true
+		}
+	}
+
+	if !wrote {
+		out.WriteString("# No secrets detected. Add overrides here as needed.\n")
+		out.WriteString("# Example:\n")
+		out.WriteString("#   [api.variables]\n")
+		out.WriteString("#   STRIPE_KEY = \"${STRIPE_KEY}\"\n")
+	}
+
+	return out.String()
 }

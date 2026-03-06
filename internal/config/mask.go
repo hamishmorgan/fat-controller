@@ -91,6 +91,16 @@ func buildBoundaryRegex(keywords []string) *regexp.Regexp {
 	return regexp.MustCompile(pattern)
 }
 
+// IsSensitive returns true if the variable name matches a sensitive keyword
+// (and is not on the allowlist). Unlike MaskValue, it does not check the value
+// for entropy — it only uses name-based classification.
+func (m *Masker) IsSensitive(name string) bool {
+	if m.allowlist != nil && m.allowlist.MatchString(name) {
+		return false
+	}
+	return m.sensitive != nil && m.sensitive.MatchString(name)
+}
+
 // MaskValue returns MaskedValue if the variable should be masked, or the
 // original value if it should be shown. Implements the combined logic from
 // docs/SECRET-MASKING.md.

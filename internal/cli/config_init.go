@@ -131,7 +131,7 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), globals.DryRun, os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), globals.DryRun, globals.Confirm, os.Stdout)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is
@@ -175,7 +175,7 @@ func summaryNote(label, value string) huh.Field {
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun bool, out io.Writer) error {
+func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun, confirm bool, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -384,6 +384,24 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 
 		_, _ = fmt.Fprintf(out, "dry run: would ensure %s is in .gitignore\n", config.LocalConfigFile)
 		return nil
+	}
+
+	if !confirm {
+		_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
+
+		if !interactive {
+			_, _ = fmt.Fprintf(out, "dry run: use --confirm to write files\n")
+			return nil
+		}
+
+		ok, confirmErr := prompt.Confirm("Write files?", true)
+		if confirmErr != nil {
+			return confirmErr
+		}
+		if !ok {
+			_, _ = fmt.Fprintln(out, "Init cancelled.")
+			return nil
+		}
 	}
 
 	// 6. Write the config file.

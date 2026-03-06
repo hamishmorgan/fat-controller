@@ -118,7 +118,7 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 			return err
 		}
 
-		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure you want to apply these changes?", false)
+		confirmed, err := prompt.Confirm("Are you sure you want to apply these changes?", false)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)
 		}

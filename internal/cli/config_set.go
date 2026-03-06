@@ -43,7 +43,7 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 			return err
 		}
 		_, _ = fmt.Fprintf(out, "Will set %s = %q\n\n", path, value)
-		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
+		confirmed, err := prompt.Confirm("Are you sure?", false)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)
 		}

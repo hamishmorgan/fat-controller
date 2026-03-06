@@ -43,7 +43,7 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 			return err
 		}
 		_, _ = fmt.Fprintf(out, "Will delete %s\n\n", path)
-		confirmed, err := prompt.ConfirmRW(os.Stdin, out, "Are you sure?", false)
+		confirmed, err := prompt.Confirm("Are you sure?", false)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)
 		}

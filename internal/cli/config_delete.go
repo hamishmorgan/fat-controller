@@ -21,7 +21,7 @@ type configDeleter interface {
 // RunConfigDelete validates the path, checks confirm/dry-run, and calls the deleter.
 // In dry-run mode (default when --yes is not set), it writes a preview
 // message to out and returns nil. Pass out=nil to use os.Stdout.
-func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter configDeleter, out io.Writer) error {
+func RunConfigDelete(ctx context.Context, path string, dryRun, yes bool, deleter configDeleter, out io.Writer) error {
 	slog.Debug("starting config delete", "path", path)
 	if out == nil {
 		out = os.Stdout
@@ -33,11 +33,11 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config delete currently supports only variables (path: service.variables.KEY)")
 	}
-	if globals.DryRun {
+	if dryRun {
 		_, err := fmt.Fprintf(out, "dry run: would delete %s\n", path)
 		return err
 	}
-	if !globals.Yes {
+	if !yes {
 		if !prompt.StdinIsInteractive() {
 			_, err := fmt.Fprintf(out, "dry run: would delete %s (use --yes to apply)\n", path)
 			return err
@@ -88,5 +88,5 @@ func (c *ConfigDeleteCmd) Run(globals *Globals) error {
 		projectID:     projID,
 		environmentID: envID,
 	}
-	return RunConfigDelete(ctx, globals, c.Path, deleter, os.Stdout)
+	return RunConfigDelete(ctx, c.Path, c.DryRun, c.Yes, deleter, os.Stdout)
 }

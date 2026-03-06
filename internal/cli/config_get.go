@@ -44,11 +44,11 @@ func (c *ConfigGetCmd) Run(globals *Globals) error {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	return RunConfigGet(ctx, globals, c.Path, c.Full, fetcher, c.output)
+	return RunConfigGet(ctx, globals, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, c.output)
 }
 
 // RunConfigGet is the testable core of `config get`.
-func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool, fetcher configFetcher, out io.Writer) error {
+func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
 	slog.Debug("starting config get", "path", path)
 	if out == nil {
 		out = os.Stdout
@@ -57,7 +57,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool,
 	if err != nil {
 		return err
 	}
-	service := globals.Service
+	fetchService := service
 	var parsed config.Path
 	if path != "" {
 		parsed, err = config.ParsePath(path)
@@ -65,10 +65,10 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool,
 			return err
 		}
 		if parsed.Service != "" {
-			service = parsed.Service
+			fetchService = parsed.Service
 		}
 	}
-	cfg, err := fetcher.Fetch(ctx, projID, envID, service)
+	cfg, err := fetcher.Fetch(ctx, projID, envID, fetchService)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool,
 		if !ok {
 			return fmt.Errorf("key %q not found in %s.%s", parsed.Key, parsed.Service, parsed.Section)
 		}
-		if !globals.ShowSecrets {
+		if !showSecrets {
 			masker := config.NewMasker(nil, nil)
 			val = masker.MaskValue(parsed.Key, val)
 		}
@@ -99,7 +99,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool,
 	output, err := config.Render(*cfg, config.RenderOptions{
 		Format:      globals.Output,
 		Full:        full,
-		ShowSecrets: globals.ShowSecrets,
+		ShowSecrets: showSecrets,
 	})
 	if err != nil {
 		return err

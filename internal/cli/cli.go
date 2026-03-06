@@ -12,6 +12,8 @@ import (
 
 // Globals holds values that are available to every command's Run() method.
 // Kong tags are here so CLI can embed Globals directly.
+// Command-specific flags live in mixin structs (MutationFlags, ConfigFileFlags)
+// or directly on command structs — not here.
 type Globals struct {
 	Token       string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
 	Workspace   string        `help:"Workspace ID or name." env:"FAT_CONTROLLER_WORKSPACE"`
@@ -20,13 +22,6 @@ type Globals struct {
 	Output      string        `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
 	Color       string        `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
 	Timeout     time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
-	Yes         bool          `help:"Answer yes to all confirmation prompts." short:"y" env:"FAT_CONTROLLER_YES"`
-	DryRun      bool          `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
-	ConfigFiles []string      `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
-	Service     string        `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
-	SkipDeploys bool          `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
-	FailFast    bool          `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
-	ShowSecrets bool          `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
 	Verbose     bool          `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
 	Quiet       bool          `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
 
@@ -34,6 +29,17 @@ type Globals struct {
 	// signal.NotifyContext so that SIGINT/SIGTERM cancels in-flight work.
 	// Commands use this as the parent for TimeoutContext.
 	BaseCtx context.Context `kong:"-"`
+}
+
+// MutationFlags are embedded by commands that mutate state (set, delete, init, apply).
+type MutationFlags struct {
+	Yes    bool `help:"Answer yes to all confirmation prompts." short:"y" env:"FAT_CONTROLLER_YES"`
+	DryRun bool `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
+}
+
+// ConfigFileFlags are embedded by commands that read config files (diff, apply, validate).
+type ConfigFileFlags struct {
+	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
 }
 
 // TimeoutContext returns a context with the configured timeout applied.
@@ -117,26 +123,53 @@ type ConfigCmd struct {
 
 // ConfigGetCmd implements `config get`.
 type ConfigGetCmd struct {
-	Path   string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
-	Full   bool      `help:"Include IDs and read-only fields."`
-	output io.Writer `kong:"-"`
+	Path        string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	Full        bool      `help:"Include IDs and read-only fields."`
+	Service     string    `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
+	ShowSecrets bool      `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	output      io.Writer `kong:"-"`
 }
 
 // ConfigSetCmd implements `config set`.
 type ConfigSetCmd struct {
-	Path  string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
-	Value string `arg:"" required:"" help:"Value to set."`
+	MutationFlags `kong:"embed"`
+	Path          string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
+	Value         string `arg:"" required:"" help:"Value to set."`
+	SkipDeploys   bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
 }
 
 // ConfigDeleteCmd implements `config delete`.
 type ConfigDeleteCmd struct {
-	Path string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
+	MutationFlags `kong:"embed"`
+	Path          string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
 }
 
-type ConfigInitCmd struct{}
-type ConfigDiffCmd struct{}
-type ConfigApplyCmd struct{}
-type ConfigValidateCmd struct{}
+// ConfigInitCmd implements `config init`.
+type ConfigInitCmd struct {
+	MutationFlags `kong:"embed"`
+}
+
+// ConfigDiffCmd implements `config diff`.
+type ConfigDiffCmd struct {
+	ConfigFileFlags `kong:"embed"`
+	Service         string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
+	ShowSecrets     bool   `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+}
+
+// ConfigApplyCmd implements `config apply`.
+type ConfigApplyCmd struct {
+	MutationFlags   `kong:"embed"`
+	ConfigFileFlags `kong:"embed"`
+	Service         string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
+	ShowSecrets     bool   `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	SkipDeploys     bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	FailFast        bool   `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
+}
+
+// ConfigValidateCmd implements `config validate`.
+type ConfigValidateCmd struct {
+	ConfigFileFlags `kong:"embed"`
+}
 
 type ProjectCmd struct {
 	List ProjectListCmd `cmd:"" help:"List available projects."`

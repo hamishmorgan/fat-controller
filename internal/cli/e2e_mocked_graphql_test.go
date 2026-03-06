@@ -865,10 +865,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Project:     fixtureProjectName,
 			Environment: fixtureEnvironment,
 			Output:      "text",
-			ShowSecrets: true,
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -892,11 +891,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Project:     fixtureProjectName,
 			Environment: fixtureEnvironment,
 			Output:      "text",
-			ShowSecrets: true,
 		}
 		var out bytes.Buffer
 		// Dot-path "api.variables.PORT" should scope Fetch to the "api" service.
-		if err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -919,10 +917,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Project:     fixtureProjectName,
 			Environment: fixtureEnvironment,
 			Output:      "json",
-			ShowSecrets: true,
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 
@@ -942,10 +939,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Project:     fixtureProjectName,
 			Environment: fixtureEnvironment,
 			Output:      "toml",
-			ShowSecrets: true,
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -964,10 +960,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Project:     fixtureProjectName,
 			Environment: fixtureEnvironment,
 			Output:      "json",
-			ShowSecrets: true,
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", true, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 
@@ -1008,9 +1003,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			memory_gb = 2
 		`)
 
-		globals := &cli.Globals{Yes: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		// Expect 4 applied operations:
@@ -1094,9 +1089,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			PORT = "9999"
 		`)
 
-		globals := &cli.Globals{DryRun: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{DryRun: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "dry run") {
@@ -1130,9 +1125,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			QUEUE = "default"
 		`)
 
-		globals := &cli.Globals{Yes: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "No changes") {
@@ -1163,9 +1158,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			QUEUE = "high"
 		`)
 
-		globals := &cli.Globals{Yes: true, Service: "api"}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1196,9 +1191,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			PORT = ""
 		`)
 
-		globals := &cli.Globals{Yes: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1234,9 +1229,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			BRAVO = "new-b"
 		`)
 
-		globals := &cli.Globals{Yes: true, FailFast: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out)
+		err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true, FailFast: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from fail-fast on collection upsert failure")
 		}
@@ -1261,9 +1256,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			PORT = "9090"
 		`)
 
-		globals := &cli.Globals{Yes: true, SkipDeploys: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true, SkipDeploys: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1297,9 +1292,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			t.Fatalf("write local config: %v", err)
 		}
 
-		globals := &cli.Globals{Yes: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1349,7 +1344,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			Output:      "text",
 		}
 		var out bytes.Buffer
-		err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &out)
+		err := cli.RunConfigGet(context.Background(), globals, "", false, "", false, fetcher, &out)
 		if err == nil {
 			t.Fatal("expected error when GraphQL returns errors")
 		}
@@ -1371,9 +1366,9 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // cancel immediately
 
-		globals := &cli.Globals{Yes: true}
+		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(ctx, globals, dir, nil, fetcher, applier, &out)
+		err := cli.RunConfigApply(ctx, globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from cancelled context")
 		}

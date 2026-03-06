@@ -30,13 +30,13 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	pair, err := loadAndFetch(ctx, globals, wd, globals.ConfigFiles, fetcher)
+	pair, err := loadAndFetch(ctx, globals, wd, c.ConfigFiles, c.Service, fetcher)
 	if err != nil {
 		return err
 	}
 
 	// Emit validation warnings to stderr.
-	emitWarnings(pair, globals, wd)
+	emitWarnings(pair, globals.Quiet, wd)
 
 	applier := &apply.RailwayApplier{
 		Client:        client,
@@ -44,22 +44,31 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		EnvironmentID: pair.EnvironmentID,
 	}
 
-	return runConfigApplyWithPair(ctx, globals, pair, applier, os.Stdout)
+	return runConfigApplyWithPair(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, applier, os.Stdout)
+}
+
+// ApplyOpts holds command-specific options for RunConfigApply / runConfigApplyWithPair.
+type ApplyOpts struct {
+	DryRun      bool
+	Yes         bool
+	ShowSecrets bool
+	SkipDeploys bool
+	FailFast    bool
 }
 
 // RunConfigApply is the testable core of `config apply`.
-func RunConfigApply(ctx context.Context, globals *Globals, configDir string, extraFiles []string, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
-	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, fetcher)
+func RunConfigApply(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
+	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, service, fetcher)
 	if err != nil {
 		return err
 	}
 	// Emit validation warnings to stderr.
-	emitWarnings(pair, globals, configDir)
-	return runConfigApplyWithPair(ctx, globals, pair, applier, out)
+	emitWarnings(pair, globals.Quiet, configDir)
+	return runConfigApplyWithPair(ctx, globals, pair, opts.DryRun, opts.Yes, opts.ShowSecrets, opts.SkipDeploys, opts.FailFast, applier, out)
 }
 
 // runConfigApplyWithPair contains the apply logic once configs are loaded and fetched.
-func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configPair, applier apply.Applier, out io.Writer) error {
+func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, applier apply.Applier, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -99,15 +108,15 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 	}
 
 	// Handle dry-run and confirmation.
-	if globals.DryRun {
+	if dryRun {
 		// Output diff for dry-run. If structured output is requested, fall back to text diff for now.
-		formatted := diff.Format(changes, globals.ShowSecrets)
+		formatted := diff.Format(changes, showSecrets)
 		_, err := fmt.Fprintf(out, "dry run: would apply the following changes\n\n%s\n", formatted)
 		return err
 	}
 
-	if !globals.Yes {
-		formatted := diff.Format(changes, globals.ShowSecrets)
+	if !yes {
+		formatted := diff.Format(changes, showSecrets)
 		if !prompt.StdinIsInteractive() {
 			_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --yes to execute)\n\n%s\n", formatted)
 			return err
@@ -131,10 +140,10 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 	}
 
 	// Apply changes.
-	slog.Debug("executing apply", "fail_fast", globals.FailFast, "skip_deploys", globals.SkipDeploys)
+	slog.Debug("executing apply", "fail_fast", failFast, "skip_deploys", skipDeploys)
 	applyResult, applyErr := apply.Apply(ctx, desired, live, applier, apply.Options{
-		FailFast:    globals.FailFast,
-		SkipDeploys: globals.SkipDeploys,
+		FailFast:    failFast,
+		SkipDeploys: skipDeploys,
 	})
 
 	switch globals.Output {

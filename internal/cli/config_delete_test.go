@@ -13,7 +13,8 @@ import (
 func TestRunConfigDelete(t *testing.T) {
 	tests := []struct {
 		name        string
-		globals     *cli.Globals
+		dryRun      bool
+		yes         bool
 		path        string
 		mutatorErr  error  // injected error for the mutator
 		wantErr     string // substring of expected error; empty means no error
@@ -24,19 +25,19 @@ func TestRunConfigDelete(t *testing.T) {
 	}{
 		{
 			name:       "dry-run by default",
-			globals:    &cli.Globals{},
 			path:       "api.variables.OLD",
 			wantDryRun: true,
 		},
 		{
 			name:       "explicit dry-run flag",
-			globals:    &cli.Globals{Yes: true, DryRun: true},
+			yes:        true,
+			dryRun:     true,
 			path:       "api.variables.OLD",
 			wantDryRun: true,
 		},
 		{
 			name:        "executes with --yes",
-			globals:     &cli.Globals{Yes: true},
+			yes:         true,
 			path:        "api.variables.OLD",
 			wantCalled:  true,
 			wantService: "api",
@@ -44,19 +45,19 @@ func TestRunConfigDelete(t *testing.T) {
 		},
 		{
 			name:    "rejects non-variable path",
-			globals: &cli.Globals{Yes: true},
+			yes:     true,
 			path:    "api.resources.vcpus",
 			wantErr: "variables",
 		},
 		{
 			name:    "rejects path without key",
-			globals: &cli.Globals{Yes: true},
+			yes:     true,
 			path:    "api.variables",
 			wantErr: "variables",
 		},
 		{
 			name:       "propagates deleter error",
-			globals:    &cli.Globals{Yes: true},
+			yes:        true,
 			path:       "api.variables.OLD",
 			mutatorErr: errors.New("delete failed"),
 			wantErr:    "delete failed",
@@ -69,7 +70,7 @@ func TestRunConfigDelete(t *testing.T) {
 			m := &recordingMutator{err: tt.mutatorErr}
 			var buf bytes.Buffer
 
-			err := cli.RunConfigDelete(context.Background(), tt.globals, tt.path, m, &buf)
+			err := cli.RunConfigDelete(context.Background(), tt.path, tt.dryRun, tt.yes, m, &buf)
 
 			// Check error expectation.
 			if tt.wantErr != "" {
@@ -116,8 +117,7 @@ func TestRunConfigDelete(t *testing.T) {
 func TestRunConfigDelete_DryRunFlag(t *testing.T) {
 	mut := &recordingMutator{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{DryRun: true, Yes: true}
-	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", mut, &buf)
+	err := cli.RunConfigDelete(context.Background(), "api.variables.OLD", true, true, mut, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

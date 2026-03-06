@@ -25,29 +25,29 @@ func (c *ConfigDiffCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigDiff(ctx, globals, wd, globals.ConfigFiles, fetcher, os.Stdout)
+	return RunConfigDiff(ctx, globals, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }
 
 // RunConfigDiff is the testable core of `config diff`.
-func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extraFiles []string, fetcher configFetcher, out io.Writer) error {
+func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
-	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, fetcher)
+	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, service, fetcher)
 	if err != nil {
 		return err
 	}
 
 	// Emit validation warnings to stderr.
-	emitWarnings(pair, globals, configDir)
+	emitWarnings(pair, globals.Quiet, configDir)
 
 	// Compute diff.
 	result := diff.Compute(pair.Desired, pair.Live)
 	slog.Debug("diff computed", "is_empty", result.IsEmpty())
 
 	// Format and display (live values are masked unless --show-secrets is set).
-	formatted := diff.Format(result, globals.ShowSecrets)
+	formatted := diff.Format(result, showSecrets)
 	_, err = fmt.Fprintln(out, formatted)
 	return err
 }

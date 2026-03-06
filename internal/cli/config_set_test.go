@@ -13,7 +13,8 @@ import (
 func TestRunConfigSet(t *testing.T) {
 	tests := []struct {
 		name        string
-		globals     *cli.Globals
+		dryRun      bool
+		yes         bool
 		path        string
 		value       string
 		mutatorErr  error  // injected error for the mutator
@@ -26,21 +27,21 @@ func TestRunConfigSet(t *testing.T) {
 	}{
 		{
 			name:       "dry-run by default",
-			globals:    &cli.Globals{},
 			path:       "api.variables.PORT",
 			value:      "8080",
 			wantDryRun: true,
 		},
 		{
 			name:       "explicit dry-run flag",
-			globals:    &cli.Globals{Yes: true, DryRun: true},
+			yes:        true,
+			dryRun:     true,
 			path:       "api.variables.PORT",
 			value:      "8080",
 			wantDryRun: true,
 		},
 		{
 			name:        "executes with --yes",
-			globals:     &cli.Globals{Yes: true},
+			yes:         true,
 			path:        "api.variables.PORT",
 			value:       "8080",
 			wantCalled:  true,
@@ -50,21 +51,21 @@ func TestRunConfigSet(t *testing.T) {
 		},
 		{
 			name:    "rejects non-variable path",
-			globals: &cli.Globals{Yes: true},
+			yes:     true,
 			path:    "api.resources.vcpus",
 			value:   "1",
 			wantErr: "variables",
 		},
 		{
 			name:    "rejects path without key",
-			globals: &cli.Globals{Yes: true},
+			yes:     true,
 			path:    "api.variables",
 			value:   "1",
 			wantErr: "variables",
 		},
 		{
 			name:       "propagates setter error",
-			globals:    &cli.Globals{Yes: true},
+			yes:        true,
 			path:       "api.variables.PORT",
 			value:      "8080",
 			mutatorErr: errors.New("mutation failed"),
@@ -82,7 +83,7 @@ func TestRunConfigSet(t *testing.T) {
 			m := &recordingMutator{err: tt.mutatorErr}
 			var buf bytes.Buffer
 
-			err := cli.RunConfigSet(context.Background(), tt.globals, tt.path, tt.value, m, &buf)
+			err := cli.RunConfigSet(context.Background(), tt.path, tt.value, tt.dryRun, tt.yes, m, &buf)
 
 			// Check error expectation.
 			if tt.wantErr != "" {
@@ -132,8 +133,7 @@ func TestRunConfigSet(t *testing.T) {
 func TestRunConfigSet_DryRunFlag(t *testing.T) {
 	mut := &recordingMutator{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{DryRun: true, Yes: true}
-	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", mut, &buf)
+	err := cli.RunConfigSet(context.Background(), "api.variables.PORT", "8080", true, true, mut, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

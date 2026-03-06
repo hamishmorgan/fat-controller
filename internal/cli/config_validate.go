@@ -16,7 +16,7 @@ func (c *ConfigValidateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigValidate(globals, wd, globals.ConfigFiles, os.Stdout)
+	return RunConfigValidate(globals, wd, c.ConfigFiles, os.Stdout)
 }
 
 // RunConfigValidate is the testable core of `config validate`.

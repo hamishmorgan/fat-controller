@@ -42,7 +42,7 @@ func TestRunConfigGet_RendersText(t *testing.T) {
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), globals, "", false, "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigGet() error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestRunConfigGet_RendersJSON(t *testing.T) {
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "json"}
-	err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), globals, "", false, "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigGet() error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRunConfigGet_PathExtractsService(t *testing.T) {
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, wrapper, &buf)
+	err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, "", false, wrapper, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigGet() error: %v", err)
 	}
@@ -126,7 +126,7 @@ func (s *serviceCaptureFetcher) Fetch(ctx context.Context, projectID, environmen
 func TestRunConfigGet_ResolveError(t *testing.T) {
 	fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
 	var buf bytes.Buffer
-	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, "", false, fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error from resolve failure")
 	}
@@ -138,7 +138,7 @@ func TestRunConfigGet_ResolveError(t *testing.T) {
 func TestRunConfigGet_FetchError(t *testing.T) {
 	fetcher := &fakeFetcher{fetchErr: errors.New("api error")}
 	var buf bytes.Buffer
-	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, "", false, fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error from fetch failure")
 	}
@@ -147,7 +147,7 @@ func TestRunConfigGet_FetchError(t *testing.T) {
 func TestRunConfigGet_NilConfig(t *testing.T) {
 	fetcher := &fakeFetcher{cfg: nil}
 	var buf bytes.Buffer
-	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), &cli.Globals{}, "", false, "", false, fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error for nil config")
 	}
@@ -168,8 +168,8 @@ func TestRunConfigGet_FiltersByPathSectionAndKey(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Output: "text", ShowSecrets: true}
-	err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, fetcher, &buf)
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, "", true, fetcher, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,8 +198,8 @@ func TestRunConfigGet_FiltersByPathSection(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Output: "text", ShowSecrets: true}
-	err := cli.RunConfigGet(context.Background(), globals, "api.variables", false, fetcher, &buf)
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "api.variables", false, "", true, fetcher, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,8 +225,8 @@ func TestRunConfigGet_SharedVariablesKeyLookup(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Output: "text", ShowSecrets: true}
-	err := cli.RunConfigGet(context.Background(), globals, "shared.variables.GLOBAL", false, fetcher, &buf)
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "shared.variables.GLOBAL", false, "", true, fetcher, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,8 +248,8 @@ func TestRunConfigGet_SharedVariablesSectionLookup(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Output: "text", ShowSecrets: true}
-	err := cli.RunConfigGet(context.Background(), globals, "shared.variables", false, fetcher, &buf)
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "shared.variables", false, "", true, fetcher, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestRunConfigGet_MasksSecretsByDefault(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &buf)
+	err := cli.RunConfigGet(context.Background(), globals, "", false, "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigGet() error: %v", err)
 	}
@@ -296,8 +296,8 @@ func TestRunConfigGet_ShowSecretsRevealsValues(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Output: "text", ShowSecrets: true}
-	err := cli.RunConfigGet(context.Background(), globals, "", false, fetcher, &buf)
+	globals := &cli.Globals{Output: "text"}
+	err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigGet() error: %v", err)
 	}

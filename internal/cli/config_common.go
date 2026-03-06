@@ -24,7 +24,7 @@ type configPair struct {
 //  4. Resolve project and environment IDs
 //  5. Fetch live state
 //  6. Filter desired config by --service if set
-func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extraFiles []string, fetcher configFetcher) (*configPair, error) {
+func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, fetcher configFetcher) (*configPair, error) {
 	// 1. Load and merge config files.
 	slog.Debug("loading config", "dir", configDir)
 	desired, err := config.LoadConfigs(configDir, extraFiles)
@@ -60,19 +60,19 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 
 	// 5. Fetch live state.
 	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)
-	live, err := fetcher.Fetch(ctx, projID, envID, globals.Service)
+	live, err := fetcher.Fetch(ctx, projID, envID, service)
 	if err != nil {
 		return nil, err
 	}
 
 	// 6. Filter desired config by --service if set.
-	if globals.Service != "" {
+	if service != "" {
 		filtered := &config.DesiredConfig{
 			Shared:   desired.Shared,
 			Services: make(map[string]*config.DesiredService),
 		}
-		if svc, ok := desired.Services[globals.Service]; ok {
-			filtered.Services[globals.Service] = svc
+		if svc, ok := desired.Services[service]; ok {
+			filtered.Services[service] = svc
 		}
 		desired = filtered
 	}
@@ -88,8 +88,8 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 // emitWarnings runs validation on the config pair and emits warnings to stderr via slog.
 // Respects --quiet to suppress warnings. Callers that always want warnings (e.g. config validate)
 // should call config.Validate directly.
-func emitWarnings(pair *configPair, globals *Globals, configDir string) {
-	if globals.Quiet {
+func emitWarnings(pair *configPair, quiet bool, configDir string) {
+	if quiet {
 		return
 	}
 	// Extract live service names for W040.

@@ -21,7 +21,7 @@ type configSetter interface {
 // RunConfigSet validates the path, checks confirm/dry-run, and calls the setter.
 // In dry-run mode (default when --yes is not set), it writes a preview
 // message to out and returns nil. Pass out=nil to use os.Stdout.
-func RunConfigSet(ctx context.Context, globals *Globals, path, value string, setter configSetter, out io.Writer) error {
+func RunConfigSet(ctx context.Context, path, value string, dryRun, yes bool, setter configSetter, out io.Writer) error {
 	slog.Debug("starting config set", "path", path)
 	if out == nil {
 		out = os.Stdout
@@ -33,11 +33,11 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 	if parsed.Section != "variables" || parsed.Key == "" {
 		return errors.New("config set currently supports only variables (path: service.variables.KEY)")
 	}
-	if globals.DryRun {
+	if dryRun {
 		_, err := fmt.Fprintf(out, "dry run: would set %s = %q\n", path, value)
 		return err
 	}
-	if !globals.Yes {
+	if !yes {
 		if !prompt.StdinIsInteractive() {
 			_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --yes to apply)\n", path, value)
 			return err
@@ -88,7 +88,7 @@ func (c *ConfigSetCmd) Run(globals *Globals) error {
 		client:        client,
 		projectID:     projID,
 		environmentID: envID,
-		skipDeploys:   globals.SkipDeploys,
+		skipDeploys:   c.SkipDeploys,
 	}
-	return RunConfigSet(ctx, globals, c.Path, c.Value, setter, os.Stdout)
+	return RunConfigSet(ctx, c.Path, c.Value, c.DryRun, c.Yes, setter, os.Stdout)
 }

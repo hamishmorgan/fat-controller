@@ -20,11 +20,11 @@ type configPair struct {
 // loadAndFetch runs the shared pipeline used by both `config diff` and `config apply`:
 //  1. Load and merge config files
 //  2. Interpolate local env vars
-//  3. Fall back to config-file project/environment when globals are empty
+//  3. Fall back to config-file project/environment when flags are empty
 //  4. Resolve project and environment IDs
 //  5. Fetch live state
 //  6. Filter desired config by --service if set
-func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, fetcher configFetcher) (*configPair, error) {
+func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironment, configDir string, extraFiles []string, service string, fetcher configFetcher) (*configPair, error) {
 	// 1. Load and merge config files.
 	slog.Debug("loading config", "dir", configDir)
 	desired, err := config.LoadConfigs(configDir, extraFiles)
@@ -38,15 +38,15 @@ func loadAndFetch(ctx context.Context, globals *Globals, configDir string, extra
 	}
 
 	// 3. Use config-file project/environment/workspace as fallback for resolution.
-	project := globals.Project
+	project := flagProject
 	if project == "" {
 		project = desired.Project
 	}
-	environment := globals.Environment
+	environment := flagEnvironment
 	if environment == "" {
 		environment = desired.Environment
 	}
-	workspace := globals.Workspace
+	workspace := flagWorkspace
 	if workspace == "" {
 		workspace = desired.Workspace
 	}

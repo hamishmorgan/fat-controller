@@ -87,7 +87,7 @@ func (c *EnvironmentListCmd) Run(globals *Globals) error {
 		return err
 	}
 
-	projID, err := railway.ResolveProjectID(ctx, client, globals.Workspace, globals.Project)
+	projID, err := railway.ResolveProjectID(ctx, client, c.Workspace, c.Project)
 	if err != nil {
 		return err
 	}

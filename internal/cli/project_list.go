@@ -47,12 +47,12 @@ func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace strin
 }
 
 // RunProjectList is the testable core of `project list`.
-func RunProjectList(ctx context.Context, globals *Globals, lister projectLister, out io.Writer) error {
+func RunProjectList(ctx context.Context, globals *Globals, workspace string, lister projectLister, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 	slog.Debug("listing projects")
-	projects, err := lister.ListProjects(ctx, globals.Workspace)
+	projects, err := lister.ListProjects(ctx, workspace)
 	if err != nil {
 		return err
 	}
@@ -90,5 +90,5 @@ func (c *ProjectListCmd) Run(globals *Globals) error {
 		return err
 	}
 	lister := &defaultProjectLister{client: client}
-	return RunProjectList(ctx, globals, lister, os.Stdout)
+	return RunProjectList(ctx, globals, c.Workspace, lister, os.Stdout)
 }

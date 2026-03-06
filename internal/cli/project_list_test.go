@@ -27,7 +27,7 @@ func TestRunProjectList_Text(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, lister, &buf)
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, "", lister, &buf)
 	if err != nil {
 		t.Fatalf("RunProjectList() error: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestRunProjectList_JSON(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "json"}, lister, &buf)
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "json"}, "", lister, &buf)
 	if err != nil {
 		t.Fatalf("RunProjectList() error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestRunProjectList_TOML(t *testing.T) {
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "toml"}, lister, &buf)
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "toml"}, "", lister, &buf)
 	if err != nil {
 		t.Fatalf("RunProjectList() error: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestRunProjectList_TOML(t *testing.T) {
 func TestRunProjectList_Empty(t *testing.T) {
 	lister := &fakeProjectLister{}
 	var buf bytes.Buffer
-	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, lister, &buf)
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, "", lister, &buf)
 	if err != nil {
 		t.Fatalf("RunProjectList() error: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestRunProjectList_Empty(t *testing.T) {
 func TestRunProjectList_PropagatesError(t *testing.T) {
 	lister := &fakeProjectLister{err: errors.New("api error")}
 	var buf bytes.Buffer
-	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, lister, &buf)
+	err := cli.RunProjectList(context.Background(), &cli.Globals{Output: "text"}, "", lister, &buf)
 	if err == nil {
 		t.Fatal("expected error from lister")
 	}

@@ -131,7 +131,7 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), c.DryRun, c.Yes, os.Stdout)
+	return RunConfigInit(ctx, wd, c.Workspace, c.Project, c.Environment, resolver, prompt.StdinIsInteractive(), c.DryRun, c.Yes, os.Stdout)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is

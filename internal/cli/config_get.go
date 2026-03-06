@@ -44,16 +44,16 @@ func (c *ConfigGetCmd) Run(globals *Globals) error {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	return RunConfigGet(ctx, globals, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, c.output)
+	return RunConfigGet(ctx, globals, c.Workspace, c.Project, c.Environment, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, c.output)
 }
 
 // RunConfigGet is the testable core of `config get`.
-func RunConfigGet(ctx context.Context, globals *Globals, path string, full bool, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, environment, path string, full bool, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
 	slog.Debug("starting config get", "path", path)
 	if out == nil {
 		out = os.Stdout
 	}
-	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return err
 	}

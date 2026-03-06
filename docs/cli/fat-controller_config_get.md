@@ -18,6 +18,9 @@ fat-controller config get [<path>] [flags]
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
+| `--workspace` | string |  | `FAT_CONTROLLER_WORKSPACE` | Workspace ID or name. |
+| `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
+| `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
 | `--full` | bool |  |  | Include IDs and read-only fields. |
 | `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
@@ -27,9 +30,6 @@ fat-controller config get [<path>] [flags]
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
 | `--token` | string |  |  | Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence. |
-| `--workspace` | string |  | `FAT_CONTROLLER_WORKSPACE` | Workspace ID or name. |
-| `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
-| `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
 | `-o`, `--output` | text\|json\|toml | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml. |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
 | `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |

@@ -25,16 +25,16 @@ func (c *ConfigDiffCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigDiff(ctx, globals, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
+	return RunConfigDiff(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }
 
 // RunConfigDiff is the testable core of `config diff`.
-func RunConfigDiff(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
-	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, service, fetcher)
+	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, extraFiles, service, fetcher)
 	if err != nil {
 		return err
 	}

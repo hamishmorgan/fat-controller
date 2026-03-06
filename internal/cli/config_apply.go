@@ -30,7 +30,7 @@ func (c *ConfigApplyCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	pair, err := loadAndFetch(ctx, globals, wd, c.ConfigFiles, c.Service, fetcher)
+	pair, err := loadAndFetch(ctx, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, fetcher)
 	if err != nil {
 		return err
 	}
@@ -57,8 +57,8 @@ type ApplyOpts struct {
 }
 
 // RunConfigApply is the testable core of `config apply`.
-func RunConfigApply(ctx context.Context, globals *Globals, configDir string, extraFiles []string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
-	pair, err := loadAndFetch(ctx, globals, configDir, extraFiles, service, fetcher)
+func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
+	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, extraFiles, service, fetcher)
 	if err != nil {
 		return err
 	}

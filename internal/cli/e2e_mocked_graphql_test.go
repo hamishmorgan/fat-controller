@@ -862,12 +862,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		mock, fetcher := newTestFetcher(t)
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "text",
+			Output: "text",
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -888,13 +886,11 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		_, fetcher := newTestFetcher(t)
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "text",
+			Output: "text",
 		}
 		var out bytes.Buffer
 		// Dot-path "api.variables.PORT" should scope Fetch to the "api" service.
-		if err := cli.RunConfigGet(context.Background(), globals, "api.variables.PORT", false, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "api.variables.PORT", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -914,12 +910,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		_, fetcher := newTestFetcher(t)
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "json",
+			Output: "json",
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 
@@ -936,12 +930,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		_, fetcher := newTestFetcher(t)
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "toml",
+			Output: "toml",
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", false, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
@@ -957,12 +949,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		_, fetcher := newTestFetcher(t)
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "json",
+			Output: "json",
 		}
 		var out bytes.Buffer
-		if err := cli.RunConfigGet(context.Background(), globals, "", true, "", true, fetcher, &out); err != nil {
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", true, "", true, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 
@@ -1005,7 +995,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		// Expect 4 applied operations:
@@ -1091,7 +1081,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{DryRun: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{DryRun: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "dry run") {
@@ -1127,7 +1117,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "No changes") {
@@ -1160,7 +1150,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1193,7 +1183,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1231,7 +1221,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true, FailFast: true}, fetcher, applier, &out)
+		err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true, FailFast: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from fail-fast on collection upsert failure")
 		}
@@ -1258,7 +1248,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true, SkipDeploys: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true, SkipDeploys: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1294,7 +1284,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1339,12 +1329,10 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		_, fetcher := newTestFetcher(t, withFailAllQueries())
 
 		globals := &cli.Globals{
-			Project:     fixtureProjectName,
-			Environment: fixtureEnvironment,
-			Output:      "text",
+			Output: "text",
 		}
 		var out bytes.Buffer
-		err := cli.RunConfigGet(context.Background(), globals, "", false, "", false, fetcher, &out)
+		err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", false, fetcher, &out)
 		if err == nil {
 			t.Fatal("expected error when GraphQL returns errors")
 		}
@@ -1368,7 +1356,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(ctx, globals, dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out)
+		err := cli.RunConfigApply(ctx, globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from cancelled context")
 		}

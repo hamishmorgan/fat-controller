@@ -74,9 +74,9 @@ The full settings table:
 | Setting | CLI flag | Env var | Config key | Default | Description |
 |---------|----------|---------|------------|---------|-------------|
 | Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token. `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
-| Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | — | Workspace ID or name. Required with account-level tokens. |
-| Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name. Required with account-level tokens. |
-| Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name. Required with account-level tokens. |
+| Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | — | Workspace ID or name (config/get/set/delete/init/diff/apply, project list, environment list). |
+| Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name (config/get/set/delete/init/diff/apply, environment list). |
+| Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name (config/get/set/delete/init/diff/apply). |
 | Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
 | Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR`. |
 | Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout. |

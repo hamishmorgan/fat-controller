@@ -79,7 +79,7 @@ func (c *ConfigDeleteCmd) Run(globals *Globals) error {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	projID, envID, err := fetcher.Resolve(ctx, globals.Workspace, globals.Project, globals.Environment)
+	projID, envID, err := fetcher.Resolve(ctx, c.Workspace, c.Project, c.Environment)
 	if err != nil {
 		return err
 	}

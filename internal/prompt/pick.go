@@ -60,11 +60,14 @@ func runPicker(label string, items []Item) (string, error) {
 	for i, item := range items {
 		opts[i] = huh.NewOption(item.Name, item.ID)
 	}
-	err := huh.NewSelect[string]().
-		Title(fmt.Sprintf("Select a %s:", label)).
-		Options(opts...).
-		Value(&selected).
-		Run()
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title(fmt.Sprintf("Select a %s:", label)).
+				Options(opts...).
+				Value(&selected),
+		),
+	).Run()
 	if err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return "", errors.New("selection cancelled")
@@ -111,11 +114,14 @@ func PickServices(names []string, interactive bool) ([]string, error) {
 	}
 
 	var selected []string
-	err := huh.NewMultiSelect[string]().
-		Title("Select services to include:").
-		Options(opts...).
-		Value(&selected).
-		Run()
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Select services to include:").
+				Options(opts...).
+				Value(&selected),
+		),
+	).Run()
 	if err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return nil, errors.New("selection cancelled")

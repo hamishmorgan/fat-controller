@@ -22,13 +22,15 @@ func StdinIsInteractive() bool {
 // widget. The defaultYes parameter sets the initial selection.
 func Confirm(msg string, defaultYes bool) (bool, error) {
 	confirmed := defaultYes
-	err := huh.NewConfirm().
-		Title(msg).
-		Affirmative("Yes").
-		Negative("No").
-		Value(&confirmed).
-		Inline(true).
-		Run()
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(msg).
+				Affirmative("Yes").
+				Negative("No").
+				Value(&confirmed),
+		),
+	).Run()
 	if err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return false, nil

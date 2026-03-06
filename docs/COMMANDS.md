@@ -90,7 +90,6 @@ The full settings table:
 | Sensitive keywords | — | — | `sensitive_keywords` | *(see below)* | Keywords for detecting sensitive variable names (boundary match). |
 | Sensitive allowlist | — | — | `sensitive_allowlist` | *(see below)* | Keywords that suppress false-positive secret matches. |
 | Suppress warnings | — | — | `suppress_warnings` | `[]` | List of warning codes to suppress (e.g. `["W012", "W030"]`). |
-| Full output | `--full` | — | — | `false` | Include IDs and read-only fields (get only). |
 | Verbose | `--verbose`, `-v` | — | — | `false` | Debug output (HTTP requests, timing). |
 | Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output. |
 

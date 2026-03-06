@@ -14,6 +14,12 @@ fat-controller config get [<path>] [flags]
 
 - `<path>` — Dot-path to fetch (e.g. api.variables.PORT). Omit for all.
 
+## Flags
+
+| Flag | Type | Default | Env | Description |
+|------|------|---------|-----|-------------|
+| `--full` | bool |  |  | Include IDs and read-only fields. |
+
 ## Global Flags
 
 | Flag | Type | Default | Env | Description |
@@ -32,7 +38,6 @@ fat-controller config get [<path>] [flags]
 | `--skip-deploys` | bool |  | `FAT_CONTROLLER_SKIP_DEPLOYS` | Don't trigger redeployments. |
 | `--fail-fast` | bool |  | `FAT_CONTROLLER_FAIL_FAST` | Stop on first error during apply. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
-| `--full` | bool |  |  | Include IDs and read-only fields (get only). |
 | `-v`, `--verbose` | bool |  |  | Enable debug logging (config loading, auth, HTTP requests, apply operations). |
 | `-q`, `--quiet` | bool |  |  | Suppress informational and debug output (warnings and errors only). |
 | `-V`, `--version` | bool |  |  | Print version. |

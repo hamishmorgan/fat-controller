@@ -27,7 +27,6 @@ type Globals struct {
 	SkipDeploys bool          `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
 	FailFast    bool          `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
 	ShowSecrets bool          `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	Full        bool          `help:"Include IDs and read-only fields (get only)."`
 	Verbose     bool          `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
 	Quiet       bool          `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
 
@@ -119,6 +118,7 @@ type ConfigCmd struct {
 // ConfigGetCmd implements `config get`.
 type ConfigGetCmd struct {
 	Path   string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	Full   bool      `help:"Include IDs and read-only fields."`
 	output io.Writer `kong:"-"`
 }
 

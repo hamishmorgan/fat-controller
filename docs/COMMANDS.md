@@ -80,7 +80,7 @@ The full settings table:
 | Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
 | Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR`. |
 | Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout. |
-| Confirm | `--confirm` | `FAT_CONTROLLER_CONFIRM` | `confirm` | `false` | Auto-execute mutations (dangerous mode). |
+| Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Answer yes to all confirmation prompts. |
 | Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Force preview of mutations. |
 | Config file | `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Railway config file path. Repeatable. |
 | Service | `--service` | `FAT_CONTROLLER_SERVICE` | `service` | — | Scope to a single service. |
@@ -137,16 +137,14 @@ sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "KEY",
 sensitive_allowlist = ["KEYSTROKE"]       # replaces all defaults
 ```
 
-## Confirmation mode
+## Confirmation and dry-run
 
-All mutations (`set`, `delete`, `apply`) respect the `confirm` setting:
+All mutations (`init`, `set`, `delete`, `apply`) require confirmation:
 
-- **Safe mode (default, `confirm = false`):** mutations are dry-run.
-  Pass `--confirm` to execute.
-- **Dangerous mode (`confirm = true`):** mutations execute immediately.
-  Pass `--dry-run` to preview.
-
-This can be set at any level: global config, local config, env var
-(`FAT_CONTROLLER_CONFIRM=true`), or CLI flag. Flags always win.
+- **Interactive (TTY):** prompts for confirmation before writing/mutating.
+  Pass `--yes` (`-y`) to skip all confirmation prompts.
+- **Non-interactive (piped):** previews changes without executing.
+  Pass `--yes` to execute.
+- **`--dry-run`:** always previews, never persists. Overrides `--yes`.
 
 `NO_COLOR` (any value) disables color output regardless of `--color`.

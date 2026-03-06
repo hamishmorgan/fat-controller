@@ -106,10 +106,10 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 		return err
 	}
 
-	if !globals.Confirm {
+	if !globals.Yes {
 		formatted := diff.Format(changes, globals.ShowSecrets)
 		if !prompt.StdinIsInteractive() {
-			_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --confirm to execute)\n\n%s\n", formatted)
+			_, err := fmt.Fprintf(out, "dry run: would apply the following changes (use --yes to execute)\n\n%s\n", formatted)
 			return err
 		}
 

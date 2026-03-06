@@ -20,7 +20,7 @@ type Globals struct {
 	Output      string        `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
 	Color       string        `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
 	Timeout     time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
-	Confirm     bool          `help:"Auto-execute mutations (skip confirmation)." env:"FAT_CONTROLLER_CONFIRM"`
+	Yes         bool          `help:"Answer yes to all confirmation prompts." short:"y" env:"FAT_CONTROLLER_YES"`
 	DryRun      bool          `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	ConfigFiles []string      `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
 	Service     string        `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`

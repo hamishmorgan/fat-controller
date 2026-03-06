@@ -131,7 +131,7 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), globals.DryRun, globals.Confirm, os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), globals.DryRun, globals.Yes, os.Stdout)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is
@@ -175,24 +175,28 @@ func summaryNote(label, value string) huh.Field {
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun, confirm bool, out io.Writer) error {
+func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun, yes bool, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
 	slog.Debug("starting config init", "dir", dir)
-	// 1. Check for existing config — prompt to overwrite if interactive.
+	// 1. Check for existing config — prompt to overwrite unless --yes.
 	configPath := filepath.Join(dir, config.BaseConfigFile)
 	if _, err := os.Stat(configPath); err == nil {
-		if !interactive {
-			return fmt.Errorf("%s already exists — refusing to overwrite", config.BaseConfigFile)
-		}
-		ok, confirmErr := prompt.Confirm(config.BaseConfigFile+" already exists — overwrite?", false)
-		if confirmErr != nil {
-			return confirmErr
-		}
-		if !ok {
-			return fmt.Errorf("%s already exists — aborting", config.BaseConfigFile)
+		if yes {
+			// --yes: proceed to overwrite without prompting.
+			slog.Debug("overwriting existing config (--yes)", "path", configPath)
+		} else if !interactive {
+			return fmt.Errorf("%s already exists — pass --yes to overwrite", config.BaseConfigFile)
+		} else {
+			ok, confirmErr := prompt.Confirm(config.BaseConfigFile+" already exists — overwrite?", false)
+			if confirmErr != nil {
+				return confirmErr
+			}
+			if !ok {
+				return fmt.Errorf("%s already exists — aborting", config.BaseConfigFile)
+			}
 		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
@@ -386,22 +390,10 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		return nil
 	}
 
-	if !confirm {
+	if !yes && !interactive {
 		_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
-
-		if !interactive {
-			_, _ = fmt.Fprintf(out, "dry run: use --confirm to write files\n")
-			return nil
-		}
-
-		ok, confirmErr := prompt.Confirm("Write files?", true)
-		if confirmErr != nil {
-			return confirmErr
-		}
-		if !ok {
-			_, _ = fmt.Fprintln(out, "Init cancelled.")
-			return nil
-		}
+		_, _ = fmt.Fprintf(out, "use --yes to write files\n")
+		return nil
 	}
 
 	// 6. Write the config file.

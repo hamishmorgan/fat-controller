@@ -72,7 +72,7 @@ PORT = "9090"
 	}
 }
 
-func TestRunConfigApply_ConfirmExecutes(t *testing.T) {
+func TestRunConfigApply_YesExecutes(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
@@ -89,7 +89,7 @@ NEW = "hello"
 	}
 	applier := &countingApplier{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
+	globals := &cli.Globals{Yes: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &buf)
 	if err != nil {
@@ -104,7 +104,7 @@ NEW = "hello"
 	}
 }
 
-func TestRunConfigApply_DryRunOverridesConfirm(t *testing.T) {
+func TestRunConfigApply_DryRunOverridesYes(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
 [api.variables]
@@ -120,14 +120,14 @@ PORT = "9090"
 	}
 	applier := &countingApplier{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true, DryRun: true}
+	globals := &cli.Globals{Yes: true, DryRun: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
 	if applier.upserts != 0 {
-		t.Error("--dry-run should override --confirm")
+		t.Error("--dry-run should override --yes")
 	}
 }
 
@@ -147,7 +147,7 @@ PORT = "8080"
 	}
 	applier := &countingApplier{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Confirm: true}
+	globals := &cli.Globals{Yes: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &buf)
 	if err != nil {
@@ -179,7 +179,7 @@ QUEUE = "high"
 	}
 	applier := &countingApplier{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{Service: "api", Confirm: true}
+	globals := &cli.Globals{Service: "api", Yes: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &buf)
 	if err != nil {
@@ -211,7 +211,7 @@ PORT = "9090"
 	applier := &countingApplier{}
 	var buf bytes.Buffer
 	// Globals with empty Project/Environment — should fall back to config file.
-	globals := &cli.Globals{Confirm: true}
+	globals := &cli.Globals{Yes: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, captureFetcher, applier, &buf)
 	if err != nil {
@@ -245,7 +245,7 @@ PORT = "9090"
 	applier := &countingApplier{}
 	var buf bytes.Buffer
 	// Flag values should override config file.
-	globals := &cli.Globals{Project: "other-project", Environment: "staging", Confirm: true}
+	globals := &cli.Globals{Project: "other-project", Environment: "staging", Yes: true}
 
 	err := cli.RunConfigApply(context.Background(), globals, dir, nil, captureFetcher, applier, &buf)
 	if err != nil {

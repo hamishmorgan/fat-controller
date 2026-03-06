@@ -19,7 +19,7 @@ type configSetter interface {
 }
 
 // RunConfigSet validates the path, checks confirm/dry-run, and calls the setter.
-// In dry-run mode (default when --confirm is not set), it writes a preview
+// In dry-run mode (default when --yes is not set), it writes a preview
 // message to out and returns nil. Pass out=nil to use os.Stdout.
 func RunConfigSet(ctx context.Context, globals *Globals, path, value string, setter configSetter, out io.Writer) error {
 	slog.Debug("starting config set", "path", path)
@@ -37,9 +37,9 @@ func RunConfigSet(ctx context.Context, globals *Globals, path, value string, set
 		_, err := fmt.Fprintf(out, "dry run: would set %s = %q\n", path, value)
 		return err
 	}
-	if !globals.Confirm {
+	if !globals.Yes {
 		if !prompt.StdinIsInteractive() {
-			_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --confirm to apply)\n", path, value)
+			_, err := fmt.Fprintf(out, "dry run: would set %s = %q (use --yes to apply)\n", path, value)
 			return err
 		}
 		_, _ = fmt.Fprintf(out, "Will set %s = %q\n\n", path, value)

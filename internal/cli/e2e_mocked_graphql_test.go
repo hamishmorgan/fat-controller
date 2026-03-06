@@ -827,7 +827,8 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		writeConfigTOML(t, dir, `project = "existing"`)
 
 		var out bytes.Buffer
-		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, nil, false, false, true, &out)
+		// Non-interactive without --yes should refuse to overwrite.
+		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, nil, false, false, false, &out)
 		if err == nil {
 			t.Fatal("expected error when config file already exists")
 		}
@@ -1008,7 +1009,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			memory_gb = 2
 		`)
 
-		globals := &cli.Globals{Confirm: true}
+		globals := &cli.Globals{Yes: true}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1130,7 +1131,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			QUEUE = "default"
 		`)
 
-		globals := &cli.Globals{Confirm: true}
+		globals := &cli.Globals{Yes: true}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1163,7 +1164,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			QUEUE = "high"
 		`)
 
-		globals := &cli.Globals{Confirm: true, Service: "api"}
+		globals := &cli.Globals{Yes: true, Service: "api"}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1196,7 +1197,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			PORT = ""
 		`)
 
-		globals := &cli.Globals{Confirm: true}
+		globals := &cli.Globals{Yes: true}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1234,7 +1235,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			BRAVO = "new-b"
 		`)
 
-		globals := &cli.Globals{Confirm: true, FailFast: true}
+		globals := &cli.Globals{Yes: true, FailFast: true}
 		var out bytes.Buffer
 		err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out)
 		if err == nil {
@@ -1261,7 +1262,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			PORT = "9090"
 		`)
 
-		globals := &cli.Globals{Confirm: true, SkipDeploys: true}
+		globals := &cli.Globals{Yes: true, SkipDeploys: true}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1297,7 +1298,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			t.Fatalf("write local config: %v", err)
 		}
 
-		globals := &cli.Globals{Confirm: true}
+		globals := &cli.Globals{Yes: true}
 		var out bytes.Buffer
 		if err := cli.RunConfigApply(context.Background(), globals, dir, nil, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
@@ -1371,7 +1372,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // cancel immediately
 
-		globals := &cli.Globals{Confirm: true}
+		globals := &cli.Globals{Yes: true}
 		var out bytes.Buffer
 		err := cli.RunConfigApply(ctx, globals, dir, nil, fetcher, applier, &out)
 		if err == nil {

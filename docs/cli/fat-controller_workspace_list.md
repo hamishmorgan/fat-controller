@@ -21,7 +21,7 @@ fat-controller workspace list [flags]
 | `-o`, `--output` | text\|json\|toml | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml. |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
 | `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |
-| `--confirm` | bool |  | `FAT_CONTROLLER_CONFIRM` | Auto-execute mutations (skip confirmation). |
+| `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Answer yes to all confirmation prompts. |
 | `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Force preview of mutations. |
 | `-f`, `--file` | string[] |  | `FAT_CONTROLLER_CONFIG` | Railway config file paths. Repeatable. |
 | `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |

@@ -33,14 +33,14 @@ func TestRunConfigSet(t *testing.T) {
 		},
 		{
 			name:       "explicit dry-run flag",
-			globals:    &cli.Globals{Confirm: true, DryRun: true},
+			globals:    &cli.Globals{Yes: true, DryRun: true},
 			path:       "api.variables.PORT",
 			value:      "8080",
 			wantDryRun: true,
 		},
 		{
-			name:        "executes with confirm",
-			globals:     &cli.Globals{Confirm: true},
+			name:        "executes with --yes",
+			globals:     &cli.Globals{Yes: true},
 			path:        "api.variables.PORT",
 			value:       "8080",
 			wantCalled:  true,
@@ -50,21 +50,21 @@ func TestRunConfigSet(t *testing.T) {
 		},
 		{
 			name:    "rejects non-variable path",
-			globals: &cli.Globals{Confirm: true},
+			globals: &cli.Globals{Yes: true},
 			path:    "api.resources.vcpus",
 			value:   "1",
 			wantErr: "variables",
 		},
 		{
 			name:    "rejects path without key",
-			globals: &cli.Globals{Confirm: true},
+			globals: &cli.Globals{Yes: true},
 			path:    "api.variables",
 			value:   "1",
 			wantErr: "variables",
 		},
 		{
 			name:       "propagates setter error",
-			globals:    &cli.Globals{Confirm: true},
+			globals:    &cli.Globals{Yes: true},
 			path:       "api.variables.PORT",
 			value:      "8080",
 			mutatorErr: errors.New("mutation failed"),
@@ -75,7 +75,7 @@ func TestRunConfigSet(t *testing.T) {
 
 	// The existing "dry-run by default" case now hits the non-TTY branch
 	// (since tests don't run in a TTY), which still outputs "dry run".
-	// The "dry-run flag overrides confirm" case hits the explicit --dry-run branch.
+	// The "dry-run flag overrides --yes" case hits the explicit --dry-run branch.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestRunConfigSet(t *testing.T) {
 func TestRunConfigSet_DryRunFlag(t *testing.T) {
 	mut := &recordingMutator{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{DryRun: true, Confirm: true}
+	globals := &cli.Globals{DryRun: true, Yes: true}
 	err := cli.RunConfigSet(context.Background(), globals, "api.variables.PORT", "8080", mut, &buf)
 	if err != nil {
 		t.Fatal(err)

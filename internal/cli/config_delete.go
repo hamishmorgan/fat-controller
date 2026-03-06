@@ -19,7 +19,7 @@ type configDeleter interface {
 }
 
 // RunConfigDelete validates the path, checks confirm/dry-run, and calls the deleter.
-// In dry-run mode (default when --confirm is not set), it writes a preview
+// In dry-run mode (default when --yes is not set), it writes a preview
 // message to out and returns nil. Pass out=nil to use os.Stdout.
 func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter configDeleter, out io.Writer) error {
 	slog.Debug("starting config delete", "path", path)
@@ -37,9 +37,9 @@ func RunConfigDelete(ctx context.Context, globals *Globals, path string, deleter
 		_, err := fmt.Fprintf(out, "dry run: would delete %s\n", path)
 		return err
 	}
-	if !globals.Confirm {
+	if !globals.Yes {
 		if !prompt.StdinIsInteractive() {
-			_, err := fmt.Fprintf(out, "dry run: would delete %s (use --confirm to apply)\n", path)
+			_, err := fmt.Fprintf(out, "dry run: would delete %s (use --yes to apply)\n", path)
 			return err
 		}
 		_, _ = fmt.Fprintf(out, "Will delete %s\n\n", path)

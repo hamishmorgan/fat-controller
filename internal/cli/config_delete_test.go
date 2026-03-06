@@ -30,13 +30,13 @@ func TestRunConfigDelete(t *testing.T) {
 		},
 		{
 			name:       "explicit dry-run flag",
-			globals:    &cli.Globals{Confirm: true, DryRun: true},
+			globals:    &cli.Globals{Yes: true, DryRun: true},
 			path:       "api.variables.OLD",
 			wantDryRun: true,
 		},
 		{
-			name:        "executes with confirm",
-			globals:     &cli.Globals{Confirm: true},
+			name:        "executes with --yes",
+			globals:     &cli.Globals{Yes: true},
 			path:        "api.variables.OLD",
 			wantCalled:  true,
 			wantService: "api",
@@ -44,19 +44,19 @@ func TestRunConfigDelete(t *testing.T) {
 		},
 		{
 			name:    "rejects non-variable path",
-			globals: &cli.Globals{Confirm: true},
+			globals: &cli.Globals{Yes: true},
 			path:    "api.resources.vcpus",
 			wantErr: "variables",
 		},
 		{
 			name:    "rejects path without key",
-			globals: &cli.Globals{Confirm: true},
+			globals: &cli.Globals{Yes: true},
 			path:    "api.variables",
 			wantErr: "variables",
 		},
 		{
 			name:       "propagates deleter error",
-			globals:    &cli.Globals{Confirm: true},
+			globals:    &cli.Globals{Yes: true},
 			path:       "api.variables.OLD",
 			mutatorErr: errors.New("delete failed"),
 			wantErr:    "delete failed",
@@ -116,7 +116,7 @@ func TestRunConfigDelete(t *testing.T) {
 func TestRunConfigDelete_DryRunFlag(t *testing.T) {
 	mut := &recordingMutator{}
 	var buf bytes.Buffer
-	globals := &cli.Globals{DryRun: true, Confirm: true}
+	globals := &cli.Globals{DryRun: true, Yes: true}
 	err := cli.RunConfigDelete(context.Background(), globals, "api.variables.OLD", mut, &buf)
 	if err != nil {
 		t.Fatal(err)

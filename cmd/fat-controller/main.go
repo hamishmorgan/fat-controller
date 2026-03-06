@@ -50,7 +50,7 @@ func main() {
 	slog.SetDefault(c.Logger())
 
 	// Thread the signal-aware context through to all commands.
-	c.Globals.BaseCtx = ctx
+	c.BaseCtx = ctx
 
 	if err := kongCtx.Run(&c.Globals); err != nil {
 		// Don't print error for context cancellation (user pressed Ctrl+C).

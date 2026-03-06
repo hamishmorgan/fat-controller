@@ -42,7 +42,7 @@ func RunAuthLogout(out io.Writer) error {
 	if err := store.Delete(); err != nil {
 		return fmt.Errorf("clearing credentials: %w", err)
 	}
-	fmt.Fprintln(out, "Logged out successfully.")
+	_, _ = fmt.Fprintln(out, "Logged out successfully.")
 	return nil
 }
 
@@ -61,22 +61,22 @@ func RunAuthStatus(ctx context.Context, globals *Globals, out io.Writer) error {
 
 	resolved, err := auth.ResolveAuth(ctx, globals.Token, store)
 	if err != nil {
-		fmt.Fprintln(out, "Not authenticated.")
-		fmt.Fprintln(out, "Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
+		_, _ = fmt.Fprintln(out, "Not authenticated.")
+		_, _ = fmt.Fprintln(out, "Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
 		return nil
 	}
 
-	fmt.Fprintf(out, "Authenticated via: %s\n", resolved.Source)
+	_, _ = fmt.Fprintf(out, "Authenticated via: %s\n", resolved.Source)
 
 	switch resolved.Source {
 	case auth.SourceEnvToken:
-		fmt.Fprintln(out, "Using RAILWAY_TOKEN environment variable (project access token).")
+		_, _ = fmt.Fprintln(out, "Using RAILWAY_TOKEN environment variable (project access token).")
 		return nil
 	case auth.SourceEnvAPIToken:
-		fmt.Fprintln(out, "Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
+		_, _ = fmt.Fprintln(out, "Using RAILWAY_API_TOKEN environment variable (account/workspace token).")
 		return nil
 	case auth.SourceFlag:
-		fmt.Fprintln(out, "Using --token flag.")
+		_, _ = fmt.Fprintln(out, "Using --token flag.")
 		return nil
 	}
 
@@ -96,13 +96,13 @@ func RunAuthStatus(ctx context.Context, globals *Globals, out io.Writer) error {
 	slog.Debug("fetching user info via refresh-aware transport")
 	info, err := oauth.FetchUserInfo(ctx)
 	if err != nil {
-		fmt.Fprintln(out, "Authenticated (stored OAuth token).")
-		fmt.Fprintf(out, "Could not fetch user info: %v\n", err)
-		fmt.Fprintln(out, "If your session expired, run 'fat-controller auth login' to re-authenticate.")
+		_, _ = fmt.Fprintln(out, "Authenticated (stored OAuth token).")
+		_, _ = fmt.Fprintf(out, "Could not fetch user info: %v\n", err)
+		_, _ = fmt.Fprintln(out, "If your session expired, run 'fat-controller auth login' to re-authenticate.")
 		return nil
 	}
 
-	fmt.Fprintf(out, "User: %s\n", info.Name)
-	fmt.Fprintf(out, "Email: %s\n", info.Email)
+	_, _ = fmt.Fprintf(out, "User: %s\n", info.Name)
+	_, _ = fmt.Fprintf(out, "Email: %s\n", info.Email)
 	return nil
 }

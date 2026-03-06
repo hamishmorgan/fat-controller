@@ -84,7 +84,7 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestRunConfigInit_PrintsSummaryLines(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 
 	resolver := newFakeResolver(&config.LiveConfig{Services: map[string]*config.ServiceConfig{}})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err == nil {
 		t.Fatal("expected error when config file already exists")
 	}
@@ -177,7 +177,7 @@ func TestRunConfigInit_CreatesLocalTOMLWithSecrets(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestRunConfigInit_LocalTOMLSharedSecrets(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestRunConfigInit_LocalTOMLNoSecretsFallsBack(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -285,7 +285,7 @@ func TestRunConfigInit_NonInteractiveIncludesAllServices(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestRunConfigInit_ResolveWorkspaceError(t *testing.T) {
 	dir := t.TempDir()
 	resolver := &fakeInitResolver{wsErr: errors.New("no workspace")}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err == nil {
 		t.Fatal("expected error from workspace resolve failure")
 	}
@@ -328,7 +328,7 @@ func TestRunConfigInit_ResolveProjectError(t *testing.T) {
 		projErr: errors.New("no project"),
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err == nil {
 		t.Fatal("expected error from project resolve failure")
 	}
@@ -342,8 +342,51 @@ func TestRunConfigInit_ResolveEnvironmentError(t *testing.T) {
 		envErr: errors.New("no environment"),
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, &buf)
 	if err == nil {
 		t.Fatal("expected error from environment resolve failure")
+	}
+}
+
+func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
+	dir := t.TempDir()
+	resolver := newFakeResolver(&config.LiveConfig{
+		ProjectID:     "proj-1",
+		EnvironmentID: "env-1",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://..."},
+			},
+		},
+	})
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, true, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigInit() error: %v", err)
+	}
+
+	// No files should be written.
+	if _, err := os.Stat(filepath.Join(dir, "fat-controller.toml")); !os.IsNotExist(err) {
+		t.Error("dry-run should not create fat-controller.toml")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "fat-controller.local.toml")); !os.IsNotExist(err) {
+		t.Error("dry-run should not create fat-controller.local.toml")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".gitignore")); !os.IsNotExist(err) {
+		t.Error("dry-run should not create .gitignore")
+	}
+
+	// Output should contain dry-run previews.
+	got := buf.String()
+	if !strings.Contains(got, "dry run") {
+		t.Errorf("expected 'dry run' in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, "fat-controller.toml") {
+		t.Errorf("expected config file name in output, got:\n%s", got)
+	}
+	// Should preview the TOML content.
+	if !strings.Contains(got, `project = "my-app"`) {
+		t.Errorf("expected TOML preview in output, got:\n%s", got)
 	}
 }

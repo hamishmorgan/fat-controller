@@ -131,7 +131,7 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), os.Stdout)
+	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), globals.DryRun, os.Stdout)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is
@@ -175,7 +175,7 @@ func summaryNote(label, value string) huh.Field {
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive bool, out io.Writer) error {
+func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun bool, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -369,15 +369,30 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 
 	_, _ = fmt.Fprintln(out)
 
-	// 5. Render and write the config file.
+	// 5. Render the config file.
 	slog.Debug("rendering config file", "services", len(filtered.Services))
 	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
+
+	if dryRun {
+		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
+
+		localPath := filepath.Join(dir, config.LocalConfigFile)
+		if _, statErr := os.Stat(localPath); os.IsNotExist(statErr) {
+			localContent := renderLocalTOML(filtered)
+			_, _ = fmt.Fprintf(out, "\ndry run: would write %s\n\n%s\n", config.LocalConfigFile, localContent)
+		}
+
+		_, _ = fmt.Fprintf(out, "dry run: would ensure %s is in .gitignore\n", config.LocalConfigFile)
+		return nil
+	}
+
+	// 6. Write the config file.
 	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
 	}
 	_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
 
-	// 6. Create .local.toml with interpolation refs for secrets.
+	// 7. Create .local.toml with interpolation refs for secrets.
 	localPath := filepath.Join(dir, config.LocalConfigFile)
 	if _, err := os.Stat(localPath); os.IsNotExist(err) {
 		localContent := renderLocalTOML(filtered)

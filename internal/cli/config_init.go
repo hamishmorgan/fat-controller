@@ -124,10 +124,19 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	slog.Debug("starting config init", "dir", dir)
-	// 1. Refuse to overwrite existing config.
+	// 1. Check for existing config — prompt to overwrite if interactive.
 	configPath := filepath.Join(dir, config.BaseConfigFile)
 	if _, err := os.Stat(configPath); err == nil {
-		return fmt.Errorf("%s already exists — refusing to overwrite", config.BaseConfigFile)
+		if !interactive {
+			return fmt.Errorf("%s already exists — refusing to overwrite", config.BaseConfigFile)
+		}
+		ok, confirmErr := prompt.Confirm(config.BaseConfigFile+" already exists — overwrite?", false)
+		if confirmErr != nil {
+			return confirmErr
+		}
+		if !ok {
+			return fmt.Errorf("%s already exists — aborting", config.BaseConfigFile)
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
 	}

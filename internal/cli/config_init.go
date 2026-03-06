@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/huh/spinner"
+
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
@@ -57,13 +59,15 @@ func ensureGitignoreHasLine(dir, line string) (bool, error) {
 	return true, nil
 }
 
-// initResolver provides step-by-step resolution for `config init`,
-// returning both name and ID for each entity so summaries can be printed.
+// initResolver provides step-by-step data fetching for `config init`.
+// Each Fetch method performs only the API call, returning a list of
+// selectable items. The picker/selection logic lives in RunConfigInit
+// so that loading spinners can wrap just the network call.
 type initResolver interface {
-	ResolveWorkspace(ctx context.Context, workspace string) (name, id string, err error)
-	ResolveProject(ctx context.Context, workspaceID, project string) (name, id string, err error)
-	ResolveEnvironment(ctx context.Context, projectID, env string) (name, id string, err error)
-	Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error)
+	FetchWorkspaces(ctx context.Context) ([]prompt.Item, error)
+	FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error)
+	FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error)
+	FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error)
 }
 
 // railwayInitResolver implements initResolver using the Railway API.
@@ -71,31 +75,43 @@ type railwayInitResolver struct {
 	client *railway.Client
 }
 
-func (r *railwayInitResolver) ResolveWorkspace(ctx context.Context, workspace string) (string, string, error) {
-	e, err := railway.ResolveWorkspaceNamed(ctx, r.client, workspace, prompt.PickOpts{ForcePrompt: true})
+func (r *railwayInitResolver) FetchWorkspaces(ctx context.Context) ([]prompt.Item, error) {
+	resp, err := railway.ApiToken(ctx, r.client.GQL())
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return e.Name, e.ID, nil
+	items := make([]prompt.Item, len(resp.ApiToken.Workspaces))
+	for i, ws := range resp.ApiToken.Workspaces {
+		items[i] = prompt.Item{Name: ws.Name, ID: ws.Id}
+	}
+	return items, nil
 }
 
-func (r *railwayInitResolver) ResolveProject(ctx context.Context, workspaceID, project string) (string, string, error) {
-	e, err := railway.ResolveProjectNamed(ctx, r.client, workspaceID, project, prompt.PickOpts{ForcePrompt: true})
+func (r *railwayInitResolver) FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error) {
+	resp, err := railway.Projects(ctx, r.client.GQL(), &workspaceID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return e.Name, e.ID, nil
+	items := make([]prompt.Item, len(resp.Projects.Edges))
+	for i, edge := range resp.Projects.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return items, nil
 }
 
-func (r *railwayInitResolver) ResolveEnvironment(ctx context.Context, projectID, env string) (string, string, error) {
-	e, err := railway.ResolveEnvironmentNamed(ctx, r.client, projectID, env, prompt.PickOpts{ForcePrompt: true})
+func (r *railwayInitResolver) FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error) {
+	resp, err := railway.Environments(ctx, r.client.GQL(), projectID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return e.Name, e.ID, nil
+	items := make([]prompt.Item, len(resp.Environments.Edges))
+	for i, edge := range resp.Environments.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return items, nil
 }
 
-func (r *railwayInitResolver) Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
+func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
 	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, "")
 }
 
@@ -115,6 +131,44 @@ func (c *ConfigInitCmd) Run(globals *Globals) error {
 	}
 
 	return RunConfigInit(ctx, wd, globals.Workspace, globals.Project, globals.Environment, resolver, prompt.StdinIsInteractive(), os.Stdout)
+}
+
+// withSpinner wraps an action in a loading spinner when interactive mode is
+// enabled. In non-interactive mode the action runs directly.
+func withSpinner(ctx context.Context, title string, interactive bool, action func()) error {
+	if !interactive {
+		action()
+		return nil
+	}
+	return spinner.New().
+		Title(title).
+		Context(ctx).
+		Action(action).
+		Run()
+}
+
+// selectItem picks an item from the fetched list. If hint is non-empty, it
+// matches by name. Otherwise it falls through to the interactive picker.
+func selectItem(label string, items []prompt.Item, hint string, interactive bool) (name, id string, err error) {
+	if hint != "" {
+		for _, it := range items {
+			if it.Name == hint {
+				return it.Name, it.ID, nil
+			}
+		}
+		return "", "", fmt.Errorf("%s not found: %s", label, hint)
+	}
+	picked, err := prompt.PickItem(label, items, interactive, prompt.PickOpts{ForcePrompt: true})
+	if err != nil {
+		return "", "", err
+	}
+	// Look up name from ID.
+	for _, it := range items {
+		if it.ID == picked {
+			return it.Name, it.ID, nil
+		}
+	}
+	return picked, picked, nil
 }
 
 // RunConfigInit is the testable core of `config init`.
@@ -141,30 +195,65 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
 	}
 
-	// 2. Resolve workspace → project → environment step by step,
-	//    printing a summary line after each selection.
-	wsName, wsID, err := resolver.ResolveWorkspace(ctx, workspace)
+	// 2. Resolve workspace → project → environment step by step.
+	//    Each API call is wrapped in a spinner (interactive only),
+	//    then the picker appears (if needed) after the spinner clears.
+
+	var wsItems []prompt.Item
+	var fetchErr error
+	if err := withSpinner(ctx, "Fetching workspaces…", interactive, func() {
+		wsItems, fetchErr = resolver.FetchWorkspaces(ctx)
+	}); err != nil {
+		return err
+	}
+	if fetchErr != nil {
+		return fetchErr
+	}
+	wsName, wsID, err := selectItem("workspace", wsItems, workspace, interactive)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "  Workspace: %s\n", wsName)
 
-	projName, projID, err := resolver.ResolveProject(ctx, wsID, project)
+	var projItems []prompt.Item
+	if err := withSpinner(ctx, "Fetching projects…", interactive, func() {
+		projItems, fetchErr = resolver.FetchProjects(ctx, wsID)
+	}); err != nil {
+		return err
+	}
+	if fetchErr != nil {
+		return fetchErr
+	}
+	projName, projID, err := selectItem("project", projItems, project, interactive)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "  Project: %s\n", projName)
 
-	envName, envID, err := resolver.ResolveEnvironment(ctx, projID, environment)
+	var envItems []prompt.Item
+	if err := withSpinner(ctx, "Fetching environments…", interactive, func() {
+		envItems, fetchErr = resolver.FetchEnvironments(ctx, projID)
+	}); err != nil {
+		return err
+	}
+	if fetchErr != nil {
+		return fetchErr
+	}
+	envName, envID, err := selectItem("environment", envItems, environment, interactive)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "  Environment: %s\n", envName)
 
 	// 3. Fetch live state.
-	live, err := resolver.Fetch(ctx, projID, envID)
-	if err != nil {
+	var live *config.LiveConfig
+	if err := withSpinner(ctx, "Fetching live state…", interactive, func() {
+		live, fetchErr = resolver.FetchLiveState(ctx, projID, envID)
+	}); err != nil {
 		return err
+	}
+	if fetchErr != nil {
+		return fetchErr
 	}
 
 	// 4. Let the user choose which services to include.

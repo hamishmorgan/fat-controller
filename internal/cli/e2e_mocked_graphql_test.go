@@ -706,36 +706,48 @@ func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID, servic
 }
 
 // e2eInitResolver implements initResolver for e2e tests, delegating to the
-// Named resolve functions pointed at the mock server.
+// Railway API pointed at the mock server.
 type e2eInitResolver struct {
 	client *railway.Client
 }
 
-func (e *e2eInitResolver) ResolveWorkspace(ctx context.Context, workspace string) (string, string, error) {
-	r, err := railway.ResolveWorkspaceNamed(ctx, e.client, workspace, prompt.PickOpts{ForcePrompt: true})
+func (e *e2eInitResolver) FetchWorkspaces(ctx context.Context) ([]prompt.Item, error) {
+	resp, err := railway.ApiToken(ctx, e.client.GQL())
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return r.Name, r.ID, nil
+	items := make([]prompt.Item, len(resp.ApiToken.Workspaces))
+	for i, ws := range resp.ApiToken.Workspaces {
+		items[i] = prompt.Item{Name: ws.Name, ID: ws.Id}
+	}
+	return items, nil
 }
 
-func (e *e2eInitResolver) ResolveProject(ctx context.Context, workspaceID, project string) (string, string, error) {
-	r, err := railway.ResolveProjectNamed(ctx, e.client, workspaceID, project, prompt.PickOpts{ForcePrompt: true})
+func (e *e2eInitResolver) FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error) {
+	resp, err := railway.Projects(ctx, e.client.GQL(), &workspaceID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return r.Name, r.ID, nil
+	items := make([]prompt.Item, len(resp.Projects.Edges))
+	for i, edge := range resp.Projects.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return items, nil
 }
 
-func (e *e2eInitResolver) ResolveEnvironment(ctx context.Context, projectID, env string) (string, string, error) {
-	r, err := railway.ResolveEnvironmentNamed(ctx, e.client, projectID, env, prompt.PickOpts{ForcePrompt: true})
+func (e *e2eInitResolver) FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error) {
+	resp, err := railway.Environments(ctx, e.client.GQL(), projectID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return r.Name, r.ID, nil
+	items := make([]prompt.Item, len(resp.Environments.Edges))
+	for i, edge := range resp.Environments.Edges {
+		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return items, nil
 }
 
-func (e *e2eInitResolver) Fetch(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
+func (e *e2eInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
 	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, "")
 }
 

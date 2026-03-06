@@ -22,13 +22,13 @@ type PickOpts struct {
 	ForcePrompt bool
 }
 
-// pickItem selects an item from the list:
+// PickItem selects an item from the list:
 //   - 0 items: error
 //   - 1 item + !forcePrompt: auto-select
 //   - 1 item + forcePrompt + interactive: show picker
 //   - multiple + interactive: huh Select picker
 //   - multiple + non-interactive: error with listing
-func pickItem(label string, items []Item, interactive bool, opts PickOpts) (string, error) {
+func PickItem(label string, items []Item, interactive bool, opts PickOpts) (string, error) {
 	if len(items) == 0 {
 		return "", fmt.Errorf("no %ss found", label)
 	}
@@ -76,17 +76,17 @@ func runPicker(label string, items []Item) (string, error) {
 
 // PickProject selects a project from the list.
 func PickProject(items []Item, interactive bool, opts PickOpts) (string, error) {
-	return pickItem("project", items, interactive, opts)
+	return PickItem("project", items, interactive, opts)
 }
 
 // PickEnvironment selects an environment from the list.
 func PickEnvironment(items []Item, interactive bool, opts PickOpts) (string, error) {
-	return pickItem("environment", items, interactive, opts)
+	return PickItem("environment", items, interactive, opts)
 }
 
 // PickWorkspace selects a workspace from the list.
 func PickWorkspace(items []Item, interactive bool, opts PickOpts) (string, error) {
-	return pickItem("workspace", items, interactive, opts)
+	return PickItem("workspace", items, interactive, opts)
 }
 
 // PickServices shows a multi-select picker for services. All services are

@@ -11,9 +11,12 @@ import (
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/config"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
-// fakeInitResolver implements cli.InitResolver for testing.
+// fakeInitResolver implements initResolver for testing.
+// Each Fetch method returns a single-item list so selection auto-picks
+// when the test passes the matching name hint.
 type fakeInitResolver struct {
 	wsName   string
 	wsID     string
@@ -28,28 +31,28 @@ type fakeInitResolver struct {
 	fetchErr error
 }
 
-func (f *fakeInitResolver) ResolveWorkspace(_ context.Context, _ string) (string, string, error) {
+func (f *fakeInitResolver) FetchWorkspaces(_ context.Context) ([]prompt.Item, error) {
 	if f.wsErr != nil {
-		return "", "", f.wsErr
+		return nil, f.wsErr
 	}
-	return f.wsName, f.wsID, nil
+	return []prompt.Item{{Name: f.wsName, ID: f.wsID}}, nil
 }
 
-func (f *fakeInitResolver) ResolveProject(_ context.Context, _, _ string) (string, string, error) {
+func (f *fakeInitResolver) FetchProjects(_ context.Context, _ string) ([]prompt.Item, error) {
 	if f.projErr != nil {
-		return "", "", f.projErr
+		return nil, f.projErr
 	}
-	return f.projName, f.projID, nil
+	return []prompt.Item{{Name: f.projName, ID: f.projID}}, nil
 }
 
-func (f *fakeInitResolver) ResolveEnvironment(_ context.Context, _, _ string) (string, string, error) {
+func (f *fakeInitResolver) FetchEnvironments(_ context.Context, _ string) ([]prompt.Item, error) {
 	if f.envErr != nil {
-		return "", "", f.envErr
+		return nil, f.envErr
 	}
-	return f.envName, f.envID, nil
+	return []prompt.Item{{Name: f.envName, ID: f.envID}}, nil
 }
 
-func (f *fakeInitResolver) Fetch(_ context.Context, _, _ string) (*config.LiveConfig, error) {
+func (f *fakeInitResolver) FetchLiveState(_ context.Context, _, _ string) (*config.LiveConfig, error) {
 	if f.fetchErr != nil {
 		return nil, f.fetchErr
 	}

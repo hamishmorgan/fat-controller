@@ -13,7 +13,8 @@ import (
 // Globals holds values that are available to every command's Run() method.
 // Kong tags are here so CLI can embed Globals directly.
 // Command-specific flags live in mixin structs (MutationFlags, ConfigFileFlags,
-// WorkspaceFlag, ProjectFlag, EnvironmentFlag) or directly on command structs — not here.
+// ServiceFlags/EnvironmentFlags/ProjectFlags/WorkspaceFlags hierarchy)
+// or directly on command structs — not here.
 type Globals struct {
 	Token   string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
 	Output  string        `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
@@ -28,19 +29,36 @@ type Globals struct {
 	BaseCtx context.Context `kong:"-"`
 }
 
-// WorkspaceFlag is embedded by commands that accept --workspace.
-type WorkspaceFlag struct {
+// Resolution flag hierarchy: each level embeds its parent so that a command
+// only needs to embed one struct to get the full ancestry.
+//
+//	WorkspaceFlags
+//	  └── ProjectFlags     (+ --workspace)
+//	        └── EnvironmentFlags  (+ --workspace, --project)
+//	              └── ServiceFlags        (+ --workspace, --project, --environment)
+
+// WorkspaceFlags is embedded by commands that need --workspace only.
+type WorkspaceFlags struct {
 	Workspace string `help:"Workspace ID or name." env:"FAT_CONTROLLER_WORKSPACE"`
 }
 
-// ProjectFlag is embedded by commands that accept --project.
-type ProjectFlag struct {
-	Project string `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
+// ProjectFlags is embedded by commands that need --workspace + --project.
+type ProjectFlags struct {
+	WorkspaceFlags `kong:"embed"`
+	Project        string `help:"Project ID or name." env:"FAT_CONTROLLER_PROJECT"`
 }
 
-// EnvironmentFlag is embedded by commands that accept --environment.
-type EnvironmentFlag struct {
-	Environment string `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
+// EnvironmentFlags is embedded by commands that need --workspace + --project + --environment.
+type EnvironmentFlags struct {
+	ProjectFlags `kong:"embed"`
+	Environment  string `help:"Environment name." env:"FAT_CONTROLLER_ENVIRONMENT"`
+}
+
+// ServiceFlags is embedded by commands that need the full resolution chain
+// (--workspace + --project + --environment + --service).
+type ServiceFlags struct {
+	EnvironmentFlags `kong:"embed"`
+	Service          string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
 }
 
 // MutationFlags are embedded by commands that mutate state (set, delete, init, apply).
@@ -135,65 +153,50 @@ type ConfigCmd struct {
 
 // ConfigGetCmd implements `config get`.
 type ConfigGetCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
-	Path            string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
-	Full            bool      `help:"Include IDs and read-only fields."`
-	Service         string    `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
-	ShowSecrets     bool      `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	output          io.Writer `kong:"-"`
+	ServiceFlags `kong:"embed"`
+	Path         string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
+	Full         bool      `help:"Include IDs and read-only fields."`
+	ShowSecrets  bool      `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	output       io.Writer `kong:"-"`
 }
 
 // ConfigSetCmd implements `config set`.
 type ConfigSetCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
-	MutationFlags   `kong:"embed"`
-	Path            string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
-	Value           string `arg:"" required:"" help:"Value to set."`
-	SkipDeploys     bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	EnvironmentFlags `kong:"embed"`
+	MutationFlags    `kong:"embed"`
+	Path             string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
+	Value            string `arg:"" required:"" help:"Value to set."`
+	SkipDeploys      bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
 }
 
 // ConfigDeleteCmd implements `config delete`.
 type ConfigDeleteCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
-	MutationFlags   `kong:"embed"`
-	Path            string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
+	EnvironmentFlags `kong:"embed"`
+	MutationFlags    `kong:"embed"`
+	Path             string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
 }
 
 // ConfigInitCmd implements `config init`.
 type ConfigInitCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
-	MutationFlags   `kong:"embed"`
+	EnvironmentFlags `kong:"embed"`
+	MutationFlags    `kong:"embed"`
 }
 
 // ConfigDiffCmd implements `config diff`.
 type ConfigDiffCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
+	ServiceFlags    `kong:"embed"`
 	ConfigFileFlags `kong:"embed"`
-	Service         string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
-	ShowSecrets     bool   `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	ShowSecrets     bool `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
 }
 
 // ConfigApplyCmd implements `config apply`.
 type ConfigApplyCmd struct {
-	WorkspaceFlag   `kong:"embed"`
-	ProjectFlag     `kong:"embed"`
-	EnvironmentFlag `kong:"embed"`
+	ServiceFlags    `kong:"embed"`
 	MutationFlags   `kong:"embed"`
 	ConfigFileFlags `kong:"embed"`
-	Service         string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
-	ShowSecrets     bool   `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	SkipDeploys     bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
-	FailFast        bool   `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
+	ShowSecrets     bool `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
+	SkipDeploys     bool `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	FailFast        bool `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
 }
 
 // ConfigValidateCmd implements `config validate`.
@@ -206,7 +209,7 @@ type ProjectCmd struct {
 }
 
 type ProjectListCmd struct {
-	WorkspaceFlag `kong:"embed"`
+	WorkspaceFlags `kong:"embed"`
 }
 
 type EnvironmentCmd struct {
@@ -214,8 +217,7 @@ type EnvironmentCmd struct {
 }
 
 type EnvironmentListCmd struct {
-	WorkspaceFlag `kong:"embed"`
-	ProjectFlag   `kong:"embed"`
+	ProjectFlags `kong:"embed"`
 }
 
 type WorkspaceCmd struct {

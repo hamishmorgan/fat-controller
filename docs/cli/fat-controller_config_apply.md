@@ -17,10 +17,10 @@ fat-controller config apply [flags]
 | `--workspace` | string |  | `FAT_CONTROLLER_WORKSPACE` | Workspace ID or name. |
 | `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
 | `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
+| `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
 | `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Answer yes to all confirmation prompts. |
 | `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Force preview of mutations. |
 | `-f`, `--file` | string[] |  | `FAT_CONTROLLER_CONFIG` | Railway config file paths. Repeatable. |
-| `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 | `--skip-deploys` | bool |  | `FAT_CONTROLLER_SKIP_DEPLOYS` | Don't trigger redeployments. |
 | `--fail-fast` | bool |  | `FAT_CONTROLLER_FAIL_FAST` | Stop on first error during apply. |

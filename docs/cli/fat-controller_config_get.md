@@ -21,8 +21,8 @@ fat-controller config get [<path>] [flags]
 | `--workspace` | string |  | `FAT_CONTROLLER_WORKSPACE` | Workspace ID or name. |
 | `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
 | `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
-| `--full` | bool |  |  | Include IDs and read-only fields. |
 | `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
+| `--full` | bool |  |  | Include IDs and read-only fields. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 
 ## Global Flags

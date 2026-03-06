@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -147,28 +148,30 @@ func withSpinner(ctx context.Context, title string, interactive bool, action fun
 		Run()
 }
 
-// selectItem picks an item from the fetched list. If hint is non-empty, it
-// matches by name. Otherwise it falls through to the interactive picker.
-func selectItem(label string, items []prompt.Item, hint string, interactive bool) (name, id string, err error) {
-	if hint != "" {
-		for _, it := range items {
-			if it.Name == hint {
-				return it.Name, it.ID, nil
-			}
-		}
-		return "", "", fmt.Errorf("%s not found: %s", label, hint)
-	}
-	picked, err := prompt.PickItem(label, items, interactive, prompt.PickOpts{ForcePrompt: true})
-	if err != nil {
-		return "", "", err
-	}
-	// Look up name from ID.
+// selectByName looks up an item by name from a fetched list.
+// Used when a CLI flag provides the name directly.
+func selectByName(label string, items []prompt.Item, name string) (string, string, error) {
 	for _, it := range items {
-		if it.ID == picked {
+		if it.Name == name {
 			return it.Name, it.ID, nil
 		}
 	}
-	return picked, picked, nil
+	return "", "", fmt.Errorf("%s not found: %s", label, name)
+}
+
+// lookupName returns the display name for an ID in the items list.
+func lookupName(items []prompt.Item, id string) string {
+	for _, it := range items {
+		if it.ID == id {
+			return it.Name
+		}
+	}
+	return id
+}
+
+// summaryNote creates a huh.Note field displaying a completed selection.
+func summaryNote(label, value string) huh.Field {
+	return huh.NewNote().Title(fmt.Sprintf("%s: %s", label, value))
 }
 
 // RunConfigInit is the testable core of `config init`.
@@ -196,9 +199,11 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	// 2. Resolve workspace → project → environment step by step.
-	//    Each API call is wrapped in a spinner (interactive only),
-	//    then the picker appears (if needed) after the spinner clears.
+	//    Each API call is wrapped in a spinner (interactive only).
+	//    In interactive mode, each picker form includes Note fields
+	//    showing all previous selections for context.
 
+	var err error
 	var wsItems []prompt.Item
 	var fetchErr error
 	if err := withSpinner(ctx, "Fetching workspaces…", interactive, func() {
@@ -209,11 +214,30 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	if fetchErr != nil {
 		return fetchErr
 	}
-	wsName, wsID, err := selectItem("workspace", wsItems, workspace, interactive)
+	var wsName, wsID string
+	if workspace != "" {
+		wsName, wsID, err = selectByName("workspace", wsItems, workspace)
+	} else if interactive {
+		var picked string
+		err = prompt.RunFields(prompt.SelectField("workspace", wsItems, &picked))
+		if err == nil {
+			wsName = lookupName(wsItems, picked)
+			wsID = picked
+		}
+	} else {
+		var picked string
+		picked, err = prompt.PickItem("workspace", wsItems, false, prompt.PickOpts{ForcePrompt: true})
+		if err == nil {
+			wsName = lookupName(wsItems, picked)
+			wsID = picked
+		}
+	}
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "  Workspace: %s\n", wsName)
+	if !interactive {
+		_, _ = fmt.Fprintf(out, "  Workspace: %s\n", wsName)
+	}
 
 	var projItems []prompt.Item
 	if err := withSpinner(ctx, "Fetching projects…", interactive, func() {
@@ -224,11 +248,33 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	if fetchErr != nil {
 		return fetchErr
 	}
-	projName, projID, err := selectItem("project", projItems, project, interactive)
+	var projName, projID string
+	if project != "" {
+		projName, projID, err = selectByName("project", projItems, project)
+	} else if interactive {
+		var picked string
+		err = prompt.RunFields(
+			summaryNote("Workspace", wsName),
+			prompt.SelectField("project", projItems, &picked),
+		)
+		if err == nil {
+			projName = lookupName(projItems, picked)
+			projID = picked
+		}
+	} else {
+		var picked string
+		picked, err = prompt.PickItem("project", projItems, false, prompt.PickOpts{ForcePrompt: true})
+		if err == nil {
+			projName = lookupName(projItems, picked)
+			projID = picked
+		}
+	}
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "  Project: %s\n", projName)
+	if !interactive {
+		_, _ = fmt.Fprintf(out, "  Project: %s\n", projName)
+	}
 
 	var envItems []prompt.Item
 	if err := withSpinner(ctx, "Fetching environments…", interactive, func() {
@@ -239,11 +285,34 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	if fetchErr != nil {
 		return fetchErr
 	}
-	envName, envID, err := selectItem("environment", envItems, environment, interactive)
+	var envName, envID string
+	if environment != "" {
+		envName, envID, err = selectByName("environment", envItems, environment)
+	} else if interactive {
+		var picked string
+		err = prompt.RunFields(
+			summaryNote("Workspace", wsName),
+			summaryNote("Project", projName),
+			prompt.SelectField("environment", envItems, &picked),
+		)
+		if err == nil {
+			envName = lookupName(envItems, picked)
+			envID = picked
+		}
+	} else {
+		var picked string
+		picked, err = prompt.PickItem("environment", envItems, false, prompt.PickOpts{ForcePrompt: true})
+		if err == nil {
+			envName = lookupName(envItems, picked)
+			envID = picked
+		}
+	}
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, "  Environment: %s\n", envName)
+	if !interactive {
+		_, _ = fmt.Fprintf(out, "  Environment: %s\n", envName)
+	}
 
 	// 3. Fetch live state.
 	var live *config.LiveConfig
@@ -261,9 +330,23 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	for name := range live.Services {
 		serviceNames = append(serviceNames, name)
 	}
-	selected, err := prompt.PickServices(serviceNames, interactive)
-	if err != nil {
-		return err
+	var selected []string
+	if interactive {
+		err = prompt.RunFields(
+			summaryNote("Workspace", wsName),
+			summaryNote("Project", projName),
+			summaryNote("Environment", envName),
+			prompt.MultiSelectField("Select services to include:", serviceNames, &selected),
+		)
+		if err != nil {
+			return err
+		}
+		sort.Strings(selected)
+	} else {
+		selected, err = prompt.PickServices(serviceNames, false)
+		if err != nil {
+			return err
+		}
 	}
 	_, _ = fmt.Fprintf(out, "  Services: %s (%d selected)\n", strings.Join(selected, ", "), len(selected))
 

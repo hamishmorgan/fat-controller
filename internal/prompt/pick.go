@@ -54,24 +54,51 @@ func ambiguousError(label string, items []Item) error {
 	return errors.New(b.String())
 }
 
-func runPicker(label string, items []Item) (string, error) {
-	var selected string
+// SelectField builds a huh Select field for the given items, writing the
+// selected ID into *value. Callers can combine this with other fields
+// (e.g. Notes) in a huh.NewGroup before running.
+func SelectField(label string, items []Item, value *string) *huh.Select[string] {
 	opts := make([]huh.Option[string], len(items))
 	for i, item := range items {
 		opts[i] = huh.NewOption(item.Name, item.ID)
 	}
+	return huh.NewSelect[string]().
+		Title(fmt.Sprintf("Select a %s:", label)).
+		Options(opts...).
+		Value(value)
+}
+
+// MultiSelectField builds a huh MultiSelect field for the given names,
+// with all options pre-selected. Callers can combine this with other
+// fields in a huh.NewGroup before running.
+func MultiSelectField(title string, names []string, value *[]string) *huh.MultiSelect[string] {
+	sort.Strings(names)
+	opts := make([]huh.Option[string], len(names))
+	for i, name := range names {
+		opts[i] = huh.NewOption(name, name).Selected(true)
+	}
+	return huh.NewMultiSelect[string]().
+		Title(title).
+		Options(opts...).
+		Value(value)
+}
+
+// RunFields wraps the given fields in a Form/Group and runs them.
+func RunFields(fields ...huh.Field) error {
 	err := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(fmt.Sprintf("Select a %s:", label)).
-				Options(opts...).
-				Value(&selected),
-		),
+		huh.NewGroup(fields...),
 	).Run()
 	if err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
-			return "", errors.New("selection cancelled")
+			return errors.New("selection cancelled")
 		}
+	}
+	return err
+}
+
+func runPicker(label string, items []Item) (string, error) {
+	var selected string
+	if err := RunFields(SelectField(label, items, &selected)); err != nil {
 		return "", err
 	}
 	return selected, nil
@@ -106,26 +133,8 @@ func PickServices(names []string, interactive bool) ([]string, error) {
 		return sorted, nil
 	}
 
-	sort.Strings(names)
-
-	opts := make([]huh.Option[string], len(names))
-	for i, name := range names {
-		opts[i] = huh.NewOption(name, name).Selected(true)
-	}
-
 	var selected []string
-	err := huh.NewForm(
-		huh.NewGroup(
-			huh.NewMultiSelect[string]().
-				Title("Select services to include:").
-				Options(opts...).
-				Value(&selected),
-		),
-	).Run()
-	if err != nil {
-		if errors.Is(err, huh.ErrUserAborted) {
-			return nil, errors.New("selection cancelled")
-		}
+	if err := RunFields(MultiSelectField("Select services to include:", names, &selected)); err != nil {
 		return nil, err
 	}
 	sort.Strings(selected)

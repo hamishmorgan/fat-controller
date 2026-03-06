@@ -22,7 +22,7 @@ type Globals struct {
 	Timeout     time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
 	Confirm     bool          `help:"Auto-execute mutations (skip confirmation)." env:"FAT_CONTROLLER_CONFIRM"`
 	DryRun      bool          `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
-	ConfigFiles []string      `help:"Railway config file paths. Repeatable." name:"config" short:"c" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
+	ConfigFiles []string      `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
 	Service     string        `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
 	SkipDeploys bool          `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
 	FailFast    bool          `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
@@ -78,7 +78,8 @@ func (g *Globals) Logger() *slog.Logger {
 type CLI struct {
 	Globals `kong:"embed"`
 
-	Version kong.VersionFlag `help:"Print version." short:"V"`
+	Version    kong.VersionFlag `help:"Print version." short:"V"`
+	Completion CompletionCmd    `cmd:"" help:"Output shell completion code." hidden:""`
 
 	// Subcommand groups
 	Auth        AuthCmd        `cmd:"" help:"Manage authentication."`

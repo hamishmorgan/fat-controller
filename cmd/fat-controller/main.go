@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/version"
+	kongcompletion "github.com/jotaen/kong-completion"
 	"github.com/muesli/termenv"
 )
 
@@ -28,13 +29,22 @@ func main() {
 	defer stop()
 
 	var c cli.CLI
-	kongCtx := kong.Parse(&c,
+	parser, err := kong.New(&c,
 		kong.Name("fat-controller"),
 		kong.Description("CLI for managing Railway projects. Pull live config, diff against desired state, apply the difference."),
 		kong.Vars{"version": version.String()},
 		kong.UsageOnError(),
 		kong.Help(cli.ColorHelpPrinter),
 	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+
+	kongcompletion.Register(parser)
+
+	kongCtx, err := parser.Parse(os.Args[1:])
+	parser.FatalIfErrorf(err)
 
 	// Configure structured logging based on --verbose / --quiet.
 	slog.SetDefault(c.Logger())

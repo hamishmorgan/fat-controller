@@ -76,7 +76,7 @@ func applyColorMode() {
 	}
 
 	if mode == "" {
-		mode = os.Getenv("FAT_CONTROLLER_COLOR")
+		mode = os.Getenv("FAT_CONTROLLER_OUTPUT_COLOR")
 	}
 
 	switch resolveColorMode(mode) {

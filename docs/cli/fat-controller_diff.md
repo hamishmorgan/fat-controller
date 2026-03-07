@@ -19,7 +19,7 @@ fat-controller diff [<path>] [flags]
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
 | `--token` | string |  |  | Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence. |
-| `--timeout` | duration | `30s` | `FAT_CONTROLLER_TIMEOUT` | API request timeout. |
+| `--timeout` | duration | `30s` | `FAT_CONTROLLER_API_TIMEOUT` | API request timeout. |
 | `--workspace` | string |  | `FAT_CONTROLLER_WORKSPACE` | Workspace ID or name. |
 | `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
 | `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
@@ -27,18 +27,17 @@ fat-controller diff [<path>] [flags]
 | `--create` | bool | `true` | `FAT_CONTROLLER_ALLOW_CREATE` | Add entities that exist in source but not target. |
 | `--update` | bool | `true` | `FAT_CONTROLLER_ALLOW_UPDATE` | Overwrite entities that exist in both. |
 | `--delete` | bool | `false` | `FAT_CONTROLLER_ALLOW_DELETE` | Remove entities that exist in target but not source. |
-| `-f`, `--file` | string[] |  | `FAT_CONTROLLER_CONFIG` | Railway config file paths. Repeatable. |
+| `-f`, `--config-file` | string[] |  | `FAT_CONTROLLER_CONFIG_FILE` | Railway config file paths. Repeatable. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 
 ## Global Flags
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
-| `-o`, `--output` | text\|json\|toml\|raw | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml, raw. |
-| `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
+| `-o`, `--output` | text\|json\|toml\|raw | `text` | `FAT_CONTROLLER_OUTPUT_FORMAT` | Output format: text, json, toml, raw. |
+| `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_OUTPUT_COLOR` | Color mode: auto, always, never. |
 | `-v`, `--verbose` | int |  |  | Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace). |
 | `-q`, `--quiet` | int |  |  | Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only). |
-| `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path (disables cascade discovery). |
 | `--env-file` | string |  | `FAT_CONTROLLER_ENV_FILE` | Env file path for variable interpolation. |
 | `-V`, `--version` | bool |  |  | Print version. |
 

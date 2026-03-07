@@ -17,12 +17,11 @@ import (
 // ApiFlags → WorkspaceFlags → ProjectFlags → EnvironmentFlags → ServiceFlags)
 // or directly on command structs — not here.
 type Globals struct {
-	Output     string `help:"Output format: text, json, toml, raw." enum:"text,json,toml,raw" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
-	Color      string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
-	Verbose    int    `help:"Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace)." short:"v" type:"counter"`
-	Quiet      int    `help:"Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only)." short:"q" type:"counter"`
-	ConfigFile string `help:"Config file path (disables cascade discovery)." name:"config-file" env:"FAT_CONTROLLER_CONFIG_FILE"`
-	EnvFile    string `help:"Env file path for variable interpolation." name:"env-file" env:"FAT_CONTROLLER_ENV_FILE"`
+	Output  string `help:"Output format: text, json, toml, raw." enum:"text,json,toml,raw" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT_FORMAT"`
+	Color   string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_OUTPUT_COLOR"`
+	Verbose int    `help:"Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace)." short:"v" type:"counter"`
+	Quiet   int    `help:"Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only)." short:"q" type:"counter"`
+	EnvFile string `help:"Env file path for variable interpolation." name:"env-file" env:"FAT_CONTROLLER_ENV_FILE"`
 
 	// BaseCtx is the root context for all commands. Set by main() with
 	// signal.NotifyContext so that SIGINT/SIGTERM cancels in-flight work.
@@ -43,7 +42,7 @@ type Globals struct {
 // --token and --timeout. It is the base of the resolution hierarchy.
 type ApiFlags struct {
 	Token   string        `help:"Auth token (overrides all other auth). Env vars RAILWAY_API_TOKEN and RAILWAY_TOKEN are also supported — see docs/COMMANDS.md for precedence."`
-	Timeout time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_TIMEOUT"`
+	Timeout time.Duration `help:"API request timeout." default:"30s" env:"FAT_CONTROLLER_API_TIMEOUT"`
 }
 
 // TimeoutContext returns a context with the configured timeout applied.
@@ -117,7 +116,7 @@ func (f *PromptFlags) PromptMode() string {
 
 // ConfigFileFlags are embedded by commands that read config files (diff, apply, validate).
 type ConfigFileFlags struct {
-	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
+	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"config-file" short:"f" env:"FAT_CONTROLLER_CONFIG_FILE" sep:"none"`
 }
 
 // Logger returns a slog.Logger configured for the current verbosity level.
@@ -235,7 +234,7 @@ type ConfigSetCmd struct {
 	MutationFlags    `kong:"embed"`
 	Path             string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
 	Value            string `arg:"" required:"" help:"Value to set."`
-	SkipDeploys      bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	SkipDeploys      bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_DEPLOY"`
 }
 
 // ConfigDeleteCmd implements `config delete`.
@@ -264,7 +263,7 @@ type ConfigApplyCmd struct {
 	MutationFlags   `kong:"embed"`
 	ConfigFileFlags `kong:"embed"`
 	ShowSecrets     bool `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	SkipDeploys     bool `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_SKIP_DEPLOYS"`
+	SkipDeploys     bool `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_DEPLOY"`
 	FailFast        bool `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
 }
 

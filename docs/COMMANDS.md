@@ -97,14 +97,14 @@ override lower ones:
 | Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `[workspace] name` | — | Workspace name |
 | Project | `--project` | `FAT_CONTROLLER_PROJECT` | `[project] name` | — | Project name |
 | Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `name` | — | Environment name |
-| Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | `text`, `json`, `toml` |
-| Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | `auto`, `always`, `never` |
-| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
+| Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT_FORMAT` | `output_format` | `text` | `text`, `json`, `toml` |
+| Color | `--color` | `FAT_CONTROLLER_OUTPUT_COLOR` | `output_color` | `auto` | `auto`, `always`, `never` |
+| Timeout | `--timeout` | `FAT_CONTROLLER_API_TIMEOUT` | `api_timeout` | `30s` | API request timeout |
 | Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Skip confirmation prompts |
 | Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | — | `false` | Preview without executing |
-| Config file | `--config` | `FAT_CONTROLLER_CONFIG` | — | `fat-controller.toml` | Config file path(s) |
+| Config file | `--config-file`, `-f` | `FAT_CONTROLLER_CONFIG_FILE` | — | `fat-controller.toml` | Config file path(s) |
 | Service | `--service` | `FAT_CONTROLLER_SERVICE` | — | — | Scope to a single service |
-| Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `deploy` | `false` | Don't trigger redeployments |
+| Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_DEPLOY` | `deploy` | `false` | Don't trigger redeployments |
 | Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |
 | Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values |
 | Allow create | `--allow-create` | — | `allow_create` | `true` | Allow creating new resources |

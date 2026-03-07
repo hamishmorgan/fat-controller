@@ -406,8 +406,12 @@ changes are made. Output reflects what `apply` would do given the
 current merge flag settings.
 
 ```text
-fat-controller diff
+fat-controller diff [path]
 ```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `path` | Optional dot-path to narrow comparison (e.g. `api`, `api.variables`) |
 
 Flags: global, context, config, merge, display.
 
@@ -429,8 +433,12 @@ Merge local config into live Railway state. See
 and `--delete` control the merge.
 
 ```text
-fat-controller apply
+fat-controller apply [path]
 ```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `path` | Optional dot-path to narrow scope (e.g. `api`, `api.variables`) |
 
 Flags: global, context, config, merge, mutation, apply-specific.
 
@@ -449,8 +457,12 @@ Interactive resolution:
 Check config file for warnings without making API calls.
 
 ```text
-fat-controller validate
+fat-controller validate [path]
 ```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `path` | Optional dot-path to narrow validation (e.g. `api`) |
 
 Flags: global, config.
 
@@ -1168,18 +1180,23 @@ meaning in opposite directions:
 | `--update` | Update Railway entities that differ from config | Update config entries that differ from Railway |
 | `--delete` | Delete Railway entities not in config | Remove config entries not in Railway |
 
-Common patterns:
+**Path scoping.** Both `apply` and `adopt` accept an optional
+dot-path that narrows the operation. Merge flags apply only within
+the scoped path — everything outside it is untouched.
 
 ```bash
-apply                              # create + update (default)
-apply --delete                     # full convergence
+apply                              # create + update everything (default)
+apply --delete                     # full convergence, everything
+apply --delete api.variables       # full convergence, api variables only
+apply api                          # create + update the api service only
 apply --no-update                  # create only, don't touch existing
 apply --no-create                  # update only, don't add new
-apply --no-create --delete         # update + delete, don't add
-adopt --no-update                  # add new entries, don't touch existing
-adopt --delete                     # add + update + remove stale
-adopt --no-create --delete         # update + remove stale, don't add
+adopt api                          # adopt only the api service
+adopt --delete api.variables       # sync api variables, remove stale
 ```
+
+This eliminates the need for per-section `managed` keys — scope
+`--delete` with a path to get per-section delete granularity.
 
 Without `--delete`, explicit delete markers handle one-off removals:
 
@@ -1201,43 +1218,38 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Per-section delete granularity.** `--delete` applies globally.
-   Should there be a per-section equivalent (e.g. a `managed = true`
-   key within `[api.variables]` meaning "delete any variables not
-   listed here")? Per-section is more flexible but more complex.
-
-2. **Volume sizing.** Volumes have a size, but Railway doesn't expose
+1. **Volume sizing.** Volumes have a size, but Railway doesn't expose
    size in the create/update mutations — they auto-scale. Should the
    config file express a size, or just mount path?
 
-3. **Domain verification.** Custom domains require DNS verification.
+2. **Domain verification.** Custom domains require DNS verification.
    `apply` can create the domain record in Railway, but the user still
    needs to set up DNS. Should `status` show verification state?
 
-4. **Service creation defaults.** When `apply` creates a new service,
+3. **Service creation defaults.** When `apply` creates a new service,
    what source does it use? Empty service (no repo)? The config would
    need to specify source (repo URL + branch, or Docker image) for
    new services. What's the minimal viable service definition?
 
-5. **Ordering of creation.** When bootstrapping from scratch, `apply`
+4. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
 
-6. **Buckets (S3-compatible object storage).** Railway supports
+5. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[svc.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-7. **Functions (serverless).** Railway supports serverless functions
+6. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[svc.*]` tables?
 
-8. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+7. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
    multi-region instance counts, while `[svc.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[svc.deploy]` in

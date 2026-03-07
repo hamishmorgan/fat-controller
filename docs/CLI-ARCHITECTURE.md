@@ -165,6 +165,7 @@ Every command accepts these flags.
 | `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
 | `--json` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output as JSON |
 | `--toml` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output as TOML |
+| `--raw` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output bare value, no formatting |
 | `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
 | `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
 | `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
@@ -173,8 +174,11 @@ Every command accepts these flags.
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
 Default format is `auto` — the tool infers the best format from
-context (e.g. file extension, whether stdout is a TTY). `--json`
-and `--toml` are mutually exclusive; specifying both is an error.
+context (e.g. file extension, whether stdout is a TTY). `--json`,
+`--toml`, and `--raw` are mutually exclusive. `--raw` outputs the
+bare value with no quoting or structure — only valid when the
+result is a single scalar (e.g. `show api.variables.PORT`); errors
+if the result is a table or list.
 
 Default log level is INFO.
 
@@ -1202,44 +1206,38 @@ given the current create/update/delete settings.
    key within `[api.variables]` meaning "delete any variables not
    listed here")? Per-section is more flexible but more complex.
 
-2. **`show` raw value output.** `--json` and `--toml` handle
-   structured output. But should `show api.variables.PORT` output
-   just `8080` with no formatting when targeting a single scalar
-   value? Useful for `VAL=$(fat-controller show api.variables.PORT)`
-   in scripts.
-
-3. **Volume sizing.** Volumes have a size, but Railway doesn't expose
+2. **Volume sizing.** Volumes have a size, but Railway doesn't expose
    size in the create/update mutations — they auto-scale. Should the
    config file express a size, or just mount path?
 
-4. **Domain verification.** Custom domains require DNS verification.
+3. **Domain verification.** Custom domains require DNS verification.
    `apply` can create the domain record in Railway, but the user still
    needs to set up DNS. Should `status` show verification state?
 
-5. **Service creation defaults.** When `apply` creates a new service,
+4. **Service creation defaults.** When `apply` creates a new service,
    what source does it use? Empty service (no repo)? The config would
    need to specify source (repo URL + branch, or Docker image) for
    new services. What's the minimal viable service definition?
 
-6. **Ordering of creation.** When bootstrapping from scratch, `apply`
+5. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
 
-7. **Buckets (S3-compatible object storage).** Railway supports
+6. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[svc.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-8. **Functions (serverless).** Railway supports serverless functions
+7. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[svc.*]` tables?
 
-9. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+8. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
    multi-region instance counts, while `[svc.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[svc.deploy]` in

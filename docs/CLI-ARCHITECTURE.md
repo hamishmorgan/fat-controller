@@ -36,9 +36,9 @@ tool.
 5. **No local state file.** Live state always comes from Railway's API.
    Diffs are never stale.
 
-6. **Files are composable.** Multiple files can be merged
-   (`--config a.toml --config b.toml`). This supports base+overlay
-   patterns for multi-environment setups.
+6. **One file, one scope.** Each config file is self-contained and
+   targets one scope. Multi-environment setups use one file per
+   environment, not overlays.
 
 ---
 
@@ -229,7 +229,7 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Config file path. Repeatable for overlays. |
+| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Config file path |
 
 ### Merge flags
 
@@ -497,13 +497,11 @@ Flags: global.
 
 | File | Purpose | Committed? |
 |------|---------|-----------|
-| `fat-controller.toml` | Primary desired state file | Yes |
-| `fat-controller.production.toml` | Environment overlay | Yes |
-| `fat-controller.staging.toml` | Environment overlay | Yes |
+| `fat-controller.toml` | Desired state file | Yes |
 | `.env.fat-controller` | Secret values for `${VAR}` interpolation | No (gitignored) |
 
-The base file name is `fat-controller.toml` by default, overridable
-with `--config`. Multiple `--config` flags merge in order.
+The default file name is `fat-controller.toml`, overridable with
+`--config`.
 
 ### Settings file (tool behavior)
 
@@ -583,32 +581,7 @@ These have state but small surface area:
 
 ## Multi-environment patterns
 
-### Pattern 1: Base + overlays (recommended)
-
-```text
-fat-controller.toml                 # shared across environments
-fat-controller.production.toml      # production overrides
-fat-controller.staging.toml         # staging overrides
-.env.fat-controller                 # local secrets
-```
-
-```bash
-# Apply to production
-fat-controller apply \
-  --config fat-controller.toml \
-  --config fat-controller.production.toml
-
-# Apply to staging
-fat-controller apply \
-  --config fat-controller.toml \
-  --config fat-controller.staging.toml
-```
-
-The base file contains service definitions and variables that are the
-same everywhere. The overlay file sets `environment = "production"` and
-overrides values that differ.
-
-### Pattern 2: Directory per environment
+### Pattern 1: Directory per environment
 
 ```text
 environments/
@@ -616,18 +589,24 @@ environments/
   staging/fat-controller.toml
 ```
 
-Each file is self-contained. Simpler but more duplication.
+Each file is self-contained. Values that differ between environments
+use `${VAR}` interpolation or are set directly.
 
-### Pattern 3: Service-scoped files (monorepo)
+```bash
+fat-controller apply --config environments/production/fat-controller.toml
+fat-controller apply --config environments/staging/fat-controller.toml
+```
+
+### Pattern 2: Service-scoped files (monorepo)
 
 ```text
 services/
   api/fat-controller.toml           # service = "api"
   worker/fat-controller.toml        # service = "worker"
-fat-controller.toml                 # shared variables only
 ```
 
-Each service team owns their own file. A CI pipeline applies them all.
+Each service team owns their own file. A CI pipeline applies each
+file independently.
 
 ---
 

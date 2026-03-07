@@ -86,6 +86,7 @@ not what it manages:
 | `api_timeout` | Overall time limit per API request (connect through response) |
 | `output_format` | Output format: `text`, `json`, `toml` |
 | `output_color` | Color: `auto`, `always`, `never` |
+| `prompt` | Prompting mode: `all`, `default`, `none` |
 | `show_secrets` | Show secret values instead of masking |
 | `sensitive_keywords` | Keywords for detecting sensitive variable names |
 | `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
@@ -214,8 +215,8 @@ Every command accepts these flags.
 | `--raw` | | `FAT_CONTROLLER_OUTPUT_FORMAT` | `tool.output_format` | | Output bare value, no formatting |
 | `--color` | | `FAT_CONTROLLER_OUTPUT_COLOR` | `tool.output_color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
 | `--timeout` | | `FAT_CONTROLLER_API_TIMEOUT` | `tool.api_timeout` | `30s` | Time limit per API request |
-| `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
-| `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
+| `--ask` | `-a` | `FAT_CONTROLLER_PROMPT` | `tool.prompt` | | Set prompt mode to `all` |
+| `--yes` | `-y` | `FAT_CONTROLLER_PROMPT` | `tool.prompt` | | Set prompt mode to `none` |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
@@ -1302,20 +1303,21 @@ level:
 | Has a default | Use default silently | Use default silently |
 | No default, options available | Picker (select from list) | Error with available options |
 | No default, no options | Prompt for free-text input | Error |
-| Mutation | Preview + confirmation (default: yes) | Error unless `--yes` |
+| Mutation | Preview + confirmation (default: yes) | Error unless `prompt = "none"` |
 | Colors | Auto-detected | Off (unless `--color=always`) |
 
-**Prompting levels** control how aggressively the tool prompts in
-interactive mode:
+**Prompting mode** (`tool.prompt`) controls how aggressively the
+tool prompts in interactive mode. CLI flags `--ask` and `--yes`
+are shortcuts for `prompt = "all"` and `prompt = "none"`:
 
-| Flag | Has a default | No default | Mutation |
+| Mode | Has a default | No default | Mutation |
 |------|---------------|------------|----------|
-| `--ask` | Prompt, pre-filled with default | Prompt/picker | Confirm |
-| *(default)* | Use default silently | Prompt/picker | Confirm |
-| `--yes` | Use default silently | Error if missing | Skip confirmation |
+| `all` (`--ask`) | Prompt, pre-filled with default | Prompt/picker | Confirm |
+| `default` | Use default silently | Prompt/picker | Confirm |
+| `none` (`--yes`) | Use default silently | Error if missing | Skip confirmation |
 
-`--ask` is only valid in interactive mode — it errors on a
-non-interactive terminal. `--yes` works in both modes.
+`all` is only valid in interactive mode — it errors on a
+non-interactive terminal. `none` works in both modes.
 
 **Flags pin values.** If `--project`, `--environment`, or any other
 flag is specified with a value, that value is locked in — no prompt
@@ -1348,7 +1350,7 @@ Without `--ask`, if the config file sets the project name to
 `"Life"` and the environment name to `"production"`, `show` uses
 those silently — no prompts at all.
 
-**`--ask`, `--yes`, and `--dry-run`:**
+**Prompt mode and `--dry-run`:**
 
 `--dry-run` prevents all mutations. When combined with other flags,
 `--dry-run` always wins.
@@ -1363,7 +1365,7 @@ those silently — no prompts at all.
 | `--yes --dry-run` | Use defaults, preview only | Use defaults, preview only |
 
 `--ask` and `--yes` are mutually exclusive — specifying both is an
-error.
+error. In config, `prompt` accepts only one value.
 
 The goal: interactive mode is convenient for humans — `--ask` lets
 you explore, defaults keep things quick for the common case.

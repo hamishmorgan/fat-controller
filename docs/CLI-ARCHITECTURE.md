@@ -143,7 +143,7 @@ memory_gb = 4
 "api.example.com" = { port = 8080 }
 
 [api.volumes]
-data = { mount = "/data", size_gb = 10 }
+data = { mount = "/data" }
 ```
 
 A file doesn't need to include everything — the
@@ -517,6 +517,10 @@ changing config:
 fat-controller show --environment staging
 fat-controller show api.variables --environment staging
 ```
+
+`show` includes read-only fields from the API that the config file
+does not express — for example, volume current size, deployment
+status, or creation timestamps.
 
 Read-only — no confirmation needed.
 
@@ -919,7 +923,7 @@ Running from `environments/production/`, the merge order is:
 | Scaling | `[svc.scale]` | Per-region instance counts |
 | Custom domains | `[svc.domains]` | hostname, target port |
 | Service domains | `[svc.domains]` | railway.app subdomain, target port |
-| Volumes | `[svc.volumes]` | name, mount path |
+| Volumes | `[svc.volumes]` | name, mount path (size is read-only, visible via `show`) |
 | TCP proxies | `[svc.tcp_proxies]` | application port |
 | Private network endpoints | `[svc.network]` | DNS name |
 | Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
@@ -1218,38 +1222,34 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Volume sizing.** Volumes have a size, but Railway doesn't expose
-   size in the create/update mutations — they auto-scale. Should the
-   config file express a size, or just mount path?
-
-2. **Domain verification.** Custom domains require DNS verification.
+1. **Domain verification.** Custom domains require DNS verification.
    `apply` can create the domain record in Railway, but the user still
    needs to set up DNS. Should `status` show verification state?
 
-3. **Service creation defaults.** When `apply` creates a new service,
+2. **Service creation defaults.** When `apply` creates a new service,
    what source does it use? Empty service (no repo)? The config would
    need to specify source (repo URL + branch, or Docker image) for
    new services. What's the minimal viable service definition?
 
-4. **Ordering of creation.** When bootstrapping from scratch, `apply`
+3. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
 
-5. **Buckets (S3-compatible object storage).** Railway supports
+4. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[svc.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-6. **Functions (serverless).** Railway supports serverless functions
+5. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[svc.*]` tables?
 
-7. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+6. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
    multi-region instance counts, while `[svc.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[svc.deploy]` in

@@ -18,11 +18,46 @@ type Options struct {
 // Applier executes changes against Railway.
 // The service parameter is the service name (empty string = shared scope).
 type Applier interface {
+	// Variables
 	UpsertVariable(ctx context.Context, service, key, value string, skipDeploys bool) error
 	UpsertVariables(ctx context.Context, service string, variables map[string]string, skipDeploys bool) error
 	DeleteVariable(ctx context.Context, service, key string) error
+
+	// Settings
 	UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error
 	UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error
+
+	// Service CRUD
+	CreateService(ctx context.Context, name string) (string, error)
+	DeleteService(ctx context.Context, serviceID string) error
+
+	// Domains
+	CreateCustomDomain(ctx context.Context, serviceID, domain string, port int) error
+	DeleteCustomDomain(ctx context.Context, domainID string) error
+	CreateServiceDomain(ctx context.Context, serviceID string, port int) error
+	DeleteServiceDomain(ctx context.Context, domainID string) error
+
+	// Volumes
+	CreateVolume(ctx context.Context, serviceID, mountPath string) error
+	DeleteVolume(ctx context.Context, volumeID string) error
+
+	// TCP Proxies
+	CreateTCPProxy(ctx context.Context, serviceID string, port int) error
+	DeleteTCPProxy(ctx context.Context, proxyID string) error
+
+	// Private Network
+	EnablePrivateNetwork(ctx context.Context, serviceID string) error
+	DisablePrivateNetwork(ctx context.Context, endpointID string) error
+
+	// Egress
+	SetEgressGateways(ctx context.Context, serviceID string, regions []string) error
+
+	// Triggers
+	CreateDeploymentTrigger(ctx context.Context, serviceID, repo, branch string) error
+	DeleteDeploymentTrigger(ctx context.Context, triggerID string) error
+
+	// Deploy
+	TriggerDeploy(ctx context.Context, serviceID string) error
 }
 
 // Apply computes diffs and executes them in the required order:

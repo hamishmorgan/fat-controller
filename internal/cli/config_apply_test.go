@@ -39,6 +39,34 @@ func (c *countingApplier) UpdateServiceResources(_ context.Context, _ string, _ 
 	return nil
 }
 
+// Sub-resource stubs to satisfy the expanded Applier interface.
+func (c *countingApplier) CreateService(_ context.Context, _ string) (string, error) {
+	return "svc-new", nil
+}
+func (c *countingApplier) DeleteService(_ context.Context, _ string) error { return nil }
+func (c *countingApplier) CreateCustomDomain(_ context.Context, _, _ string, _ int) error {
+	return nil
+}
+func (c *countingApplier) DeleteCustomDomain(_ context.Context, _ string) error { return nil }
+func (c *countingApplier) CreateServiceDomain(_ context.Context, _ string, _ int) error {
+	return nil
+}
+func (c *countingApplier) DeleteServiceDomain(_ context.Context, _ string) error   { return nil }
+func (c *countingApplier) CreateVolume(_ context.Context, _, _ string) error       { return nil }
+func (c *countingApplier) DeleteVolume(_ context.Context, _ string) error          { return nil }
+func (c *countingApplier) CreateTCPProxy(_ context.Context, _ string, _ int) error { return nil }
+func (c *countingApplier) DeleteTCPProxy(_ context.Context, _ string) error        { return nil }
+func (c *countingApplier) EnablePrivateNetwork(_ context.Context, _ string) error  { return nil }
+func (c *countingApplier) DisablePrivateNetwork(_ context.Context, _ string) error { return nil }
+func (c *countingApplier) SetEgressGateways(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+func (c *countingApplier) CreateDeploymentTrigger(_ context.Context, _, _, _ string) error {
+	return nil
+}
+func (c *countingApplier) DeleteDeploymentTrigger(_ context.Context, _ string) error { return nil }
+func (c *countingApplier) TriggerDeploy(_ context.Context, _ string) error           { return nil }
+
 // writeTOML is defined in helpers_test.go.
 
 func TestRunConfigApply_DryRunByDefault(t *testing.T) {

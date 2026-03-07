@@ -65,6 +65,71 @@ func (r *recordingApplier) UpdateServiceResources(_ context.Context, service str
 	return nil
 }
 
+func (r *recordingApplier) CreateService(_ context.Context, name string) (string, error) {
+	r.calls = append(r.calls, "create-service:"+name)
+	return "svc-id", nil
+}
+
+func (r *recordingApplier) DeleteService(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) CreateCustomDomain(_ context.Context, _, _ string, _ int) error {
+	return nil
+}
+
+func (r *recordingApplier) DeleteCustomDomain(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) CreateServiceDomain(_ context.Context, _ string, _ int) error {
+	return nil
+}
+
+func (r *recordingApplier) DeleteServiceDomain(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) CreateVolume(_ context.Context, _, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) DeleteVolume(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) CreateTCPProxy(_ context.Context, _ string, _ int) error {
+	return nil
+}
+
+func (r *recordingApplier) DeleteTCPProxy(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) EnablePrivateNetwork(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) DisablePrivateNetwork(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) SetEgressGateways(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+
+func (r *recordingApplier) CreateDeploymentTrigger(_ context.Context, _, _, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) DeleteDeploymentTrigger(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *recordingApplier) TriggerDeploy(_ context.Context, _ string) error {
+	return nil
+}
+
 func TestApply_Order_SettingsThenSharedThenServiceVars(t *testing.T) {
 	builder := "NIXPACKS"
 	vcpus := 1.0

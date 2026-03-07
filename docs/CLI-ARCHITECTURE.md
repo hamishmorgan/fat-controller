@@ -631,28 +631,43 @@ Resolution order:
 Piped or redirected stdin = non-interactive. This is not a flag — it
 is determined by the terminal environment.
 
-**Impact on behavior:**
+**Core principle:** in interactive mode, any missing or defaulted
+value can be prompted for. The tool asks the user instead of failing
+or assuming. In non-interactive mode, the tool uses defaults where
+they exist and errors where they don't — it never prompts.
 
-| Behavior | Interactive (TTY) | Non-interactive (piped/CI) |
-|----------|------------------|---------------------------|
-| Ambiguous context | Picker (select from list) | Error with available options |
-| `init` | Guided prompts for workspace/project/environment/services | Requires `--workspace`, `--project`, `--environment` flags |
-| Mutations (`apply`, `deploy`, etc.) | Shows diff/preview, prompts for confirmation | Refuses unless `--yes` is set |
-| `adopt` | Shows what will change, prompts for confirmation | Refuses unless `--yes` is set |
+**What this means in practice:**
+
+| Situation | Interactive (TTY) | Non-interactive (piped/CI) |
+|-----------|------------------|---------------------------|
+| Required value missing (no default) | Prompt with available options | Error |
+| Value has a default | Prompt, showing default | Use default silently |
+| Multiple options, none specified | Picker (select from list) | Error with available options |
+| Mutation (`apply`, `deploy`, etc.) | Preview + confirmation prompt | Error unless `--yes` |
 | Colors | Auto-detected | Off (unless `--color=always`) |
 
-**`--yes` and `--dry-run` interact with mode but don't change it:**
+This extends beyond context resolution. Any command parameter that
+has a meaningful set of choices can be prompted interactively:
+workspace, project, environment, services to include, merge behavior,
+output file path, etc.
+
+**`--yes` and `--dry-run`:**
+
+`--yes` accepts the default answer to every prompt. It does not change
+the mode — it just makes interactive mode behave like non-interactive
+for confirmations.
 
 | Flags | Interactive | Non-interactive |
 |-------|-------------|-----------------|
-| (none) | Preview + confirm | Preview + refuse |
-| `--yes` | Execute without confirming | Execute without confirming |
-| `--dry-run` | Preview only | Preview only |
+| (none) | Prompt for everything | Use defaults, error if missing |
+| `--yes` | Use defaults, error if missing | Use defaults, error if missing |
+| `--dry-run` | Preview only, no mutations | Preview only, no mutations |
 | `--yes --dry-run` | Preview only (`--dry-run` wins) | Preview only (`--dry-run` wins) |
 
-The goal: interactive mode is convenient for humans. Non-interactive
-mode is safe for CI — it never prompts, never assumes, and refuses
-to mutate without explicit `--yes`.
+The goal: interactive mode is convenient for humans — you can run
+`fat-controller apply` with minimal flags and the tool guides you.
+Non-interactive mode is safe for CI — deterministic, no prompts, fails
+loudly on missing values.
 
 ---
 

@@ -55,9 +55,10 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		if sd == nil {
 			continue
 		}
+		desiredSvc := findServiceByName(desired.Services, name)
 		if hasDeployChanges(sd.Settings) {
 			slog.Debug("updating service settings", "service", name)
-			if err := applier.UpdateServiceSettings(ctx, name, desired.Services[name].Deploy); err != nil {
+			if err := applier.UpdateServiceSettings(ctx, name, desiredSvc.Deploy); err != nil {
 				result.Failed++
 				if opts.FailFast {
 					return result, err
@@ -68,7 +69,7 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		}
 		if hasResourceChanges(sd.Settings) {
 			slog.Debug("updating service resources", "service", name)
-			if err := applier.UpdateServiceResources(ctx, name, desired.Services[name].Resources); err != nil {
+			if err := applier.UpdateServiceResources(ctx, name, desiredSvc.Resources); err != nil {
 				result.Failed++
 				if opts.FailFast {
 					return result, err
@@ -183,11 +184,20 @@ func hasResourceChanges(changes []diff.Change) bool {
 	return false
 }
 
-func sortedServiceNames(services map[string]*config.DesiredService) []string {
+func sortedServiceNames(services []*config.DesiredService) []string {
 	names := make([]string, 0, len(services))
-	for name := range services {
-		names = append(names, name)
+	for _, svc := range services {
+		names = append(names, svc.Name)
 	}
 	sort.Strings(names)
 	return names
+}
+
+func findServiceByName(services []*config.DesiredService, name string) *config.DesiredService {
+	for _, svc := range services {
+		if svc.Name == name {
+			return svc
+		}
+	}
+	return nil
 }

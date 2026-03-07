@@ -69,12 +69,13 @@ func TestApply_Order_SettingsThenSharedThenServiceVars(t *testing.T) {
 	builder := "NIXPACKS"
 	vcpus := 1.0
 	desired := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{"SHARED": "1"}},
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Variables: config.Variables{"SHARED": "1"},
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Deploy:    &config.DesiredDeploy{Builder: &builder},
 				Resources: &config.DesiredResources{VCPUs: &vcpus},
-				Variables: map[string]string{"PORT": "8080"},
+				Variables: config.Variables{"PORT": "8080"},
 			},
 		},
 	}
@@ -112,9 +113,9 @@ func TestApply_Order_SettingsThenSharedThenServiceVars(t *testing.T) {
 
 func TestApply_FailFastStops(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"A": "1"}},
-			"web": {Variables: map[string]string{"B": "2"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"A": "1"}},
+			{Name: "web", Variables: config.Variables{"B": "2"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -141,9 +142,9 @@ func TestApply_FailFastStops(t *testing.T) {
 
 func TestApply_ContinueOnFailure(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"A": "1"}},
-			"web": {Variables: map[string]string{"B": "2"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"A": "1"}},
+			{Name: "web", Variables: config.Variables{"B": "2"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -170,8 +171,8 @@ func TestApply_ContinueOnFailure(t *testing.T) {
 
 func TestApply_NoChanges(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -198,8 +199,8 @@ func TestApply_StopsOnContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately.
 
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"FOO": "bar"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"FOO": "bar"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -219,8 +220,8 @@ func TestApply_StopsOnContextCancellation(t *testing.T) {
 
 func TestApply_DeleteVariable(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"OLD": ""}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"OLD": ""}},
 		},
 	}
 	live := &config.LiveConfig{

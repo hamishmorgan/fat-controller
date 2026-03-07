@@ -73,10 +73,40 @@ query Variables(
 query ServiceInstance($environmentId: String!, $serviceId: String!) {
   serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
     builder
+    buildCommand
+    startCommand
     dockerfilePath
     rootDirectory
-    startCommand
     healthcheckPath
+    healthcheckTimeout
+    cronSchedule
+    numReplicas
+    region
+    restartPolicyType
+    restartPolicyMaxRetries
+    drainingSeconds
+    overlapSeconds
+    sleepApplication
+    ipv6EgressEnabled
+    watchPatterns
+    preDeployCommand
+    source {
+      image
+      repo
+    }
+    domains {
+      customDomains {
+        id
+        domain
+        targetPort
+      }
+      serviceDomains {
+        id
+        domain
+        targetPort
+        suffix
+      }
+    }
   }
 }
 

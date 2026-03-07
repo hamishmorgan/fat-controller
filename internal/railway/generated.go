@@ -309,15 +309,36 @@ func (v *ServiceInstanceResponse) GetServiceInstance() ServiceInstanceServiceIns
 
 // ServiceInstanceServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
 type ServiceInstanceServiceInstance struct {
-	Builder         Builder `json:"builder"`
-	DockerfilePath  *string `json:"dockerfilePath"`
-	RootDirectory   *string `json:"rootDirectory"`
-	StartCommand    *string `json:"startCommand"`
-	HealthcheckPath *string `json:"healthcheckPath"`
+	Builder                 Builder                                            `json:"builder"`
+	BuildCommand            *string                                            `json:"buildCommand"`
+	StartCommand            *string                                            `json:"startCommand"`
+	DockerfilePath          *string                                            `json:"dockerfilePath"`
+	RootDirectory           *string                                            `json:"rootDirectory"`
+	HealthcheckPath         *string                                            `json:"healthcheckPath"`
+	HealthcheckTimeout      *int                                               `json:"healthcheckTimeout"`
+	CronSchedule            *string                                            `json:"cronSchedule"`
+	NumReplicas             *int                                               `json:"numReplicas"`
+	Region                  *string                                            `json:"region"`
+	RestartPolicyType       RestartPolicyType                                  `json:"restartPolicyType"`
+	RestartPolicyMaxRetries int                                                `json:"restartPolicyMaxRetries"`
+	DrainingSeconds         *int                                               `json:"drainingSeconds"`
+	OverlapSeconds          *int                                               `json:"overlapSeconds"`
+	SleepApplication        *bool                                              `json:"sleepApplication"`
+	Ipv6EgressEnabled       *bool                                              `json:"ipv6EgressEnabled"`
+	WatchPatterns           []string                                           `json:"watchPatterns"`
+	PreDeployCommand        *map[string]interface{}                            `json:"preDeployCommand"`
+	Source                  *ServiceInstanceServiceInstanceSourceServiceSource `json:"source"`
+	Domains                 ServiceInstanceServiceInstanceDomainsAllDomains    `json:"domains"`
 }
 
 // GetBuilder returns ServiceInstanceServiceInstance.Builder, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetBuilder() Builder { return v.Builder }
+
+// GetBuildCommand returns ServiceInstanceServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetBuildCommand() *string { return v.BuildCommand }
+
+// GetStartCommand returns ServiceInstanceServiceInstance.StartCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetStartCommand() *string { return v.StartCommand }
 
 // GetDockerfilePath returns ServiceInstanceServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetDockerfilePath() *string { return v.DockerfilePath }
@@ -325,11 +346,138 @@ func (v *ServiceInstanceServiceInstance) GetDockerfilePath() *string { return v.
 // GetRootDirectory returns ServiceInstanceServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetRootDirectory() *string { return v.RootDirectory }
 
-// GetStartCommand returns ServiceInstanceServiceInstance.StartCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetStartCommand() *string { return v.StartCommand }
-
 // GetHealthcheckPath returns ServiceInstanceServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetHealthcheckPath() *string { return v.HealthcheckPath }
+
+// GetHealthcheckTimeout returns ServiceInstanceServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetHealthcheckTimeout() *int { return v.HealthcheckTimeout }
+
+// GetCronSchedule returns ServiceInstanceServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetCronSchedule() *string { return v.CronSchedule }
+
+// GetNumReplicas returns ServiceInstanceServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetNumReplicas() *int { return v.NumReplicas }
+
+// GetRegion returns ServiceInstanceServiceInstance.Region, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetRegion() *string { return v.Region }
+
+// GetRestartPolicyType returns ServiceInstanceServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetRestartPolicyType() RestartPolicyType {
+	return v.RestartPolicyType
+}
+
+// GetRestartPolicyMaxRetries returns ServiceInstanceServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetRestartPolicyMaxRetries() int {
+	return v.RestartPolicyMaxRetries
+}
+
+// GetDrainingSeconds returns ServiceInstanceServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetDrainingSeconds() *int { return v.DrainingSeconds }
+
+// GetOverlapSeconds returns ServiceInstanceServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetOverlapSeconds() *int { return v.OverlapSeconds }
+
+// GetSleepApplication returns ServiceInstanceServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetSleepApplication() *bool { return v.SleepApplication }
+
+// GetIpv6EgressEnabled returns ServiceInstanceServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetIpv6EgressEnabled() *bool { return v.Ipv6EgressEnabled }
+
+// GetWatchPatterns returns ServiceInstanceServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetWatchPatterns() []string { return v.WatchPatterns }
+
+// GetPreDeployCommand returns ServiceInstanceServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetPreDeployCommand() *map[string]interface{} {
+	return v.PreDeployCommand
+}
+
+// GetSource returns ServiceInstanceServiceInstance.Source, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetSource() *ServiceInstanceServiceInstanceSourceServiceSource {
+	return v.Source
+}
+
+// GetDomains returns ServiceInstanceServiceInstance.Domains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetDomains() ServiceInstanceServiceInstanceDomainsAllDomains {
+	return v.Domains
+}
+
+// ServiceInstanceServiceInstanceDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
+type ServiceInstanceServiceInstanceDomainsAllDomains struct {
+	CustomDomains  []ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
+	ServiceDomains []ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
+}
+
+// GetCustomDomains returns ServiceInstanceServiceInstanceDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomains) GetCustomDomains() []ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain {
+	return v.CustomDomains
+}
+
+// GetServiceDomains returns ServiceInstanceServiceInstanceDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomains) GetServiceDomains() []ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain {
+	return v.ServiceDomains
+}
+
+// ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
+type ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain struct {
+	Id         string `json:"id"`
+	Domain     string `json:"domain"`
+	TargetPort *int   `json:"targetPort"`
+}
+
+// GetId returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetId() string {
+	return v.Id
+}
+
+// GetDomain returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
+type ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain struct {
+	Id         string  `json:"id"`
+	Domain     string  `json:"domain"`
+	TargetPort *int    `json:"targetPort"`
+	Suffix     *string `json:"suffix"`
+}
+
+// GetId returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
+	return v.Id
+}
+
+// GetDomain returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// GetSuffix returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
+	return v.Suffix
+}
+
+// ServiceInstanceServiceInstanceSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
+type ServiceInstanceServiceInstanceSourceServiceSource struct {
+	Image *string `json:"image"`
+	Repo  *string `json:"repo"`
+}
+
+// GetImage returns ServiceInstanceServiceInstanceSourceServiceSource.Image, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceSourceServiceSource) GetImage() *string { return v.Image }
+
+// GetRepo returns ServiceInstanceServiceInstanceSourceServiceSource.Repo, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstanceSourceServiceSource) GetRepo() *string { return v.Repo }
 
 type ServiceInstanceUpdateInput struct {
 	BuildCommand            *string                   `json:"buildCommand"`
@@ -872,10 +1020,40 @@ const ServiceInstance_Operation = `
 query ServiceInstance ($environmentId: String!, $serviceId: String!) {
 	serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
 		builder
+		buildCommand
+		startCommand
 		dockerfilePath
 		rootDirectory
-		startCommand
 		healthcheckPath
+		healthcheckTimeout
+		cronSchedule
+		numReplicas
+		region
+		restartPolicyType
+		restartPolicyMaxRetries
+		drainingSeconds
+		overlapSeconds
+		sleepApplication
+		ipv6EgressEnabled
+		watchPatterns
+		preDeployCommand
+		source {
+			image
+			repo
+		}
+		domains {
+			customDomains {
+				id
+				domain
+				targetPort
+			}
+			serviceDomains {
+				id
+				domain
+				targetPort
+				suffix
+			}
+		}
 	}
 }
 `

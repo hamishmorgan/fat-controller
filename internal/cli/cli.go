@@ -160,6 +160,18 @@ type CLI struct {
 	// Discovery
 	List ListCmd `cmd:"" help:"List Railway entities."`
 
+	// Imperative commands
+	Deploy   DeployCmd   `cmd:"" help:"Trigger a deployment for services."`
+	Redeploy RedeployCmd `cmd:"" help:"Redeploy services from current image."`
+	Restart  RestartCmd  `cmd:"" help:"Restart running deployments."`
+	Rollback RollbackCmd `cmd:"" help:"Roll back services to previous deployment."`
+	Stop     StopCmd     `cmd:"" help:"Cancel running deployments."`
+
+	// Operational
+	Logs   LogsCmd   `cmd:"" help:"Show service logs."`
+	Status StatusCmd `cmd:"" help:"Show deployment status."`
+	Open   OpenCmd   `cmd:"" help:"Open Railway dashboard in browser."`
+
 	// Auth
 	Auth AuthCmd `cmd:"" help:"Manage authentication."`
 

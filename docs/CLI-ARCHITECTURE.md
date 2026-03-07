@@ -245,17 +245,17 @@ the dashboard).
 
 ### Imperative action commands
 
-Actions on running services. Read config file for project/env/service
-context.
+Actions on running services. No argument = all services in the
+environment. One or more service names = filter to those services.
 
 ```text
-fat-controller deploy [service]     Trigger a deployment
-fat-controller redeploy [service]   Redeploy current image
-fat-controller restart [service]    Restart running deployment
-fat-controller rollback [service]   Rollback to previous deployment
-fat-controller stop [service]       Stop running deployment
-fat-controller logs [service]       Tail logs
-fat-controller status [service]     Show deployment status
+fat-controller deploy [service...]     Trigger a deployment
+fat-controller redeploy [service...]   Redeploy current image
+fat-controller restart [service...]    Restart running deployment
+fat-controller rollback [service...]   Rollback to previous deployment
+fat-controller stop [service...]       Stop running deployment
+fat-controller logs [service...]       Tail logs
+fat-controller status [service...]     Show deployment status
 ```
 
 ### Discovery

@@ -620,8 +620,39 @@ Resolution order:
 3. Config file keys (`project`, `environment` in `fat-controller.toml`)
 4. Settings file keys (`.fat-controller.toml`)
 5. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
-6. Interactive picker (if TTY)
+6. Interactive picker (if TTY) — see below
 7. Error with available options
+
+---
+
+## Interactive vs non-interactive mode
+
+**Detection:** interactive mode is active when stdin is a TTY.
+Piped or redirected stdin = non-interactive. This is not a flag — it
+is determined by the terminal environment.
+
+**Impact on behavior:**
+
+| Behavior | Interactive (TTY) | Non-interactive (piped/CI) |
+|----------|------------------|---------------------------|
+| Ambiguous context | Picker (select from list) | Error with available options |
+| `init` | Guided prompts for workspace/project/environment/services | Requires `--workspace`, `--project`, `--environment` flags |
+| Mutations (`apply`, `deploy`, etc.) | Shows diff/preview, prompts for confirmation | Refuses unless `--yes` is set |
+| `adopt` | Shows what will change, prompts for confirmation | Refuses unless `--yes` is set |
+| Colors | Auto-detected | Off (unless `--color=always`) |
+
+**`--yes` and `--dry-run` interact with mode but don't change it:**
+
+| Flags | Interactive | Non-interactive |
+|-------|-------------|-----------------|
+| (none) | Preview + confirm | Preview + refuse |
+| `--yes` | Execute without confirming | Execute without confirming |
+| `--dry-run` | Preview only | Preview only |
+| `--yes --dry-run` | Preview only (`--dry-run` wins) | Preview only (`--dry-run` wins) |
+
+The goal: interactive mode is convenient for humans. Non-interactive
+mode is safe for CI — it never prompts, never assumes, and refuses
+to mutate without explicit `--yes`.
 
 ---
 

@@ -241,8 +241,14 @@ These are set only in the config file, not via flags or env vars.
 
 ### `new`
 
-Scaffold entries in the local config file. Does not call the
-Railway API — use `apply` to create the resources in Railway.
+Scaffold entries in the local config file. Creates the file if it
+doesn't exist, appends to it if it does. Never calls the Railway
+API — use `apply` to create the resources in Railway.
+
+**Non-destructive:** refuses to overwrite existing entries. If the
+config already has a `project` key, `new project` errors. If a
+`[api]` table exists, `new service api` errors. To modify existing
+entries, edit the file directly or use `adopt`.
 
 ```text
 fat-controller new <type> [options]

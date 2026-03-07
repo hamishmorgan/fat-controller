@@ -352,9 +352,10 @@ are detected and written to the secrets file as `${VAR}` references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
 
-Works for both first-time bootstrap (no config file yet — resolves
-context interactively, creates the file) and ongoing sync (config
-file exists — pulls new or changed resources into it).
+Works for both first-time bootstrap (no config file yet) and ongoing
+sync (config file exists). Follows the standard prompting model —
+uses defaults silently, prompts only when a value is missing, and
+confirms before writing.
 
 ```text
 fat-controller adopt [path]
@@ -370,17 +371,29 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
-| Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
-| Workspace | From config file | Picker if no config file | Use default, error if missing |
-| Project | From config file | Picker if no config file | Use default, error if missing |
-| Environment | From config file | Picker if no config file | Use default, error if missing |
-| Services | All | Checkbox list (first time only) | All |
-| Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
+| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default, error if missing |
+| Secrets file (`--secrets`) | Co-located | Use default, prompt if missing | Use default, error if missing |
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
+| Services | All | All (reported, not prompted) | All |
+| Confirm changes | — | Preview + confirm | Error unless `--yes` |
 
-When no config file exists, `adopt` behaves like a first-time setup:
-it prompts for workspace, project, and environment, then writes a
-new config file with the adopted state.
+With `--ask`, every parameter is prompted (with defaults pre-filled).
+Without it, `adopt` reports what it's doing and confirms before
+writing:
+
+```text
+$ fat-controller adopt
+
+  Workspace: Hamish Morgan's Projects
+  Project: Life
+  Environment: production
+  Services: api, worker, postgres (all)
+  Config: fat-controller.toml
+
+  3 services adopted. Write changes? [Y/n]
+```
 
 ### `diff`
 

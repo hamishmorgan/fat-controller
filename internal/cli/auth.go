@@ -61,9 +61,44 @@ func RunAuthStatus(ctx context.Context, token string, globals *Globals, out io.W
 
 	resolved, err := auth.ResolveAuth(ctx, token, store)
 	if err != nil {
+		if isStructuredOutput(globals) {
+			payload := struct {
+				Authenticated bool   `json:"authenticated" toml:"authenticated"`
+				Error         string `json:"error" toml:"error"`
+			}{Authenticated: false, Error: err.Error()}
+			return writeStructured(out, globals.Output, payload)
+		}
 		_, _ = fmt.Fprintln(out, "Not authenticated.")
 		_, _ = fmt.Fprintln(out, "Run 'fat-controller auth login' or set RAILWAY_TOKEN.")
 		return nil
+	}
+
+	if isStructuredOutput(globals) {
+		payload := struct {
+			Authenticated bool   `json:"authenticated" toml:"authenticated"`
+			Source        string `json:"source" toml:"source"`
+			UserName      string `json:"user_name,omitempty" toml:"user_name"`
+			UserEmail     string `json:"user_email,omitempty" toml:"user_email"`
+			UserInfoError string `json:"user_info_error,omitempty" toml:"user_info_error"`
+		}{Authenticated: true, Source: resolved.Source}
+
+		// For stored OAuth, try to fetch user info (best-effort).
+		if resolved.Source == auth.SourceStored {
+			refreshOAuth := auth.NewOAuthClient()
+			refresher := railway.NewOAuthRefresher(refreshOAuth)
+			transport := railway.NewAuthTransport(resolved, store, refresher)
+			oauthClient := auth.NewOAuthClient()
+			oauthClient.HTTPClient = &http.Client{Transport: transport}
+			info, err := oauthClient.FetchUserInfo(ctx)
+			if err != nil {
+				payload.UserInfoError = err.Error()
+			} else {
+				payload.UserName = info.Name
+				payload.UserEmail = info.Email
+			}
+		}
+
+		return writeStructured(out, globals.Output, payload)
 	}
 
 	_, _ = fmt.Fprintf(out, "Authenticated via: %s\n", resolved.Source)

@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
@@ -34,16 +36,57 @@ func (c *DeployCmd) Run(globals *Globals) error {
 	if err != nil {
 		return err
 	}
+	return RunDeploy(ctx, globals, envID, targets, func(ctx context.Context, environmentID, serviceID string) (string, error) {
+		return railway.DeployService(ctx, client, environmentID, serviceID, nil)
+	}, os.Stdout, os.Stderr)
+}
+
+type DeployResult struct {
+	Service      string `json:"service" toml:"service"`
+	ServiceID    string `json:"service_id" toml:"service_id"`
+	DeploymentID string `json:"deployment_id,omitempty" toml:"deployment_id"`
+	Error        string `json:"error,omitempty" toml:"error"`
+}
+
+type DeployOutput struct {
+	Action        string         `json:"action" toml:"action"`
+	EnvironmentID string         `json:"environment_id" toml:"environment_id"`
+	Results       []DeployResult `json:"results" toml:"results"`
+}
+
+// RunDeploy is the testable core of `deploy`.
+func RunDeploy(ctx context.Context, globals *Globals, environmentID string, targets []serviceTarget, deployFn func(ctx context.Context, environmentID, serviceID string) (string, error), out, errOut io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
+	if errOut == nil {
+		errOut = os.Stderr
+	}
+
+	if isStructuredOutput(globals) {
+		payload := DeployOutput{Action: "deploy", EnvironmentID: environmentID, Results: make([]DeployResult, 0, len(targets))}
+		for _, svc := range targets {
+			res := DeployResult{Service: svc.Name, ServiceID: svc.ID}
+			deploymentID, err := deployFn(ctx, environmentID, svc.ID)
+			if err != nil {
+				res.Error = err.Error()
+			} else {
+				res.DeploymentID = deploymentID
+			}
+			payload.Results = append(payload.Results, res)
+		}
+		return writeStructured(out, globals.Output, payload)
+	}
 
 	for _, svc := range targets {
 		slog.Debug("deploying service", "name", svc.Name, "id", svc.ID)
-		_, err := railway.DeployService(ctx, client, envID, svc.ID, nil)
+		_, err := deployFn(ctx, environmentID, svc.ID)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "failed to deploy %s: %v\n", svc.Name, err)
+			_, _ = fmt.Fprintf(errOut, "failed to deploy %s: %v\n", svc.Name, err)
 			continue
 		}
-		if !globals.Quiet {
-			_, _ = fmt.Fprintf(os.Stdout, "Triggered deploy for %s\n", svc.Name)
+		if globals == nil || !globals.Quiet {
+			_, _ = fmt.Fprintf(out, "Triggered deploy for %s\n", svc.Name)
 		}
 	}
 	return nil
@@ -69,6 +112,7 @@ func resolveServiceTargets(ctx context.Context, client *railway.Client, projectI
 		for _, svc := range live.Services {
 			targets = append(targets, serviceTarget{Name: svc.Name, ID: svc.ID})
 		}
+		sort.Slice(targets, func(i, j int) bool { return targets[i].Name < targets[j].Name })
 		return targets, nil
 	}
 

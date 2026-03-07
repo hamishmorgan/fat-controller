@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"time"
@@ -43,10 +45,7 @@ func (c *LogsCmd) Run(globals *Globals) error {
 		if err != nil {
 			return err
 		}
-		for _, e := range entries {
-			_, _ = fmt.Fprintf(os.Stdout, "%s %s %s\n", e.Timestamp, severity(e.Severity), e.Message)
-		}
-		return nil
+		return RunLogsEnvironment(globals, envID, c.Lines, entries, os.Stdout)
 	}
 
 	// Resolve service targets.
@@ -77,31 +76,126 @@ func (c *LogsCmd) Run(globals *Globals) error {
 		filter = &c.Filter
 	}
 
+	return RunLogsServices(ctx, globals, envID, targets, c.Build, c.Lines,
+		func(ctx context.Context, environmentID, serviceID string) ([]railway.DeploymentInfo, error) {
+			d, _, err := railway.ListDeployments(ctx, client, environmentID, serviceID, 1, nil)
+			return d, err
+		},
+		func(ctx context.Context, deploymentID string, build bool) ([]railway.LogEntry, error) {
+			if build {
+				return railway.GetBuildLogs(ctx, client, deploymentID, c.Lines, startDate, endDate, filter)
+			}
+			return railway.GetDeploymentLogs(ctx, client, deploymentID, c.Lines, startDate, endDate, filter)
+		},
+		os.Stdout, os.Stderr,
+	)
+}
+
+type LogEntryOut struct {
+	Timestamp string `json:"timestamp" toml:"timestamp"`
+	Severity  string `json:"severity,omitempty" toml:"severity"`
+	Message   string `json:"message" toml:"message"`
+}
+
+type LogsResult struct {
+	Scope        string        `json:"scope" toml:"scope"`
+	Service      string        `json:"service,omitempty" toml:"service"`
+	ServiceID    string        `json:"service_id,omitempty" toml:"service_id"`
+	Lines        *int          `json:"lines,omitempty" toml:"lines"`
+	Build        bool          `json:"build" toml:"build"`
+	DeploymentID string        `json:"deployment_id,omitempty" toml:"deployment_id"`
+	Entries      []LogEntryOut `json:"entries,omitempty" toml:"entries"`
+	Error        string        `json:"error,omitempty" toml:"error"`
+}
+
+type LogsOutput struct {
+	EnvironmentID string       `json:"environment_id" toml:"environment_id"`
+	Results       []LogsResult `json:"results" toml:"results"`
+}
+
+func RunLogsEnvironment(globals *Globals, environmentID string, lines *int, entries []railway.LogEntry, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
+	if isStructuredOutput(globals) {
+		payload := LogsOutput{EnvironmentID: environmentID, Results: []LogsResult{{Scope: "environment", Build: false, Lines: lines, Entries: make([]LogEntryOut, 0, len(entries))}}}
+		for _, e := range entries {
+			payload.Results[0].Entries = append(payload.Results[0].Entries, LogEntryOut{Timestamp: e.Timestamp, Severity: severity(e.Severity), Message: e.Message})
+		}
+		return writeStructured(out, globals.Output, payload)
+	}
+	for _, e := range entries {
+		_, _ = fmt.Fprintf(out, "%s %s %s\n", e.Timestamp, severity(e.Severity), e.Message)
+	}
+	return nil
+}
+
+func RunLogsServices(
+	ctx context.Context,
+	globals *Globals,
+	environmentID string,
+	targets []serviceTarget,
+	build bool,
+	lines *int,
+	listLatest func(ctx context.Context, environmentID, serviceID string) ([]railway.DeploymentInfo, error),
+	fetchLogs func(ctx context.Context, deploymentID string, build bool) ([]railway.LogEntry, error),
+	out, errOut io.Writer,
+) error {
+	if out == nil {
+		out = os.Stdout
+	}
+	if errOut == nil {
+		errOut = os.Stderr
+	}
+
+	if isStructuredOutput(globals) {
+		payload := LogsOutput{EnvironmentID: environmentID, Results: make([]LogsResult, 0, len(targets))}
+		for _, svc := range targets {
+			res := LogsResult{Scope: "service", Service: svc.Name, ServiceID: svc.ID, Build: build, Lines: lines}
+			deployments, err := listLatest(ctx, environmentID, svc.ID)
+			if err != nil {
+				res.Error = fmt.Sprintf("listing deployments: %v", err)
+				payload.Results = append(payload.Results, res)
+				continue
+			}
+			if len(deployments) == 0 {
+				res.Error = "no deployments found"
+				payload.Results = append(payload.Results, res)
+				continue
+			}
+			res.DeploymentID = deployments[0].ID
+			entries, err := fetchLogs(ctx, res.DeploymentID, build)
+			if err != nil {
+				res.Error = err.Error()
+				payload.Results = append(payload.Results, res)
+				continue
+			}
+			res.Entries = make([]LogEntryOut, 0, len(entries))
+			for _, e := range entries {
+				res.Entries = append(res.Entries, LogEntryOut{Timestamp: e.Timestamp, Severity: severity(e.Severity), Message: e.Message})
+			}
+			payload.Results = append(payload.Results, res)
+		}
+		return writeStructured(out, globals.Output, payload)
+	}
+
 	for _, svc := range targets {
-		// Find latest deployment.
-		deployments, _, err := railway.ListDeployments(ctx, client, envID, svc.ID, 1, nil)
+		deployments, err := listLatest(ctx, environmentID, svc.ID)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "failed to list deployments for %s: %v\n", svc.Name, err)
+			_, _ = fmt.Fprintf(errOut, "failed to list deployments for %s: %v\n", svc.Name, err)
 			continue
 		}
 		if len(deployments) == 0 {
-			_, _ = fmt.Fprintf(os.Stderr, "no deployments found for %s\n", svc.Name)
+			_, _ = fmt.Fprintf(errOut, "no deployments found for %s\n", svc.Name)
 			continue
 		}
-
-		var entries []railway.LogEntry
-		if c.Build {
-			entries, err = railway.GetBuildLogs(ctx, client, deployments[0].ID, c.Lines, startDate, endDate, filter)
-		} else {
-			entries, err = railway.GetDeploymentLogs(ctx, client, deployments[0].ID, c.Lines, startDate, endDate, filter)
-		}
+		entries, err := fetchLogs(ctx, deployments[0].ID, build)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "failed to fetch logs for %s: %v\n", svc.Name, err)
+			_, _ = fmt.Fprintf(errOut, "failed to fetch logs for %s: %v\n", svc.Name, err)
 			continue
 		}
-
 		for _, e := range entries {
-			_, _ = fmt.Fprintf(os.Stdout, "[%s] %s %s %s\n", svc.Name, e.Timestamp, severity(e.Severity), e.Message)
+			_, _ = fmt.Fprintf(out, "[%s] %s %s %s\n", svc.Name, e.Timestamp, severity(e.Severity), e.Message)
 		}
 	}
 	return nil

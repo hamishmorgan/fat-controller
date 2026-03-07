@@ -631,43 +631,70 @@ Resolution order:
 Piped or redirected stdin = non-interactive. This is not a flag — it
 is determined by the terminal environment.
 
-**Core principle:** in interactive mode, any missing or defaulted
-value can be prompted for. The tool asks the user instead of failing
-or assuming. In non-interactive mode, the tool uses defaults where
-they exist and errors where they don't — it never prompts.
+**Core principle:** every command parameter is resolved the same way,
+but the behavior for "unspecified" depends on the mode:
 
-**What this means in practice:**
-
-| Situation | Interactive (TTY) | Non-interactive (piped/CI) |
-|-----------|------------------|---------------------------|
-| Required value missing (no default) | Prompt with available options | Error |
-| Value has a default | Prompt, showing default | Use default silently |
-| Multiple options, none specified | Picker (select from list) | Error with available options |
-| Mutation (`apply`, `deploy`, etc.) | Preview + confirmation prompt | Error unless `--yes` |
+| | Interactive (TTY) | Non-interactive (piped/CI) |
+|---|---|---|
+| Specified via flag | Use flag value | Use flag value |
+| Has a default | Prompt, pre-filled with default | Use default silently |
+| No default, options available | Picker (select from list) | Error with available options |
+| No default, no options | Prompt for free-text input | Error |
+| Mutation | Preview + confirmation (default: yes) | Error unless `--yes` |
 | Colors | Auto-detected | Off (unless `--color=always`) |
 
-This extends beyond context resolution. Any command parameter that
-has a meaningful set of choices can be prompted interactively:
-workspace, project, environment, services to include, merge behavior,
-output file path, etc.
+**Flags pin values.** If `--config`, `--project`, `--environment`, or
+any other flag is specified, that value is locked in — no prompt is
+shown for it in either mode. Everything else is prompted in
+interactive mode, with defaults pre-filled where they exist.
+
+This means you can run any command with zero flags in interactive mode
+and the tool walks you through every decision:
+
+```text
+$ fat-controller init
+
+  Config file: fat-controller.toml
+  Secrets file: .env.fat-controller
+  Workspace: Hamish Morgan's Projects  (1 of 1)
+  Project: > Life
+            Other Project
+  Environment: > production
+                staging
+  Services: [x] api
+            [x] worker
+            [ ] postgres
+```
+
+Or pin specific values and only be prompted for the rest:
+
+```text
+$ fat-controller init --project Life --environment production
+
+  Config file: fat-controller.toml
+  Secrets file: .env.fat-controller
+  Services: [x] api
+            [x] worker
+            [ ] postgres
+```
 
 **`--yes` and `--dry-run`:**
 
-`--yes` accepts the default answer to every prompt. It does not change
-the mode — it just makes interactive mode behave like non-interactive
-for confirmations.
+`--yes` accepts the default for every prompt. It makes interactive
+mode behave like non-interactive: use defaults, error on missing
+required values with no default.
 
 | Flags | Interactive | Non-interactive |
 |-------|-------------|-----------------|
 | (none) | Prompt for everything | Use defaults, error if missing |
 | `--yes` | Use defaults, error if missing | Use defaults, error if missing |
-| `--dry-run` | Preview only, no mutations | Preview only, no mutations |
-| `--yes --dry-run` | Preview only (`--dry-run` wins) | Preview only (`--dry-run` wins) |
+| `--dry-run` | Prompt, but preview only | Preview only, no mutations |
+| `--yes --dry-run` | Use defaults, preview only | Use defaults, preview only |
 
 The goal: interactive mode is convenient for humans — you can run
-`fat-controller apply` with minimal flags and the tool guides you.
-Non-interactive mode is safe for CI — deterministic, no prompts, fails
-loudly on missing values.
+`fat-controller apply` with zero flags and the tool guides you
+through every decision. Non-interactive mode is safe for CI —
+deterministic, no prompts, fails loudly on missing values.
 
 ---
 

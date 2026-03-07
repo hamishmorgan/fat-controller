@@ -12,7 +12,8 @@ tool.
 
 1. **Environment scope.** Every config file has the same schema and
    manages services within a single project+environment. Top-level
-   keys are tool settings and context. TOML tables are services.
+   keys are tool settings and context. `[[service]]` arrays declare
+   services.
 
 2. **Declarative and imperative are separate.** Declarative commands
    (`new`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
@@ -89,9 +90,12 @@ env vars, or CLI flags — but not managed as desired state.
 
 | Key | Description |
 |-----|-------------|
-| `workspace` | Workspace name or ID |
-| `project` | Project name or ID |
+| `workspace` | Workspace name |
+| `workspace_id` | Workspace ID (optional, populated by `adopt`) |
+| `project` | Project name |
+| `project_id` | Project ID (optional, populated by `adopt`) |
 | `environment` | Environment name |
+| `environment_id` | Environment ID (optional, populated by `adopt`) |
 | `timeout` | API request timeout |
 | `format` | Output format: `text`, `json`, `toml` |
 | `color` | Color: `auto`, `always`, `never` |
@@ -103,48 +107,64 @@ env vars, or CLI flags — but not managed as desired state.
 | `update` | Merge flag default |
 | `delete` | Merge flag default |
 
-**TOML tables** are Railway state — services and their entities.
+When an `_id` field is present, it is authoritative for matching —
+the tool uses the ID to find the resource and ignores name mismatches
+(handling renames gracefully). When absent, the tool falls back to
+matching by name.
+
+**`[shared]`** holds environment-wide shared variables.
+
+**`[[service]]`** arrays declare services. Each entry has `name` and
+optional `id` fields, plus sub-tables for variables, deploy settings,
+etc.
 
 ### Reserved names
 
-The following table names are reserved and cannot be used as service
-names:
+The following names are reserved and cannot be used as service names:
 
 | Name | Purpose |
 |------|---------|
-| `shared` | Environment-wide shared variables (`[shared.variables]`) |
 | `workspace` | Reserved for `show workspace` path |
 | `project` | Reserved for `show project` path |
 
-All other table names are treated as service names.
-
 ```toml
 workspace = "Hamish Morgan's Projects"
+workspace_id = "ws_abc123"
 project = "Life"
+project_id = "proj_abc123"
 environment = "production"
+environment_id = "env_abc123"
 timeout = "60s"
 
 [shared.variables]
 NODE_ENV = "production"
 
-[api.variables]
+[[service]]
+name = "api"
+id = "srv_abc123"
+
+[service.variables]
 PORT = "8080"
 DATABASE_URL = "${{postgres.DATABASE_URL}}"
 
-[api.deploy]
+[service.deploy]
 builder = "NIXPACKS"
 start_command = "node dist/server.js"
 
-[api.resources]
+[service.resources]
 vcpus = 2
 memory_gb = 4
 
-[api.domains]
+[service.domains]
 "api.example.com" = { port = 8080 }
 
-[api.volumes]
+[service.volumes]
 data = { mount = "/data" }
 ```
+
+The `_id` fields and service `id` fields are optional. When
+absent, the tool matches by name. `adopt` and `apply` populate
+IDs automatically after resolving resources.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -190,10 +210,10 @@ also resolved from the config file, env vars, and token scope — see
 
 | Flag | Env var | Config key | Description |
 |------|---------|------------|-------------|
-| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | Workspace name or ID |
-| `--project` | `FAT_CONTROLLER_PROJECT` | `project` | Project name or ID |
-| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | Environment name |
-| `--service` | `FAT_CONTROLLER_SERVICE` | `service` | Service name (filters to one service) |
+| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | Workspace name (resolved by ID if `workspace_id` is set in config) |
+| `--project` | `FAT_CONTROLLER_PROJECT` | `project` | Project name (resolved by ID if `project_id` is set in config) |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | Environment name (resolved by ID if `environment_id` is set in config) |
+| `--service` | `FAT_CONTROLLER_SERVICE` | — | Service name (resolved by ID if service has `id` in config) |
 
 ### Config flags
 
@@ -262,8 +282,9 @@ API — use `apply` to create the resources in Railway.
 
 **Non-destructive:** refuses to overwrite existing entries. If the
 config already has a `project` key, `new project` errors. If a
-`[api]` table exists, `new service api` errors. To modify existing
-entries, edit the file directly or use `adopt`.
+`[[service]]` entry with `name = "api"` exists, `new service api`
+errors. To modify existing entries, edit the file directly or use
+`adopt`.
 
 ```text
 fat-controller new [type] [options]
@@ -345,13 +366,14 @@ Interactive resolution:
 | Type | Empty service | Picker: empty, database, repo, image | Empty unless flag set |
 | Name | — | Prompt (auto-suggested for databases) | Error if not specified |
 
-Writes a `[name.*]` table to the config file with appropriate
-defaults for the service type. Run `apply` to create the service
-in Railway.
+Writes a `[[service]]` entry to the config file with `name` and
+appropriate defaults for the service type. The `id` field is left
+empty — `apply` populates it after creating the service in Railway.
 
 ### `adopt`
 
-Pull live Railway state into the local config file. Sensitive values
+Pull live Railway state into the local config file. Populates `_id`
+fields for context and `id` fields for services. Sensitive values
 are detected and written to the secrets file as `${VAR}` references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
@@ -367,7 +389,7 @@ fat-controller adopt [path]
 
 | Arg/flag | Description |
 |----------|-------------|
-| `path` | Optional dot-path to limit what is adopted (e.g. `redis`, `api.variables`) |
+| `path` | Optional dot-path to limit what is adopted (e.g. `redis`, `api.variables`). Uses service names |
 
 Flags: global, context, config, merge, mutation, display.
 
@@ -491,9 +513,10 @@ fat-controller show [path]
 | `api.variables` | Just `api`'s variables |
 | `api.variables.PORT` | Single value |
 
+Paths use service **names** (not IDs). The tool resolves the name
+to the matching `[[service]]` entry, using its `id` if present.
 `workspace` and `project` are reserved keywords — see
-[reserved names](#reserved-names). All other top-level paths
-are treated as service names.
+[reserved names](#reserved-names).
 
 Flags: global, context, display.
 
@@ -885,7 +908,7 @@ Concrete example with this directory structure:
 ```text
 $XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
 repo-root/fat-controller.toml                  # workspace, project, [shared.variables]
-environments/production/fat-controller.toml    # environment = "production", [api.resources]
+environments/production/fat-controller.toml    # environment = "production", [[service]] overrides
 environments/production/fat-controller.local.toml  # show_secrets = true
 ```
 
@@ -904,12 +927,15 @@ Running from `environments/production/`, the merge order is:
 - **Top-level keys** (settings, context): later values replace earlier
   ones. If the root config sets `timeout = "60s"` and the environment
   config sets `timeout = "30s"`, the environment config wins.
-- **TOML tables** (Railway state): deep merge. Keys within a table
+- **`[shared]` tables**: deep merge. Keys within `[shared.variables]`
   from a higher-precedence file override the same keys from a
   lower-precedence file. Keys only present in the lower-precedence
-  file are preserved. This means a root config can set
-  `[shared.variables]` and an environment config can add to or
-  override individual variables without replacing the entire table.
+  file are preserved.
+- **`[[service]]` entries**: matched by `id` (if present) or `name`.
+  When the same service appears in multiple files, sub-tables are
+  deep-merged — a root config can set `[service.deploy]` and an
+  environment config can add `[service.resources]` or override
+  individual deploy fields. A higher-precedence file's values win.
 - **Environment variables and CLI flags** only set top-level keys
   (settings, context). They do not express Railway state.
 
@@ -922,19 +948,23 @@ Running from `environments/production/`, the merge order is:
 | Entity | Section | Fields |
 |--------|---------|--------|
 | Variables (shared) | `[shared.variables]` | key-value pairs |
-| Variables (per-service) | `[svc.variables]` | key-value pairs |
-| Deploy settings | `[svc.deploy]` | See below |
-| Resources | `[svc.resources]` | `vcpus`, `memory_gb` |
-| Scaling | `[svc.scale]` | Per-region instance counts |
-| Custom domains | `[svc.domains]` | hostname, target port |
-| Service domains | `[svc.domains]` | railway.app subdomain, target port |
-| Volumes | `[svc.volumes]` | name, mount path (size is read-only, visible via `show`) |
-| TCP proxies | `[svc.tcp_proxies]` | application port |
-| Private network endpoints | `[svc.network]` | DNS name |
-| Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
-| Egress gateways | `[svc.egress]` | service association |
+| Variables (per-service) | `[service.variables]` | key-value pairs |
+| Deploy settings | `[service.deploy]` | See below |
+| Resources | `[service.resources]` | `vcpus`, `memory_gb` |
+| Scaling | `[service.scale]` | Per-region instance counts |
+| Custom domains | `[service.domains]` | hostname, target port |
+| Service domains | `[service.domains]` | railway.app subdomain, target port |
+| Volumes | `[service.volumes]` | name, mount path (size is read-only, visible via `show`) |
+| TCP proxies | `[service.tcp_proxies]` | application port |
+| Private network endpoints | `[service.network]` | DNS name |
+| Deployment triggers | `[service.triggers]` | branch, repo, check suites |
+| Egress gateways | `[service.egress]` | service association |
 
-`[svc.deploy]` fields: `repo`, `image`, `builder`,
+Each `[[service]]` entry has `name` (required) and `id` (optional,
+populated by `adopt`/`apply`). Sub-tables use `[service.X]` and
+attach to the preceding `[[service]]` entry.
+
+`[service.deploy]` fields: `repo`, `image`, `builder`,
 `build_command`, `start_command`, `dockerfile_path`,
 `root_directory`, `healthcheck_path`, `healthcheck_timeout`,
 `cron_schedule`, `draining_seconds`, `num_replicas`,
@@ -947,22 +977,26 @@ a GitHub repo (e.g. `"railwayapp/starters"`); `image` is a Docker
 image (e.g. `"postgres:16"`). If neither is specified, `apply`
 creates the service with no source.
 
-The minimal service definition is just the table name — `[api]`
-with no subtables creates an empty service. Any subtables are
-applied after creation.
+The minimal service definition is just a `[[service]]` entry with
+a `name` — no sub-tables required. The service is created empty
+in Railway; sub-tables are applied after creation.
 
-`[svc.scale]` expresses multi-region scaling as region = instance
-count pairs:
+`[service.scale]` expresses multi-region scaling as region =
+instance count pairs:
 
 ```toml
-[api.scale]
+[[service]]
+name = "api"
+
+[service.scale]
 us-west1 = 3
 europe-west4 = 2
 ```
 
-This replaces `num_replicas` and `region` in `[svc.deploy]` for
-services that scale across multiple regions. Single-region services
-can use either `[svc.deploy] region` or `[svc.scale]`.
+This replaces `num_replicas` and `region` in `[service.deploy]`
+for services that scale across multiple regions. Single-region
+services can use either `[service.deploy] region` or
+`[service.scale]`.
 
 ### What stays imperative-only
 
@@ -994,24 +1028,35 @@ counts).
 ```toml
 # fat-controller.toml (root — shared base)
 workspace = "Hamish Morgan's Projects"
+workspace_id = "ws_abc123"
 project = "Life"
+project_id = "proj_abc123"
 
 [shared.variables]
 NODE_ENV = "production"
 
-[api.deploy]
+[[service]]
+name = "api"
+id = "srv_abc123"
+
+[service.deploy]
 builder = "NIXPACKS"
 start_command = "node dist/server.js"
 
-[api.domains]
+[service.domains]
 "api.example.com" = { port = 8080 }
 ```
 
 ```toml
 # environments/production/fat-controller.toml
 environment = "production"
+environment_id = "env_prod123"
 
-[api.resources]
+[[service]]
+name = "api"
+id = "srv_abc123"
+
+[service.resources]
 vcpus = 4
 memory_gb = 8
 ```
@@ -1019,11 +1064,16 @@ memory_gb = 8
 ```toml
 # environments/staging/fat-controller.toml
 environment = "staging"
+environment_id = "env_stg123"
 
 [shared.variables]
 NODE_ENV = "staging"
 
-[api.resources]
+[[service]]
+name = "api"
+id = "srv_xyz789"
+
+[service.resources]
 vcpus = 1
 memory_gb = 2
 ```
@@ -1069,13 +1119,13 @@ that prefer explicit duplication over inheritance.
 
 ```text
 services/
-  api/fat-controller.toml           # declares only [api.*] tables
-  worker/fat-controller.toml        # declares only [worker.*] tables
+  api/fat-controller.toml           # declares only the api [[service]]
+  worker/fat-controller.toml        # declares only the worker [[service]]
 ```
 
-Each file is environment-scoped but only declares one service's
-tables. Because `apply` is additive by default, each file only
-touches the services it mentions. A CI pipeline applies each file
+Each file is environment-scoped but only declares one service.
+Because `apply` is additive by default, each file only touches
+the services it mentions. A CI pipeline applies each file
 independently. Shared variables live in a root-level config (picked
 up via cascade) or are duplicated across files.
 
@@ -1190,6 +1240,25 @@ fails loudly on missing values.
 `--delete`) that control what the merge does. See
 [Merge flags](#merge-flags) for flag details and defaults.
 
+### Identity matching
+
+Services are matched between config and Railway by **ID when
+present**, falling back to **name when not**. This means:
+
+- A service with `id = "srv_abc123"` matches the Railway service
+  with that ID, regardless of name changes on either side.
+- A service with only `name = "api"` (no `id`) matches by name.
+- After `adopt` or `apply` resolves a service, it writes the `id`
+  back to the config file so subsequent operations are ID-based.
+- Context keys (`workspace_id`, `project_id`, `environment_id`)
+  follow the same pattern.
+
+If a service has an `id` but that ID doesn't exist in Railway,
+the tool errors — the ID is stale. Use `adopt` to re-sync, or
+remove the `id` to fall back to name matching.
+
+### Merge direction
+
 `apply` and `adopt` are symmetric — the same flags have parallel
 meaning in opposite directions:
 
@@ -1220,14 +1289,20 @@ This eliminates the need for per-section `managed` keys — scope
 Without `--delete`, explicit delete markers handle one-off removals:
 
 ```toml
-[api.variables]
+[[service]]
+name = "api"
+id = "srv_abc123"
+
+[service.variables]
 OLD_VAR = { delete = true }
 
-[old-service]
-delete = true
-
-[api.volumes]
+[service.volumes]
 old-data = { delete = true }
+
+[[service]]
+name = "old-service"
+id = "srv_def456"
+delete = true
 ```
 
 `diff` reflects the active flags: it shows what `apply` would do
@@ -1246,17 +1321,17 @@ given the current create/update/delete settings.
 2. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
-   (`[svc.buckets]`) or imperative-only? They have state (name,
+   (`[service.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
 3. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
-   to services to use the same `[svc.*]` tables?
+   to services to use the same `[[service]]` structure?
 
-4. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
-   multi-region instance counts, while `[svc.deploy]` has
+4. **`scale` vs `deploy` overlap.** `[service.scale]` handles
+   multi-region instance counts, while `[service.deploy]` has
    `num_replicas` and `region` for single-region. Should
-   `num_replicas`/`region` be removed from `[svc.deploy]` in
-   favor of always using `[svc.scale]`?
+   `num_replicas`/`region` be removed from `[service.deploy]` in
+   favor of always using `[service.scale]`?

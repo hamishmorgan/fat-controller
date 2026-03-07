@@ -285,8 +285,8 @@ These are set only in the config file, not via flags or env vars.
 #### `init`
 
 Guided first-time config bootstrap. A guided version of `adopt` —
-interactive prompts to select workspace/project/environment/services,
-plus secret extraction into `.env.fat-controller`.
+selects workspace/project/environment/services, pulls live state,
+writes config file and `.env.fat-controller`.
 
 ```text
 fat-controller init [--new] [--template <name>]
@@ -302,6 +302,18 @@ into an existing config (e.g. `adopt redis` after adding a service in
 the dashboard).
 
 Flags: global, context, config, mutation (`--yes`, `--dry-run`).
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Secrets file | `.env.fat-controller` | Prompt with default | Use default |
+| Workspace (`--workspace`) | — | Picker (skip if only one) | Error if ambiguous |
+| Project (`--project`) | — | Picker | Error if not specified |
+| Environment (`--environment`) | — | Picker | Error if not specified |
+| Services | All | Checkbox list, all selected | All |
+| Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
 
 #### `adopt`
 
@@ -319,6 +331,16 @@ fat-controller adopt [path]
 
 Flags: global, context, config, merge, mutation, display.
 
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Workspace | From config file | Prompt with default | Use default |
+| Project | From config file | Prompt with default | Use default |
+| Environment | From config file | Prompt with default | Use default |
+| Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
+
 #### `diff`
 
 Compare local config against live Railway state. Read-only — no
@@ -330,6 +352,17 @@ fat-controller diff
 ```
 
 Flags: global, context, config, merge, display.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Workspace | From config file | Prompt with default | Use default |
+| Project | From config file | Prompt with default | Use default |
+| Environment | From config file | Prompt with default | Use default |
+
+Read-only — no confirmation needed.
 
 #### `apply`
 
@@ -343,6 +376,16 @@ fat-controller apply
 
 Flags: global, context, config, merge, mutation, apply-specific.
 
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Workspace | From config file | Prompt with default | Use default |
+| Project | From config file | Prompt with default | Use default |
+| Environment | From config file | Prompt with default | Use default |
+| Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
+
 #### `validate`
 
 Check config file for warnings without making API calls.
@@ -352,6 +395,14 @@ fat-controller validate
 ```
 
 Flags: global, config.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+
+No API calls, no context flags needed.
 
 #### `show`
 
@@ -368,6 +419,16 @@ fat-controller show [path]
 
 Flags: global, context, display.
 
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Environment | From config file | Prompt with default | Use default, error if missing |
+
+Read-only — no confirmation needed.
+
 #### `deploy`
 
 Trigger a deployment. No arguments = all services in the environment.
@@ -377,6 +438,16 @@ fat-controller deploy [service...]
 ```
 
 Flags: global, context, mutation.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Environment | From config file | Prompt with default | Use default, error if missing |
+| Services | All | Checkbox list, all selected | All |
+| Confirm | Yes | "Deploy N services? [Y/n]" | Error unless `--yes` |
 
 #### `redeploy`
 
@@ -388,6 +459,8 @@ fat-controller redeploy [service...]
 
 Flags: global, context, mutation.
 
+Interactive resolution: same as `deploy`.
+
 #### `restart`
 
 Restart running deployments.
@@ -397,6 +470,8 @@ fat-controller restart [service...]
 ```
 
 Flags: global, context, mutation.
+
+Interactive resolution: same as `deploy`.
 
 #### `rollback`
 
@@ -408,6 +483,8 @@ fat-controller rollback [service...]
 
 Flags: global, context, mutation.
 
+Interactive resolution: same as `deploy`.
+
 #### `stop`
 
 Stop running deployments.
@@ -418,6 +495,8 @@ fat-controller stop [service...]
 
 Flags: global, context, mutation.
 
+Interactive resolution: same as `deploy`.
+
 #### `logs`
 
 Tail logs. No arguments = all services in the environment.
@@ -427,6 +506,17 @@ fat-controller logs [service...]
 ```
 
 Flags: global, context.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Environment | From config file | Prompt with default | Use default, error if missing |
+| Services | All | Checkbox list, all selected | All |
+
+Read-only — no confirmation needed.
 
 #### `status`
 
@@ -439,6 +529,8 @@ fat-controller status [service...]
 
 Flags: global, context.
 
+Interactive resolution: same as `logs`.
+
 #### `list`
 
 List entities. Takes a noun argument for the entity type.
@@ -447,27 +539,38 @@ List entities. Takes a noun argument for the entity type.
 fat-controller list <type>
 ```
 
-| Type | Description |
-|------|-------------|
-| `workspaces` | Workspaces accessible to the current token |
-| `projects` | Projects in the workspace |
-| `environments` | Environments in the project |
-| `services` | Services in the project |
-| `deployments` | Deployments in the environment |
-| `volumes` | Volumes in the project |
-| `domains` | Domains in the environment |
+| Type | Context required |
+|------|-----------------|
+| `workspaces` | None |
+| `projects` | Workspace |
+| `environments` | Workspace + project |
+| `services` | Workspace + project |
+| `deployments` | Workspace + project + environment |
+| `volumes` | Workspace + project |
+| `domains` | Workspace + project + environment |
 
 Flags: global, context.
 
+Interactive resolution: context flags follow the standard pattern —
+prompt with default if interactive, use default or error if
+non-interactive. Only the context required for the entity type is
+resolved. `list workspaces` needs no context. `list projects` needs
+a workspace. `list services` needs a workspace and project.
+
+In interactive mode with no `<type>` argument, prompt with a picker
+for the entity type. In non-interactive mode, error.
+
 #### `auth login`
 
-Authenticate via browser-based OAuth.
+Authenticate via browser-based OAuth. Opens a browser.
 
 ```text
 fat-controller auth login
 ```
 
 Flags: global.
+
+No interactive resolution — the OAuth flow is always browser-based.
 
 #### `auth logout`
 
@@ -479,6 +582,12 @@ fat-controller auth logout
 
 Flags: global.
 
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Confirm | Yes | "Clear credentials? [Y/n]" | Error unless `--yes` |
+
 #### `auth status`
 
 Show current authentication state.
@@ -488,6 +597,8 @@ fat-controller auth status
 ```
 
 Flags: global.
+
+Read-only — no interactive resolution needed.
 
 ---
 

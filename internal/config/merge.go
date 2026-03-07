@@ -25,7 +25,10 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 			result.Project = cfg.Project
 		}
 		if cfg.Tool != nil {
-			result.Tool = cfg.Tool
+			if result.Tool == nil {
+				result.Tool = &ToolSettings{}
+			}
+			mergeToolSettings(result.Tool, cfg.Tool)
 		}
 		result.Variables = mergeVarMaps(result.Variables, cfg.Variables)
 		for _, svc := range cfg.Services {
@@ -147,6 +150,55 @@ func mergeService(base, overlay *DesiredService) {
 	}
 	if overlay.Egress != nil {
 		base.Egress = overlay.Egress
+	}
+}
+
+// mergeToolSettings merges ToolSettings at field level (non-empty/non-nil overwrites).
+func mergeToolSettings(base, overlay *ToolSettings) {
+	if overlay.APITimeout != "" {
+		base.APITimeout = overlay.APITimeout
+	}
+	if overlay.LogLevel != "" {
+		base.LogLevel = overlay.LogLevel
+	}
+	if overlay.OutputFormat != "" {
+		base.OutputFormat = overlay.OutputFormat
+	}
+	if overlay.OutputColor != "" {
+		base.OutputColor = overlay.OutputColor
+	}
+	if overlay.Prompt != "" {
+		base.Prompt = overlay.Prompt
+	}
+	if overlay.Deploy != "" {
+		base.Deploy = overlay.Deploy
+	}
+	if overlay.ShowSecrets != nil {
+		base.ShowSecrets = overlay.ShowSecrets
+	}
+	if overlay.FailFast != nil {
+		base.FailFast = overlay.FailFast
+	}
+	if overlay.AllowCreate != nil {
+		base.AllowCreate = overlay.AllowCreate
+	}
+	if overlay.AllowUpdate != nil {
+		base.AllowUpdate = overlay.AllowUpdate
+	}
+	if overlay.AllowDelete != nil {
+		base.AllowDelete = overlay.AllowDelete
+	}
+	if overlay.EnvFile != nil {
+		base.EnvFile = overlay.EnvFile
+	}
+	if overlay.SensitiveKeywords != nil {
+		base.SensitiveKeywords = overlay.SensitiveKeywords
+	}
+	if overlay.SensitiveAllowlist != nil {
+		base.SensitiveAllowlist = overlay.SensitiveAllowlist
+	}
+	if overlay.SuppressWarnings != nil {
+		base.SuppressWarnings = overlay.SuppressWarnings
 	}
 }
 

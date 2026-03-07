@@ -169,6 +169,71 @@ func TestMerge_ToolSettings(t *testing.T) {
 	}
 }
 
+func TestMerge_ToolSettingsFieldLevel(t *testing.T) {
+	showSecrets := true
+	failFast := false
+	base := &config.DesiredConfig{
+		Tool: &config.ToolSettings{
+			LogLevel:          "debug",
+			OutputFormat:      "json",
+			ShowSecrets:       &showSecrets,
+			SensitiveKeywords: []string{"SECRET", "PASSWORD"},
+		},
+	}
+	overlay := &config.DesiredConfig{
+		Tool: &config.ToolSettings{
+			OutputFormat:       "toml",
+			FailFast:           &failFast,
+			SensitiveAllowlist: []string{"KEYSTROKE"},
+		},
+	}
+	result := config.Merge(base, overlay)
+	if result.Tool == nil {
+		t.Fatal("expected non-nil Tool")
+	}
+	// LogLevel preserved from base (overlay empty).
+	if result.Tool.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", result.Tool.LogLevel, "debug")
+	}
+	// OutputFormat overridden by overlay.
+	if result.Tool.OutputFormat != "toml" {
+		t.Errorf("OutputFormat = %q, want %q", result.Tool.OutputFormat, "toml")
+	}
+	// ShowSecrets preserved from base (overlay nil).
+	if result.Tool.ShowSecrets == nil || *result.Tool.ShowSecrets != true {
+		t.Error("expected ShowSecrets preserved from base")
+	}
+	// FailFast set by overlay.
+	if result.Tool.FailFast == nil || *result.Tool.FailFast != false {
+		t.Error("expected FailFast set by overlay")
+	}
+	// SensitiveKeywords preserved from base (overlay nil).
+	if len(result.Tool.SensitiveKeywords) != 2 {
+		t.Errorf("expected SensitiveKeywords preserved, got %v", result.Tool.SensitiveKeywords)
+	}
+	// SensitiveAllowlist set by overlay.
+	if len(result.Tool.SensitiveAllowlist) != 1 || result.Tool.SensitiveAllowlist[0] != "KEYSTROKE" {
+		t.Errorf("expected SensitiveAllowlist from overlay, got %v", result.Tool.SensitiveAllowlist)
+	}
+}
+
+func TestMerge_ToolSettingsBaseNilOverlaySet(t *testing.T) {
+	failFast := true
+	result := config.Merge(
+		&config.DesiredConfig{},
+		&config.DesiredConfig{Tool: &config.ToolSettings{LogLevel: "warn", FailFast: &failFast}},
+	)
+	if result.Tool == nil {
+		t.Fatal("expected non-nil Tool from overlay")
+	}
+	if result.Tool.LogLevel != "warn" {
+		t.Errorf("LogLevel = %q, want warn", result.Tool.LogLevel)
+	}
+	if result.Tool.FailFast == nil || *result.Tool.FailFast != true {
+		t.Error("expected FailFast from overlay")
+	}
+}
+
 func TestMerge_IDBasedMatching(t *testing.T) {
 	base := &config.DesiredConfig{
 		Services: []*config.DesiredService{

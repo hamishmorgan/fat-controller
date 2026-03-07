@@ -638,27 +638,68 @@ Both are overridable with `--config` and `--secrets`.
 
 | File | Purpose | Committed? |
 |------|---------|-----------|
-| `fat-controller.toml` | Desired state | Yes |
+| `fat-controller.toml` | Desired state + shared settings | Yes |
+| `fat-controller.local.toml` | Personal overrides | No (gitignored) |
 | `.env.fat-controller` | Secret values for `${VAR}` interpolation | No (gitignored) |
-| `.fat-controller.toml` | Project-level tool settings | Yes |
 
-When using the `.config/fat-controller/` directory form, all files
-live together:
+When using the `.config/fat-controller/` directory form:
 
 | File | Purpose | Committed? |
 |------|---------|-----------|
-| `.config/fat-controller/config.toml` | Desired state | Yes |
+| `.config/fat-controller/config.toml` | Desired state + shared settings | Yes |
+| `.config/fat-controller/config.local.toml` | Personal overrides | No (gitignored) |
 | `.config/fat-controller/.env` | Secret values for `${VAR}` interpolation | No (gitignored) |
-| `.config/fat-controller/settings.toml` | Project-level tool settings | Yes |
 
-### Global settings
+### Settings in the config file
 
-| File | Purpose |
-|------|---------|
-| `$XDG_CONFIG_HOME/fat-controller/config.toml` | Global user preferences |
+Tool settings are top-level keys in the same file as desired state.
+There is no separate settings file — settings and state live together.
 
-Global settings are overridden by project-level settings, which are
-overridden by env vars, which are overridden by CLI flags.
+```toml
+# Scope
+workspace = "Hamish Morgan's Projects"
+project = "Life"
+environment = "production"
+
+# Tool settings
+timeout = "60s"
+output = "text"
+show_secrets = false
+
+# Railway desired state
+[shared.variables]
+NODE_ENV = "production"
+
+[api.variables]
+PORT = "8080"
+```
+
+Top-level keys are always tool configuration (scope, settings).
+TOML tables (`[api]`, `[shared]`, etc.) are always Railway state.
+No collision is possible.
+
+### Local overrides
+
+The `.local` file has the same schema as the main config file. It
+merges on top — any key can be overridden. Use it for personal
+preferences that shouldn't be committed:
+
+```toml
+# fat-controller.local.toml
+output = "json"
+show_secrets = true
+```
+
+### Precedence
+
+Settings are resolved in order, highest priority last:
+
+1. Compiled-in defaults
+2. Global config (`$XDG_CONFIG_HOME/fat-controller/config.toml`)
+3. Project config (`fat-controller.toml`)
+4. Local override (`fat-controller.local.toml`, gitignored)
+5. Environment variables
+6. CLI flags
 
 ---
 
@@ -760,11 +801,12 @@ Resolution order:
 
 1. CLI flags (`--project`, `--environment`, `--service`)
 2. Environment variables (`FAT_CONTROLLER_PROJECT`, etc.)
-3. Config file keys (`project`, `environment` in `fat-controller.toml`)
-4. Settings file keys (`.fat-controller.toml`)
-5. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
-6. Interactive picker (if TTY) — see below
-7. Error with available options
+3. Local override keys (`fat-controller.local.toml`)
+4. Config file keys (`fat-controller.toml`)
+5. Global config keys (`$XDG_CONFIG_HOME/fat-controller/config.toml`)
+6. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
+7. Interactive picker (if TTY) — see below
+8. Error with available options
 
 ---
 

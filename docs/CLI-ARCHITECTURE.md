@@ -475,8 +475,10 @@ Interactive resolution:
 | Project | From config file | Prompt with default | Use default, error if missing |
 | Environment | From config file | Prompt with default | Use default, error if missing |
 
-`show workspace` only needs workspace context. `show project` needs
-workspace + project. All other paths need the full context.
+Context is always resolved the same way — from the config file,
+env vars, or flags. `show workspace` and `show project` navigate
+upward from the current environment's context, not across to
+other workspaces or projects.
 
 Read-only — no confirmation needed.
 

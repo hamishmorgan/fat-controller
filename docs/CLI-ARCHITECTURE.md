@@ -1,4 +1,4 @@
-# CLI Architecture Design
+# Architecture
 
 Command structure, config file format, and interaction model for
 fat-controller.

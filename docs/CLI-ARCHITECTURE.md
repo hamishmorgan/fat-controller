@@ -934,12 +934,22 @@ Running from `environments/production/`, the merge order is:
 | Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
 | Egress gateways | `[svc.egress]` | service association |
 
-`[svc.deploy]` fields: `builder`, `build_command`, `start_command`,
-`dockerfile_path`, `root_directory`, `healthcheck_path`,
-`healthcheck_timeout`, `cron_schedule`, `draining_seconds`,
-`num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`,
-`restart_policy`, `restart_policy_max_retries`, `sleep_application`,
-`watch_patterns`.
+`[svc.deploy]` fields: `repo`, `image`, `builder`,
+`build_command`, `start_command`, `dockerfile_path`,
+`root_directory`, `healthcheck_path`, `healthcheck_timeout`,
+`cron_schedule`, `draining_seconds`, `num_replicas`,
+`overlap_seconds`, `pre_deploy_command`, `region`,
+`restart_policy`, `restart_policy_max_retries`,
+`sleep_application`, `watch_patterns`.
+
+`repo` and `image` are mutually exclusive source types. `repo` is
+a GitHub repo (e.g. `"railwayapp/starters"`); `image` is a Docker
+image (e.g. `"postgres:16"`). If neither is specified, `apply`
+creates the service with no source.
+
+The minimal service definition is just the table name — `[api]`
+with no subtables creates an empty service. Any subtables are
+applied after creation.
 
 `[svc.scale]` expresses multi-region scaling as region = instance
 count pairs:
@@ -1227,30 +1237,25 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Service creation defaults.** When `apply` creates a new service,
-   what source does it use? Empty service (no repo)? The config would
-   need to specify source (repo URL + branch, or Docker image) for
-   new services. What's the minimal viable service definition?
-
-2. **Ordering of creation.** When bootstrapping from scratch, `apply`
+1. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
 
-3. **Buckets (S3-compatible object storage).** Railway supports
+2. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[svc.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-4. **Functions (serverless).** Railway supports serverless functions
+3. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[svc.*]` tables?
 
-5. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+4. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
    multi-region instance counts, while `[svc.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[svc.deploy]` in

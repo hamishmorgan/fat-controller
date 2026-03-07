@@ -480,6 +480,14 @@ env vars, or flags. `show workspace` and `show project` navigate
 upward from the current environment's context, not across to
 other workspaces or projects.
 
+Use `--environment` to look at a different environment without
+changing config:
+
+```bash
+fat-controller show --environment staging
+fat-controller show api.variables --environment staging
+```
+
 Read-only — no confirmation needed.
 
 ### `deploy`

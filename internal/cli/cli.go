@@ -19,8 +19,8 @@ import (
 type Globals struct {
 	Output     string `help:"Output format: text, json, toml, raw." enum:"text,json,toml,raw" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
 	Color      string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
-	Verbose    bool   `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
-	Quiet      bool   `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`
+	Verbose    int    `help:"Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace)." short:"v" type:"counter"`
+	Quiet      int    `help:"Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only)." short:"q" type:"counter"`
 	ConfigFile string `help:"Config file path (disables cascade discovery)." name:"config-file" env:"FAT_CONTROLLER_CONFIG_FILE"`
 	EnvFile    string `help:"Env file path for variable interpolation." name:"env-file" env:"FAT_CONTROLLER_ENV_FILE"`
 
@@ -124,9 +124,13 @@ type ConfigFileFlags struct {
 // Output goes to stderr with no timestamps for clean CLI output.
 func (g *Globals) Logger() *slog.Logger {
 	level := slog.LevelInfo
-	if g.Verbose {
+	if g.Verbose >= 2 {
+		level = slog.LevelDebug - 4 // trace level
+	} else if g.Verbose >= 1 {
 		level = slog.LevelDebug
-	} else if g.Quiet {
+	} else if g.Quiet >= 2 {
+		level = slog.LevelError
+	} else if g.Quiet >= 1 {
 		level = slog.LevelWarn
 	}
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{

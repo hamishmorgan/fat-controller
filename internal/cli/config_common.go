@@ -154,8 +154,8 @@ func splitDotPath(path string) []string {
 // emitWarnings runs validation on the config pair and emits warnings to stderr via slog.
 // Respects --quiet to suppress warnings. Callers that always want warnings (e.g. config validate)
 // should call config.Validate directly.
-func emitWarnings(pair *configPair, quiet bool, configDir string) {
-	if quiet {
+func emitWarnings(pair *configPair, quiet int, configDir string) {
+	if quiet > 0 {
 		return
 	}
 	// Extract live service names for W040.

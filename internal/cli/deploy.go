@@ -85,7 +85,7 @@ func RunDeploy(ctx context.Context, globals *Globals, environmentID string, targ
 			_, _ = fmt.Fprintf(errOut, "failed to deploy %s: %v\n", svc.Name, err)
 			continue
 		}
-		if globals == nil || !globals.Quiet {
+		if globals == nil || globals.Quiet == 0 {
 			_, _ = fmt.Fprintf(out, "Triggered deploy for %s\n", svc.Name)
 		}
 	}

@@ -61,7 +61,7 @@ func (c *NewProjectCmd) Run(globals *Globals) error {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 
-	if !globals.Quiet {
+	if globals.Quiet == 0 {
 		_, _ = fmt.Fprintf(os.Stdout, "Added project %q to %s\n", c.Name, configPath)
 	}
 	return nil
@@ -111,7 +111,7 @@ func (c *NewEnvironmentCmd) Run(globals *Globals) error {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 
-	if !globals.Quiet {
+	if globals.Quiet == 0 {
 		_, _ = fmt.Fprintf(os.Stdout, "Added environment %q to %s\n", c.Name, configPath)
 	}
 	return nil
@@ -183,7 +183,7 @@ func (c *NewServiceCmd) Run(globals *Globals) error {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 
-	if !globals.Quiet {
+	if globals.Quiet == 0 {
 		_, _ = fmt.Fprintf(os.Stdout, "Added service %q to %s\n", c.Name, configPath)
 	}
 	return nil

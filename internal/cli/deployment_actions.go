@@ -174,7 +174,7 @@ func RunDeploymentAction(
 			_, _ = fmt.Fprintf(errOut, "failed to %s %s: %v\n", actionName, svc.Name, err)
 			continue
 		}
-		if globals == nil || !globals.Quiet {
+		if globals == nil || globals.Quiet == 0 {
 			_, _ = fmt.Fprintf(out, "%s triggered for %s\n", actionName, svc.Name)
 		}
 	}

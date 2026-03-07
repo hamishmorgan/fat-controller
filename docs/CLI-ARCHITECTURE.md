@@ -213,7 +213,7 @@ Commands that read or write config files accept these flags.
 
 ### Mutation flags
 
-Commands that modify Railway state (`apply`, `deploy`, `redeploy`,
+Commands that modify state (`adopt`, `apply`, `deploy`, `redeploy`,
 `restart`, `rollback`, `stop`) accept these flags.
 
 | Flag | Short | Env var | Config key | Default | Description |
@@ -288,8 +288,8 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
-| Workspace | From config file | Picker (skip if only one) | Use default, error if missing |
+| Config file (`--config`) | `fat-controller.toml` | Use default, prompt if missing | Use default |
+| Workspace | From config file | Use default, picker if missing | Use default, error if missing |
 | Name | — | Prompt | Error if not specified |
 
 Writes `workspace` and `project` keys to the config file.
@@ -411,10 +411,10 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
-| Workspace | From config file | Prompt with default | Use default |
-| Project | From config file | Prompt with default | Use default |
-| Environment | From config file | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
+| Workspace | From config file | Use default, prompt if missing | Use default |
+| Project | From config file | Use default, prompt if missing | Use default |
+| Environment | From config file | Use default, prompt if missing | Use default |
 
 Read-only — no confirmation needed.
 
@@ -434,11 +434,11 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
-| Workspace | From config file | Prompt with default | Use default |
-| Project | From config file | Prompt with default | Use default |
-| Environment | From config file | Prompt with default | Use default |
-| Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
+| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
+| Workspace | From config file | Use default, prompt if missing | Use default |
+| Project | From config file | Use default, prompt if missing | Use default |
+| Environment | From config file | Use default, prompt if missing | Use default |
+| Confirm changes | — | Preview + confirm | Error unless `--yes` |
 
 ### `validate`
 
@@ -454,7 +454,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
 
 No API calls, no context flags needed.
 
@@ -485,9 +485,9 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
-| Environment | From config file | Prompt with default | Use default, error if missing |
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
 
 Context is always resolved the same way — from the config file,
 env vars, or flags. `show workspace` and `show project` navigate
@@ -518,11 +518,11 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
-| Environment | From config file | Prompt with default | Use default, error if missing |
-| Services | All | Checkbox list, all selected | All |
-| Confirm | Yes | "Deploy N services? [Y/n]" | Error unless `--yes` |
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
+| Services | All | All (reported, not prompted) | All |
+| Confirm | — | Preview + confirm | Error unless `--yes` |
 
 ### `redeploy`
 
@@ -598,10 +598,10 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
-| Environment | From config file | Prompt with default | Use default, error if missing |
-| Services | All | Checkbox list, all selected | All |
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
+| Services | All | All (reported, not prompted) | All |
 
 Read-only — no confirmation needed.
 
@@ -638,9 +638,9 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
-| Environment | From config file | Prompt with default | Use default, error if missing |
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
 | Service | — | Picker | Error if not specified |
 
 ### `open`
@@ -671,7 +671,7 @@ fat-controller list [type]
 | `workspaces` | None | |
 | `projects` | Workspace | |
 | `environments` | Workspace + project | |
-| `services` | Workspace + project | |
+| `services` | Workspace + project + environment | |
 | `deployments` | Workspace + project + environment | |
 | `volumes` | Workspace + project | |
 | `domains` | Workspace + project + environment | |
@@ -831,7 +831,7 @@ preferences that shouldn't be committed:
 
 ```toml
 # fat-controller.local.toml
-output = "json"
+format = "json"
 show_secrets = true
 ```
 
@@ -1202,10 +1202,11 @@ given the current create/update/delete settings.
    key within `[api.variables]` meaning "delete any variables not
    listed here")? Per-section is more flexible but more complex.
 
-2. **`show` output format.** `show` outputs TOML matching the config
-   file format by default. Should it also support outputting just the
-   raw values for scripting? e.g. `fat-controller show api.variables.PORT`
-   outputs `8080` with no formatting.
+2. **`show` raw value output.** `--json` and `--toml` handle
+   structured output. But should `show api.variables.PORT` output
+   just `8080` with no formatting when targeting a single scalar
+   value? Useful for `VAL=$(fat-controller show api.variables.PORT)`
+   in scripts.
 
 3. **Volume sizing.** Volumes have a size, but Railway doesn't expose
    size in the create/update mutations — they auto-scale. Should the

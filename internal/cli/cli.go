@@ -89,6 +89,30 @@ type MutationFlags struct {
 	DryRun bool `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 }
 
+// MergeFlags controls what a merge operation does.
+type MergeFlags struct {
+	Create bool `help:"Add entities that exist in source but not target." negatable:"" default:"true" env:"FAT_CONTROLLER_ALLOW_CREATE"`
+	Update bool `help:"Overwrite entities that exist in both." negatable:"" default:"true" env:"FAT_CONTROLLER_ALLOW_UPDATE"`
+	Delete bool `help:"Remove entities that exist in target but not source." negatable:"" default:"false" env:"FAT_CONTROLLER_ALLOW_DELETE"`
+}
+
+// PromptFlags controls interactive prompting behavior.
+type PromptFlags struct {
+	Ask bool `help:"Prompt for all parameters." short:"a" xor:"prompt"`
+	Yes bool `help:"Skip all confirmation prompts." short:"y" xor:"prompt" env:"FAT_CONTROLLER_YES"`
+}
+
+// PromptMode returns the effective prompt mode.
+func (f *PromptFlags) PromptMode() string {
+	if f.Ask {
+		return "all"
+	}
+	if f.Yes {
+		return "none"
+	}
+	return "default"
+}
+
 // ConfigFileFlags are embedded by commands that read config files (diff, apply, validate).
 type ConfigFileFlags struct {
 	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"file" short:"f" env:"FAT_CONTROLLER_CONFIG" sep:"none"`
@@ -121,15 +145,30 @@ func (g *Globals) Logger() *slog.Logger {
 type CLI struct {
 	Globals `kong:"embed"`
 
-	Version    kong.VersionFlag `help:"Print version." short:"V"`
-	Completion CompletionCmd    `cmd:"" help:"Output shell completion code." hidden:""`
+	Version kong.VersionFlag `help:"Print version." short:"V"`
 
-	// Subcommand groups
-	Auth        AuthCmd        `cmd:"" help:"Manage authentication."`
-	Config      ConfigCmd      `cmd:"" name:"config" help:"Declarative configuration management."`
-	Project     ProjectCmd     `cmd:"" help:"Manage projects."`
-	Environment EnvironmentCmd `cmd:"" help:"Manage environments."`
-	Workspace   WorkspaceCmd   `cmd:"" help:"Manage workspaces."`
+	// Core declarative commands
+	Adopt    AdoptCmd    `cmd:"" help:"Pull live Railway state into config."`
+	Diff     DiffCmd     `cmd:"" help:"Compare config against live Railway state."`
+	Apply    ApplyCmd    `cmd:"" help:"Push config changes to Railway."`
+	Validate ValidateCmd `cmd:"" help:"Check config for errors (offline)."`
+	Show     ShowCmd     `cmd:"" help:"Display live Railway state."`
+	New      NewCmd      `cmd:"" help:"Scaffold config entries."`
+
+	// Discovery
+	List ListCmd `cmd:"" help:"List Railway entities."`
+
+	// Auth
+	Auth AuthCmd `cmd:"" help:"Manage authentication."`
+
+	// Legacy (hidden, deprecated — will be removed)
+	Config      ConfigCmd      `cmd:"" name:"config" help:"Declarative configuration management." hidden:""`
+	Project     ProjectCmd     `cmd:"" help:"Manage projects." hidden:""`
+	Environment EnvironmentCmd `cmd:"" help:"Manage environments." hidden:""`
+	Workspace   WorkspaceCmd   `cmd:"" help:"Manage workspaces." hidden:""`
+
+	// Utility
+	Completion CompletionCmd `cmd:"" help:"Generate shell completions." hidden:""`
 }
 
 // AuthCmd is the `auth` command group.

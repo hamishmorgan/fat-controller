@@ -167,6 +167,8 @@ Every command accepts these flags.
 | `--toml` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output as TOML |
 | `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
 | `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
+| `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
+| `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
@@ -216,7 +218,6 @@ Commands that modify Railway state (`apply`, `deploy`, `redeploy`,
 
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
-| `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Skip confirmation prompts |
 | `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Preview changes without executing |
 | `--fail-fast` | | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |
 
@@ -1056,70 +1057,82 @@ Piped or redirected stdin = non-interactive. This is not a flag — it
 is determined by the terminal environment.
 
 **Core principle:** every command parameter is resolved the same way,
-but the behavior for "unspecified" depends on the mode:
+but the behavior for "unspecified" depends on the mode and prompting
+level:
 
 | | Interactive (TTY) | Non-interactive (piped/CI) |
 |---|---|---|
 | Specified via flag | Use flag value | Use flag value |
-| Has a default | Prompt, pre-filled with default | Use default silently |
+| Has a default | Use default silently | Use default silently |
 | No default, options available | Picker (select from list) | Error with available options |
 | No default, no options | Prompt for free-text input | Error |
 | Mutation | Preview + confirmation (default: yes) | Error unless `--yes` |
 | Colors | Auto-detected | Off (unless `--color=always`) |
 
-**Flags pin values.** If `--config`, `--project`, `--environment`, or
-any other flag is specified, that value is locked in — no prompt is
-shown for it in either mode. Everything else is prompted in
-interactive mode, with defaults pre-filled where they exist.
+**Prompting levels** control how aggressively the tool prompts in
+interactive mode:
 
-This means you can run any command with zero flags in interactive mode
-and the tool walks you through every decision:
+| Flag | Has a default | No default | Mutation |
+|------|---------------|------------|----------|
+| `--ask` | Prompt, pre-filled with default | Prompt/picker | Confirm |
+| *(default)* | Use default silently | Prompt/picker | Confirm |
+| `--yes` | Use default silently | Error if missing | Skip confirmation |
+
+`--ask` is only valid in interactive mode — it errors on a
+non-interactive terminal. `--yes` works in both modes.
+
+**Flags pin values.** If `--project`, `--environment`, or any other
+flag is specified with a value, that value is locked in — no prompt
+is shown for it regardless of `--ask`. Everything unspecified follows
+the prompting level.
+
+This means you can use `--ask` to explore interactively even when
+the config file has defaults:
 
 ```text
-$ fat-controller adopt
+$ fat-controller show --ask
 
-  Config file: fat-controller.toml
-  Secrets file: .env.fat-controller
   Workspace: Hamish Morgan's Projects  (1 of 1)
   Project: > Life
             Other Project
   Environment: > production
                 staging
-  Services: [x] api
-            [x] worker
-            [ ] postgres
 ```
 
 Or pin specific values and only be prompted for the rest:
 
 ```text
-$ fat-controller adopt --project Life --environment production
+$ fat-controller show --ask --project Life
 
-  Config file: fat-controller.toml
-  Secrets file: .env.fat-controller
-  Services: [x] api
-            [x] worker
-            [ ] postgres
+  Environment: > production
+                staging
 ```
 
-**`--yes` and `--dry-run`:**
+Without `--ask`, if the config file has `project = "Life"` and
+`environment = "production"`, `show` uses those silently — no
+prompts at all.
 
-`--yes` accepts the default for every prompt — it makes interactive
-mode behave like non-interactive. `--dry-run` prevents all mutations.
-When both are set, `--dry-run` wins: defaults are used, but nothing
-is written.
+**`--ask`, `--yes`, and `--dry-run`:**
+
+`--dry-run` prevents all mutations. When combined with other flags,
+`--dry-run` always wins.
 
 | Flags | Interactive | Non-interactive |
 |-------|-------------|-----------------|
-| (none) | Prompt for everything | Use defaults, error if missing |
-| `--yes` | Use defaults, error if missing | Use defaults, error if missing |
-| `--dry-run` | Prompt, but preview only | Preview only, no mutations |
+| (none) | Use defaults, prompt if missing | Use defaults, error if missing |
+| `--ask` | Prompt for everything | Error (requires TTY) |
+| `--yes` | Use defaults, skip confirmations | Use defaults, skip confirmations |
+| `--dry-run` | Use defaults, prompt if missing, preview only | Preview only, no mutations |
+| `--ask --dry-run` | Prompt for everything, preview only | Error (requires TTY) |
 | `--yes --dry-run` | Use defaults, preview only | Use defaults, preview only |
 
-The goal: interactive mode is convenient for humans — you can run
-`fat-controller apply` with zero flags and the tool guides you
-through every decision. Non-interactive mode is safe for CI —
-deterministic, no prompts, fails loudly on missing values.
+`--ask` and `--yes` are mutually exclusive — specifying both is an
+error.
+
+The goal: interactive mode is convenient for humans — `--ask` lets
+you explore, defaults keep things quick for the common case.
+Non-interactive mode is safe for CI — deterministic, no prompts,
+fails loudly on missing values.
 
 ---
 

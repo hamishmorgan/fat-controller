@@ -1,59 +1,59 @@
-# Project metadata — identifies the Railway project and environment.
-# These can also be set via --project / --environment flags or env vars.
-project = "my-railway-app"
-environment = "production"
-
-# Optional: override which variable names are detected as secrets.
-# sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "KEY"]
-# sensitive_allowlist = ["KEYSTROKE"]
-
-# Optional: suppress specific config warnings by code.
-# suppress_warnings = ["W012", "W030"]
+# Environment identity — names the Railway environment this file manages.
+name = "production"
 
 # Shared variables are available to all services in the environment.
 # Railway's own precedence applies: per-service values override shared
 # when both define the same key.
-[shared.variables]
-NODE_ENV = "production"
-LOG_LEVEL = "info"
+variables = { NODE_ENV = "production", LOG_LEVEL = "info" }
+
+# Tool settings control how fat-controller behaves (not what it manages).
+# [tool]
+# api_timeout = "60s"
+# prompt = "default"
+# env_file = ".env"
+# sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "KEY"]
+# sensitive_allowlist = ["KEYSTROKE"]
+# suppress_warnings = ["W012", "W030"]
+
+# Project metadata — identifies the Railway project.
+# Can also be set via --project flag or FAT_CONTROLLER_PROJECT env var.
+[project]
+name = "my-railway-app"
 
 # --- API service ---
 
-[api.variables]
-PORT = "8080"
+[[service]]
+name = "api"
+resources = { vcpus = 2, memory_gb = 4 }
 
-# Railway references — resolved at runtime by Railway. Safe to commit.
-DATABASE_URL = "${{postgres.DATABASE_URL}}"
-REDIS_URL = "${{redis.REDIS_URL}}"
-
-# Local environment interpolation — resolved from the local shell at
-# apply time. Use for secrets injected via CI env vars or .env files.
-STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}"
-
-# Empty string means "delete this variable if it exists in Railway".
-DEPRECATED_FLAG = ""
-
-[api.resources]
-vcpus = 2
-memory_gb = 4
-
-[api.deploy]
+[service.deploy]
 builder = "NIXPACKS"
 start_command = "node dist/server.js"
 healthcheck_path = "/health"
 
+[service.variables]
+PORT = "8080"
+# Railway references — resolved at runtime by Railway. Safe to commit.
+DATABASE_URL = "${{postgres.DATABASE_URL}}"
+REDIS_URL = "${{redis.REDIS_URL}}"
+# Local environment interpolation — resolved from the local shell at
+# apply time. Use for secrets injected via CI env vars or .env files.
+STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}"
+# Empty string means "delete this variable if it exists in Railway".
+DEPRECATED_FLAG = ""
+
 # --- Background worker ---
 
-[worker.variables]
-DATABASE_URL = "${{postgres.DATABASE_URL}}"
-QUEUE_NAME = "default"
-CONCURRENCY = "5"
+[[service]]
+name = "worker"
+resources = { vcpus = 1, memory_gb = 2 }
 
-[worker.resources]
-vcpus = 1
-memory_gb = 2
-
-[worker.deploy]
+[service.deploy]
 builder = "DOCKERFILE"
 dockerfile_path = "./worker/Dockerfile"
 root_directory = "."
+
+[service.variables]
+DATABASE_URL = "${{postgres.DATABASE_URL}}"
+QUEUE_NAME = "default"
+CONCURRENCY = "5"

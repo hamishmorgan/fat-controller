@@ -4,7 +4,7 @@
 file conventions for fat-controller as a comprehensive Railway management
 tool.
 
-**Status:** Draft — design only, no implementation yet.
+**Status:** Draft.
 
 ---
 
@@ -91,8 +91,7 @@ which keys are present:
 
 ### Environment scope
 
-This is what exists today. It manages all services within a single
-project+environment.
+Manages all services within a single project+environment.
 
 ```toml
 workspace = "Hamish Morgan's Projects"
@@ -149,7 +148,7 @@ memory_gb = 4
 Note: no service name prefix on section headers — the `service` key
 establishes the scope. `[variables]` instead of `[api.variables]`.
 
-### Project scope (future)
+### Project scope
 
 Manages project-level settings and can declare which environments
 should exist. When `apply` runs against a project-scope file and an
@@ -168,7 +167,7 @@ production = {}
 staging = { source = "production" }   # cloned from production
 ```
 
-### Workspace scope (future)
+### Workspace scope
 
 ```toml
 workspace = "Hamish Morgan's Projects"
@@ -181,15 +180,15 @@ two_factor_required = true
 "example.com" = {}
 ```
 
-### User scope (future)
+### User scope
 
 ```toml
 [user.preferences]
 # notification settings, etc.
 ```
 
-Smallest surface area. Lowest priority — most user settings are
-better managed in the dashboard.
+Smallest surface area. Most user settings are better managed in the
+dashboard.
 
 ---
 
@@ -236,18 +235,16 @@ fat-controller status [service]     Show deployment status
 
 ### Discovery commands
 
-Read-only listing. Unchanged from today.
+Read-only listing.
 
 ```text
 fat-controller workspace list
 fat-controller project list
 fat-controller environment list
-fat-controller service list          (new)
+fat-controller service list
 ```
 
 ### Auth commands
-
-Unchanged from today.
 
 ```text
 fat-controller auth login
@@ -262,16 +259,15 @@ sub-choice:
 
 - **From remote (default when remote exists):** Interactive prompts to
   select workspace/project/environment/services, pulls live state,
-  writes config + `.env.fat-controller`. This is what today's
-  `config init` does.
+  writes config + `.env.fat-controller`.
 
 - **From scratch (when no remote exists, or `--new`):** Scaffolds a
-  minimal config file. Could prompt for project name, environment name,
-  service names. Writes a skeleton that you'd then `apply` to create
-  resources upstream (once service/project creation is supported).
+  minimal config file. Prompts for project name, environment name,
+  service names. Writes a skeleton that you then `apply` to create
+  resources upstream.
 
-- **From template (future):** `init --template <name>` scaffolds from a
-  Railway template definition.
+- **From template:** `init --template <name>` scaffolds from a Railway
+  template definition.
 
 ---
 
@@ -307,44 +303,44 @@ state.
 
 ## Entity coverage
 
-### What the TOML can express (by tier)
+### What the TOML can express
 
-**Tier 1 — implemented:**
-
-| Entity | Section | Status |
-|--------|---------|--------|
-| Variables (shared) | `[shared.variables]` | Done |
-| Variables (per-service) | `[svc.variables]` | Done |
-| Deploy settings (5 fields) | `[svc.deploy]` | Done |
-| Resources | `[svc.resources]` | Done |
-
-**Tier 2 — high value, next:**
+**Environment / service scope:**
 
 | Entity | Section | Fields |
 |--------|---------|--------|
-| Deploy settings (full) | `[svc.deploy]` | `build_command`, `cron_schedule`, `draining_seconds`, `healthcheck_timeout`, `num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`, `restart_policy`, `restart_policy_max_retries`, `sleep_application`, `watch_patterns` |
+| Variables (shared) | `[shared.variables]` | key-value pairs |
+| Variables (per-service) | `[svc.variables]` | key-value pairs |
+| Deploy settings | `[svc.deploy]` | `builder`, `build_command`, `start_command`, `dockerfile_path`, `root_directory`, `healthcheck_path`, `healthcheck_timeout`, `cron_schedule`, `draining_seconds`, `num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`, `restart_policy`, `restart_policy_max_retries`, `sleep_application`, `watch_patterns` |
+| Resources | `[svc.resources]` | `vcpus`, `memory_gb` |
 | Custom domains | `[svc.domains]` | hostname, target port |
 | Service domains | `[svc.domains]` | railway.app subdomain, target port |
 | Volumes | `[svc.volumes]` | name, mount path |
-
-**Tier 3 — medium value:**
-
-| Entity | Section | Fields |
-|--------|---------|--------|
 | TCP proxies | `[svc.tcp_proxies]` | application port |
 | Private network endpoints | `[svc.network]` | DNS name |
 | Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
 | Egress gateways | `[svc.egress]` | service association |
 
-**Tier 4 — low value / admin:**
+**Project scope:**
 
-| Entity | Section | Notes |
-|--------|---------|-------|
-| Project settings | `[project]` | PR deploys, base env. Project scope only. |
-| Workspace settings | `[workspace]` | Preferred region, 2FA. Workspace scope only. |
-| Integrations | — | Complex, many providers |
-| Notification rules | — | Probably better managed in dashboard |
-| Observability dashboards | — | Probably better managed in dashboard |
+| Entity | Section | Fields |
+|--------|---------|--------|
+| Project settings | `[project]` | PR deploys, base environment |
+| Environments | `[project.environments]` | name, source |
+
+**Workspace scope:**
+
+| Entity | Section | Fields |
+|--------|---------|--------|
+| Workspace settings | `[workspace]` | Preferred region, 2FA enforcement |
+| Trusted domains | `[workspace.trusted_domains]` | domain |
+| Notification rules | `[workspace.notifications]` | TBD |
+
+**User scope:**
+
+| Entity | Section | Fields |
+|--------|---------|--------|
+| Preferences | `[user.preferences]` | TBD |
 
 ### What stays imperative-only
 
@@ -355,9 +351,9 @@ These are actions, not state — no declarative equivalent:
 - Volume backups (create, restore)
 - Template deployment
 
-### Potentially declarative in the future
+### Potentially declarative
 
-These have state but are lower priority:
+These have state but small surface area:
 
 - Project/workspace membership (members, roles)
 - Notification rules
@@ -429,29 +425,7 @@ which project/environment/service to target. Resolution order:
 6. Interactive picker (if TTY)
 7. Error with available options
 
-This is largely unchanged from today, except that imperative commands
-now also read the config file for context.
-
----
-
-## Migration from current structure
-
-| Current | Target | Change |
-|---------|--------|--------|
-| `fat-controller config init` | `fat-controller init` | Promote to top-level |
-| `fat-controller config diff` | `fat-controller diff` | Promote to top-level |
-| `fat-controller config apply` | `fat-controller apply` | Promote to top-level |
-| `fat-controller config validate` | `fat-controller validate` | Promote to top-level |
-| `fat-controller config get` | `fat-controller get` | Promote to top-level |
-| `fat-controller config set` | `fat-controller set` | Promote to top-level |
-| `fat-controller config delete` | `fat-controller delete` | Promote to top-level |
-| `fat-controller service list` | (new) | Add |
-| `fat-controller deploy` | (new) | Add |
-| `fat-controller logs` | (new) | Add |
-
-The `config` subcommand group is removed. All declarative commands
-become top-level. This is a breaking change — acceptable since the
-user base is one person.
+Imperative commands also read the config file for context.
 
 ---
 
@@ -495,7 +469,7 @@ deletions that would result from prune mode.
 | Project | Project-scope `apply` | Requires workspace context |
 | Environment | Environment-scope `apply` | Requires project context |
 | Service | Environment-scope `apply` | Service appears in config but not in Railway |
-| Variable | Any scope `apply` | Already implemented |
+| Variable | Any scope `apply` | |
 | Volume | Environment/service-scope `apply` | mount path required |
 | Domain | Environment/service-scope `apply` | DNS verification separate |
 
@@ -510,8 +484,8 @@ a config from scratch, then apply it to create everything in Railway.
    per-section ownership. Need to decide granularity. Per-section is
    most flexible but most complex.
 
-2. **`get` output format.** Currently `get` outputs TOML matching the
-   config file format. Should it also support outputting just the raw
+2. **`get` output format.** `get` outputs TOML matching the config file
+   format by default. Should it also support outputting just the raw
    values for scripting? e.g. `fat-controller get api.variables.PORT`
    outputs `8080` with no formatting.
 
@@ -537,48 +511,3 @@ a config from scratch, then apply it to create everything in Railway.
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
-
----
-
-## Implementation order
-
-Rough sequencing, not a commitment. Each step builds on the previous.
-
-**Phase 1 — Restructure:**
-
-1. Promote commands to top-level (remove `config` subcommand group).
-2. Add `service list`.
-
-**Phase 2 — Deepen environment scope:**
-
-1. Expand deploy settings (remaining ~15 `ServiceInstanceUpdate`
-   fields).
-2. Add domains (custom + service) to config, diff, apply.
-3. Add volumes to config, diff, apply.
-4. Add TCP proxies + private networking.
-
-**Phase 3 — Creation:**
-
-1. Service creation via `apply` (service in config but not in Railway).
-2. Environment creation via `apply`.
-3. Project creation via `apply` (project-scope files).
-4. `init --new` scaffolding mode.
-
-**Phase 4 — Imperative commands:**
-
-1. `deploy`, `redeploy`, `restart`, `rollback`, `stop`.
-2. `logs` (via GraphQL subscription).
-3. `status` (deployment status display).
-
-**Phase 5 — Ownership:**
-
-1. Design and implement prune/ownership model.
-2. Deletion via `apply --prune` or `managed = true`.
-
-**Phase 6 — Additional scopes:**
-
-1. Service-scope config files (`service = "api"`).
-2. Deployment triggers in config.
-3. Project-scope config files.
-4. Workspace-scope config files.
-5. User-scope config files (if warranted).

@@ -18,14 +18,14 @@ var localEnvPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 // Returns an error if any referenced env var is not set.
 func Interpolate(cfg *DesiredConfig) error {
 	slog.Debug("interpolating config variables")
-	if cfg.Shared != nil {
-		if err := interpolateVars(cfg.Shared.Vars, "shared.variables"); err != nil {
+	if cfg.Variables != nil {
+		if err := interpolateVars(cfg.Variables, "variables"); err != nil {
 			return err
 		}
 	}
-	for name, svc := range cfg.Services {
+	for _, svc := range cfg.Services {
 		if svc.Variables != nil {
-			if err := interpolateVars(svc.Variables, name+".variables"); err != nil {
+			if err := interpolateVars(svc.Variables, svc.Name+".variables"); err != nil {
 				return err
 			}
 		}

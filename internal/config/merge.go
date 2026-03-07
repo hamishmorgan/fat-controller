@@ -6,41 +6,33 @@ import "log/slog"
 // Variable maps are merged at the key level. Resources/Deploy fields are
 // merged at the field level (non-nil overrides nil).
 func Merge(configs ...*DesiredConfig) *DesiredConfig {
-	result := &DesiredConfig{
-		Services: make(map[string]*DesiredService),
-	}
+	result := &DesiredConfig{}
 	for _, cfg := range configs {
 		if cfg == nil {
 			continue
 		}
-		// Merge project/environment: non-empty overrides.
-		if cfg.Project != "" {
-			slog.Debug("config override", "field", "project", "value", cfg.Project)
-			result.Project = cfg.Project
+		// Merge name: non-empty overrides.
+		if cfg.Name != "" {
+			slog.Debug("config override", "field", "name", "value", cfg.Name)
+			result.Name = cfg.Name
 		}
-		if cfg.Environment != "" {
-			slog.Debug("config override", "field", "environment", "value", cfg.Environment)
-			result.Environment = cfg.Environment
-		}
-		if cfg.Workspace != "" {
-			slog.Debug("config override", "field", "workspace", "value", cfg.Workspace)
+		if cfg.Workspace != nil {
+			slog.Debug("config override", "field", "workspace", "value", cfg.Workspace.Name)
 			result.Workspace = cfg.Workspace
 		}
-		if len(cfg.SensitiveKeywords) > 0 {
-			result.SensitiveKeywords = cfg.SensitiveKeywords
+		if cfg.Project != nil {
+			slog.Debug("config override", "field", "project", "value", cfg.Project.Name)
+			result.Project = cfg.Project
 		}
-		if len(cfg.SensitiveAllowlist) > 0 {
-			result.SensitiveAllowlist = cfg.SensitiveAllowlist
+		if cfg.Tool != nil {
+			result.Tool = cfg.Tool
 		}
-		if len(cfg.SuppressWarnings) > 0 {
-			result.SuppressWarnings = cfg.SuppressWarnings
-		}
-		result.Shared = mergeVariables(result.Shared, cfg.Shared)
-		for name, svc := range cfg.Services {
-			existing, ok := result.Services[name]
-			if !ok {
-				existing = &DesiredService{}
-				result.Services[name] = existing
+		result.Variables = mergeVarMaps(result.Variables, cfg.Variables)
+		for _, svc := range cfg.Services {
+			existing := findServiceByName(result.Services, svc.Name)
+			if existing == nil {
+				existing = &DesiredService{Name: svc.Name}
+				result.Services = append(result.Services, existing)
 			}
 			mergeService(existing, svc)
 		}
@@ -48,29 +40,32 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 	return result
 }
 
-func mergeVariables(base, overlay *DesiredVariables) *DesiredVariables {
+// findServiceByName finds a service by name in a slice.
+func findServiceByName(services []*DesiredService, name string) *DesiredService {
+	for _, svc := range services {
+		if svc.Name == name {
+			return svc
+		}
+	}
+	return nil
+}
+
+func mergeVarMaps(base, overlay Variables) Variables {
 	if overlay == nil {
 		return base
 	}
 	if base == nil {
-		base = &DesiredVariables{Vars: make(map[string]string)}
+		base = make(Variables, len(overlay))
 	}
-	for k, v := range overlay.Vars {
-		base.Vars[k] = v
+	for k, v := range overlay {
+		base[k] = v
 	}
 	return base
 }
 
 func mergeService(base, overlay *DesiredService) {
 	// Merge variables.
-	if overlay.Variables != nil {
-		if base.Variables == nil {
-			base.Variables = make(map[string]string)
-		}
-		for k, v := range overlay.Variables {
-			base.Variables[k] = v
-		}
-	}
+	base.Variables = mergeVarMaps(base.Variables, overlay.Variables)
 
 	// Merge resources (field-level).
 	if overlay.Resources != nil {

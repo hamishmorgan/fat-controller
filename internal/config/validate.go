@@ -32,14 +32,22 @@ var serviceRefRe = regexp.MustCompile(`\$\{\{([a-zA-Z_][a-zA-Z0-9_-]*)\.[a-zA-Z_
 // Validate runs advisory checks on a DesiredConfig and returns warnings.
 // liveServiceNames is the list of service names that actually exist in Railway;
 // pass nil to skip W040 checks (e.g. for offline validation).
-// Warnings whose codes appear in cfg.SuppressWarnings are filtered out.
+// Warnings whose codes appear in tool.suppress_warnings are filtered out.
 func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 	slog.Debug("validating config", "services", len(cfg.Services), "has_live_names", liveServiceNames != nil)
 	var warnings []Warning
 
+	// Extract tool settings.
+	var suppressWarnings, sensitiveKeywords, sensitiveAllowlist []string
+	if cfg.Tool != nil {
+		suppressWarnings = cfg.Tool.SuppressWarnings
+		sensitiveKeywords = cfg.Tool.SensitiveKeywords
+		sensitiveAllowlist = cfg.Tool.SensitiveAllowlist
+	}
+
 	// Build suppression set.
-	suppressed := make(map[string]bool, len(cfg.SuppressWarnings))
-	for _, code := range cfg.SuppressWarnings {
+	suppressed := make(map[string]bool, len(suppressWarnings))
+	for _, code := range suppressWarnings {
 		suppressed[code] = true
 	}
 
@@ -53,48 +61,41 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 	}
 
 	// Check shared variables.
-	if cfg.Shared != nil {
-		for name, value := range cfg.Shared.Vars {
-			path := "shared.variables." + name
+	if cfg.Variables != nil {
+		for name, value := range cfg.Variables {
+			path := "variables." + name
 			warnings = append(warnings, checkVarName(name, path)...)
 			warnings = append(warnings, checkVarValue(value, path)...)
 		}
 	}
 
 	// W050: Hardcoded secret detection.
-	masker := NewMasker(cfg.SensitiveKeywords, cfg.SensitiveAllowlist)
+	masker := NewMasker(sensitiveKeywords, sensitiveAllowlist)
 
 	// Check shared variables for W050 and W060.
-	if cfg.Shared != nil {
-		for name, value := range cfg.Shared.Vars {
-			path := "shared.variables." + name
+	if cfg.Variables != nil {
+		for name, value := range cfg.Variables {
+			path := "variables." + name
 			warnings = append(warnings, checkSecret(masker, name, value, path)...)
 		}
 	}
 
 	// W060: Reference to unknown service — build known service set.
 	knownServices := make(map[string]bool, len(cfg.Services))
-	for name := range cfg.Services {
-		knownServices[name] = true
+	for _, svc := range cfg.Services {
+		knownServices[svc.Name] = true
 	}
 
 	// Check shared vars for W060.
-	if cfg.Shared != nil {
-		for varName, value := range cfg.Shared.Vars {
-			warnings = append(warnings, checkServiceRefs(value, "shared.variables."+varName, knownServices)...)
+	if cfg.Variables != nil {
+		for varName, value := range cfg.Variables {
+			warnings = append(warnings, checkServiceRefs(value, "variables."+varName, knownServices)...)
 		}
 	}
 
 	// Check each service.
-	for svcName, svc := range cfg.Services {
-		// W002: Unknown key in service block.
-		for _, key := range svc.UnknownKeys {
-			warnings = append(warnings, Warning{
-				Code:    "W002",
-				Message: fmt.Sprintf("unknown key %q in service %q (expected: variables, resources, deploy)", key, svcName),
-				Path:    svcName + "." + key,
-			})
-		}
+	for _, svc := range cfg.Services {
+		svcName := svc.Name
 
 		// W003: Empty service block.
 		if isEmptyService(svc) {
@@ -113,8 +114,8 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 			warnings = append(warnings, checkServiceRefs(value, path, knownServices)...)
 
 			// W020: Variable in both shared and service.
-			if cfg.Shared != nil {
-				if _, ok := cfg.Shared.Vars[name]; ok {
+			if cfg.Variables != nil {
+				if _, ok := cfg.Variables[name]; ok {
 					warnings = append(warnings, Warning{
 						Code:    "W020",
 						Message: fmt.Sprintf("variable %q defined in both shared and service %q (service wins)", name, svcName),
@@ -140,12 +141,12 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 		for _, name := range liveServiceNames {
 			liveSet[name] = true
 		}
-		for svcName := range cfg.Services {
-			if !liveSet[svcName] {
+		for _, svc := range cfg.Services {
+			if !liveSet[svc.Name] {
 				warnings = append(warnings, Warning{
 					Code:    "W040",
-					Message: fmt.Sprintf("service %q not found in Railway project", svcName),
-					Path:    svcName,
+					Message: fmt.Sprintf("service %q not found in Railway project", svc.Name),
+					Path:    svc.Name,
 				})
 			}
 		}
@@ -169,7 +170,7 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 // hasAnythingActionable returns true if the config defines at least one service
 // or at least one shared variable.
 func hasAnythingActionable(cfg *DesiredConfig) bool {
-	if cfg.Shared != nil && len(cfg.Shared.Vars) > 0 {
+	if len(cfg.Variables) > 0 {
 		return true
 	}
 	return len(cfg.Services) > 0

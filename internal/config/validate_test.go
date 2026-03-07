@@ -42,8 +42,8 @@ func warningCodes(warnings []config.Warning) []string {
 
 func TestValidate_W003_EmptyServiceBlock(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {}, // no variables, no resources, no deploy
+		Services: []*config.DesiredService{
+			{Name: "api"}, // no variables, no resources, no deploy
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -52,8 +52,8 @@ func TestValidate_W003_EmptyServiceBlock(t *testing.T) {
 
 func TestValidate_W003_NotEmptyWhenVariablesPresent(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -63,8 +63,8 @@ func TestValidate_W003_NotEmptyWhenVariablesPresent(t *testing.T) {
 func TestValidate_W003_NotEmptyWhenResourcesPresent(t *testing.T) {
 	vcpus := 1.0
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Resources: &config.DesiredResources{VCPUs: &vcpus}},
+		Services: []*config.DesiredService{
+			{Name: "api", Resources: &config.DesiredResources{VCPUs: &vcpus}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -74,8 +74,8 @@ func TestValidate_W003_NotEmptyWhenResourcesPresent(t *testing.T) {
 func TestValidate_W003_NotEmptyWhenDeployPresent(t *testing.T) {
 	builder := "nixpacks"
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Deploy: &config.DesiredDeploy{Builder: &builder}},
+		Services: []*config.DesiredService{
+			{Name: "api", Deploy: &config.DesiredDeploy{Builder: &builder}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -86,8 +86,8 @@ func TestValidate_W003_NotEmptyWhenDeployPresent(t *testing.T) {
 
 func TestValidate_W011_SuspiciousRefSyntax(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DB_URL": "${postgres.DATABASE_URL}",
 			}},
 		},
@@ -98,8 +98,8 @@ func TestValidate_W011_SuspiciousRefSyntax(t *testing.T) {
 
 func TestValidate_W011_NoFalsePositiveForDoublebraces(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DB_URL": "${{postgres.DATABASE_URL}}",
 			}},
 		},
@@ -110,8 +110,8 @@ func TestValidate_W011_NoFalsePositiveForDoublebraces(t *testing.T) {
 
 func TestValidate_W011_NoFalsePositiveForSimpleEnvVar(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"KEY": "${SIMPLE_VAR}",
 			}},
 		},
@@ -124,8 +124,8 @@ func TestValidate_W011_NoFalsePositiveForSimpleEnvVar(t *testing.T) {
 
 func TestValidate_W012_EmptyStringDelete(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"OLD_VAR": "",
 			}},
 		},
@@ -136,8 +136,8 @@ func TestValidate_W012_EmptyStringDelete(t *testing.T) {
 
 func TestValidate_W012_NonEmptyStringNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"PORT": "8080",
 			}},
 		},
@@ -150,11 +150,11 @@ func TestValidate_W012_NonEmptyStringNoWarning(t *testing.T) {
 
 func TestValidate_W020_SharedAndServiceConflict(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"APP_ENV": "production",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"APP_ENV": "staging",
 			}},
 		},
@@ -165,11 +165,11 @@ func TestValidate_W020_SharedAndServiceConflict(t *testing.T) {
 
 func TestValidate_W020_NoConflictWhenDifferentVars(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"SHARED_KEY": "value",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"SERVICE_KEY": "value",
 			}},
 		},
@@ -182,8 +182,8 @@ func TestValidate_W020_NoConflictWhenDifferentVars(t *testing.T) {
 
 func TestValidate_W030_LowercaseVarName(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"myVar": "value",
 			}},
 		},
@@ -194,8 +194,8 @@ func TestValidate_W030_LowercaseVarName(t *testing.T) {
 
 func TestValidate_W030_UppercaseNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"MY_VAR": "value",
 			}},
 		},
@@ -206,9 +206,9 @@ func TestValidate_W030_UppercaseNoWarning(t *testing.T) {
 
 func TestValidate_W030_SharedLowercaseVarName(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"badName": "value",
-		}},
+		},
 		// Need at least one service or shared var to avoid W041 dominating.
 	}
 	warnings := config.Validate(cfg, nil)
@@ -219,9 +219,9 @@ func TestValidate_W030_SharedLowercaseVarName(t *testing.T) {
 
 func TestValidate_W040_UnknownServiceName(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api":     {Variables: map[string]string{"PORT": "8080"}},
-			"unknown": {Variables: map[string]string{"PORT": "9090"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
+			{Name: "unknown", Variables: config.Variables{"PORT": "9090"}},
 		},
 	}
 	liveServices := []string{"api", "worker"}
@@ -240,8 +240,8 @@ func TestValidate_W040_UnknownServiceName(t *testing.T) {
 
 func TestValidate_W040_NoWarningWhenAllKnown(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	liveServices := []string{"api", "worker"}
@@ -251,8 +251,8 @@ func TestValidate_W040_NoWarningWhenAllKnown(t *testing.T) {
 
 func TestValidate_W040_SkippedWhenNilLiveServices(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"nonexistent": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "nonexistent", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -263,7 +263,7 @@ func TestValidate_W040_SkippedWhenNilLiveServices(t *testing.T) {
 
 func TestValidate_W041_NothingActionable(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{},
+		Services: []*config.DesiredService{},
 	}
 	warnings := config.Validate(cfg, nil)
 	assertHasWarning(t, warnings, "W041")
@@ -277,8 +277,8 @@ func TestValidate_W041_NilSharedNilServices(t *testing.T) {
 
 func TestValidate_W041_NoWarningWithServices(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -287,9 +287,9 @@ func TestValidate_W041_NoWarningWithServices(t *testing.T) {
 
 func TestValidate_W041_NoWarningWithSharedOnly(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"APP_ENV": "production",
-		}},
+		},
 	}
 	warnings := config.Validate(cfg, nil)
 	assertNoWarning(t, warnings, "W041")
@@ -299,9 +299,9 @@ func TestValidate_W041_NoWarningWithSharedOnly(t *testing.T) {
 
 func TestValidate_SuppressedWarnings(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		SuppressWarnings: []string{"W012", "W030"},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Tool: &config.ToolSettings{SuppressWarnings: []string{"W012", "W030"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"myVar":   "",   // would trigger W030 + W012
 				"MY_VAR2": "ok", // clean
 			}},
@@ -314,9 +314,9 @@ func TestValidate_SuppressedWarnings(t *testing.T) {
 
 func TestValidate_SuppressedWarnings_OthersStillEmitted(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		SuppressWarnings: []string{"W030"},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Tool: &config.ToolSettings{SuppressWarnings: []string{"W030"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"myVar": "", // W030 suppressed, W012 still emitted
 			}},
 		},
@@ -326,47 +326,12 @@ func TestValidate_SuppressedWarnings_OthersStillEmitted(t *testing.T) {
 	assertHasWarning(t, warnings, "W012")
 }
 
-// --- W002: Unknown key in service block ---
-
-func TestValidate_W002_UnknownServiceKey(t *testing.T) {
-	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
-				Variables:   map[string]string{"PORT": "8080"},
-				UnknownKeys: []string{"foo"},
-			},
-		},
-	}
-	warnings := config.Validate(cfg, nil)
-	assertHasWarning(t, warnings, "W002")
-	for _, w := range warnings {
-		if w.Code == "W002" {
-			if w.Path != "api.foo" {
-				t.Errorf("W002 path = %q, want %q", w.Path, "api.foo")
-			}
-		}
-	}
-}
-
-func TestValidate_W002_NoWarningWithKnownKeys(t *testing.T) {
-	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
-				Variables: map[string]string{"PORT": "8080"},
-				// No unknown keys
-			},
-		},
-	}
-	warnings := config.Validate(cfg, nil)
-	assertNoWarning(t, warnings, "W002")
-}
-
 // --- W021: Variable overridden by local file ---
 
 func TestValidate_W021_VariableOverriddenByLocal(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "4000"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "4000"}},
 		},
 		Overrides: []config.Override{
 			{Path: "api.variables.PORT", Source: "local override"},
@@ -378,8 +343,8 @@ func TestValidate_W021_VariableOverriddenByLocal(t *testing.T) {
 
 func TestValidate_W021_NoOverridesNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "4000"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "4000"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -390,8 +355,8 @@ func TestValidate_W021_NoOverridesNoWarning(t *testing.T) {
 
 func TestValidate_W031_SpaceInVarName(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"MY VAR": "value",
 			}},
 		},
@@ -402,8 +367,8 @@ func TestValidate_W031_SpaceInVarName(t *testing.T) {
 
 func TestValidate_W031_SpecialCharsInVarName(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"PORT@8080": "value",
 			}},
 		},
@@ -414,8 +379,8 @@ func TestValidate_W031_SpecialCharsInVarName(t *testing.T) {
 
 func TestValidate_W031_ValidNameNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"MY_VAR_123": "value",
 			}},
 		},
@@ -428,8 +393,8 @@ func TestValidate_W031_ValidNameNoWarning(t *testing.T) {
 
 func TestValidate_W050_HardcodedSecret(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				// ENCRYPTION_KEY matches sensitive keyword → masker returns MaskedValue
 				// regardless of value content. Short value avoids gitleaks false positive.
 				"ENCRYPTION_KEY": "my-secret-value",
@@ -442,8 +407,8 @@ func TestValidate_W050_HardcodedSecret(t *testing.T) {
 
 func TestValidate_W050_InterpolatedNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"API_KEY": "${API_KEY}",
 			}},
 		},
@@ -454,8 +419,8 @@ func TestValidate_W050_InterpolatedNoWarning(t *testing.T) {
 
 func TestValidate_W050_NonSensitiveNameNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"PORT": "8080",
 			}},
 		},
@@ -485,8 +450,8 @@ func TestValidateFiles_NoWarning_NoLocalFile(t *testing.T) {
 
 func TestValidate_W060_UnknownServiceRef(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DB_URL": "${{postgres.DATABASE_URL}}",
 			}},
 		},
@@ -497,11 +462,11 @@ func TestValidate_W060_UnknownServiceRef(t *testing.T) {
 
 func TestValidate_W060_KnownServiceRefNoWarning(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DB_URL": "${{postgres.DATABASE_URL}}",
 			}},
-			"postgres": {Variables: map[string]string{"PORT": "5432"}},
+			{Name: "postgres", Variables: config.Variables{"PORT": "5432"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
@@ -510,42 +475,13 @@ func TestValidate_W060_KnownServiceRefNoWarning(t *testing.T) {
 
 func TestValidate_W060_SharedVarUnknownServiceRef(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"DB_URL": "${{postgres.DATABASE_URL}}",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	warnings := config.Validate(cfg, nil)
 	assertHasWarning(t, warnings, "W060")
-}
-
-// --- W002 via parser integration ---
-
-func TestParse_W002_UnknownServiceKey(t *testing.T) {
-	data := []byte(`
-[api]
-foo = "bar"
-
-[api.variables]
-PORT = "8080"
-`)
-	cfg, err := config.Parse(data)
-	if err != nil {
-		t.Fatalf("Parse() error: %v", err)
-	}
-	svc := cfg.Services["api"]
-	if len(svc.UnknownKeys) == 0 {
-		t.Fatal("expected UnknownKeys to contain 'foo'")
-	}
-	found := false
-	for _, k := range svc.UnknownKeys {
-		if k == "foo" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected 'foo' in UnknownKeys, got %v", svc.UnknownKeys)
-	}
 }

@@ -1,9 +1,28 @@
 package config
 
+import "fmt"
+
 // Override records that a variable was overridden by a later config file.
 type Override struct {
 	Path   string // dot-path e.g. "api.variables.PORT"
 	Source string // e.g. "extra.toml"
+}
+
+// Variables is a map[string]string that accepts non-string TOML values
+// by coercing them to their string representation.
+type Variables map[string]string
+
+// UnmarshalTOML implements toml.Unmarshaler for Variables.
+func (v *Variables) UnmarshalTOML(data any) error {
+	m, ok := data.(map[string]any)
+	if !ok {
+		return fmt.Errorf("expected table, got %T", data)
+	}
+	*v = make(Variables, len(m))
+	for k, val := range m {
+		(*v)[k] = fmt.Sprint(val)
+	}
+	return nil
 }
 
 // ContextBlock identifies a workspace or project by name and optional ID.
@@ -113,7 +132,7 @@ type DesiredService struct {
 	ID         string                  `toml:"id,omitempty"`
 	Icon       string                  `toml:"icon,omitempty"`
 	Delete     bool                    `toml:"delete,omitempty"`
-	Variables  map[string]string       `toml:"variables,omitempty"`
+	Variables  Variables               `toml:"variables,omitempty"`
 	Deploy     *DesiredDeploy          `toml:"deploy,omitempty"`
 	Resources  *DesiredResources       `toml:"resources,omitempty"`
 	Scale      map[string]int          `toml:"scale,omitempty"`
@@ -129,7 +148,7 @@ type DesiredService struct {
 type DesiredConfig struct {
 	Name      string                  `toml:"name,omitempty"`
 	ID        string                  `toml:"id,omitempty"`
-	Variables map[string]string       `toml:"variables,omitempty"`
+	Variables Variables               `toml:"variables,omitempty"`
 	Volumes   map[string]VolumeConfig `toml:"volumes,omitempty"`
 	Buckets   []string                `toml:"buckets,omitempty"`
 	Tool      *ToolSettings           `toml:"tool,omitempty"`
@@ -138,4 +157,29 @@ type DesiredConfig struct {
 	Services  []*DesiredService       `toml:"service,omitempty"`
 
 	Overrides []Override `toml:"-"` // populated by LoadConfigs, checked by Validate
+}
+
+// EnvFiles returns the env_file setting normalized to a string slice.
+// Handles both string and []string TOML values.
+func (t *ToolSettings) EnvFiles() []string {
+	if t == nil {
+		return nil
+	}
+	switch v := t.EnvFile.(type) {
+	case string:
+		if v == "" {
+			return nil
+		}
+		return []string{v}
+	case []any:
+		result := make([]string, 0, len(v))
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	default:
+		return nil
+	}
 }

@@ -8,8 +8,8 @@ import (
 
 func TestMerge_EmptySlice(t *testing.T) {
 	result := config.Merge()
-	if result.Shared != nil {
-		t.Error("expected nil shared from empty merge")
+	if result.Variables != nil {
+		t.Error("expected nil variables from empty merge")
 	}
 	if len(result.Services) != 0 {
 		t.Error("expected no services from empty merge")
@@ -18,73 +18,79 @@ func TestMerge_EmptySlice(t *testing.T) {
 
 func TestMerge_Single(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{"A": "1"}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Variables: config.Variables{"A": "1"},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	result := config.Merge(cfg)
-	if result.Shared == nil || result.Shared.Vars["A"] != "1" {
-		t.Error("expected shared A=1")
+	if result.Variables == nil || result.Variables["A"] != "1" {
+		t.Error("expected variables A=1")
 	}
-	if result.Services["api"].Variables["PORT"] != "8080" {
+	if result.Services[0].Variables["PORT"] != "8080" {
 		t.Error("expected api PORT=8080")
 	}
 }
 
 func TestMerge_LaterOverridesEarlier(t *testing.T) {
 	base := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"KEEP":     "base",
 			"OVERRIDE": "base",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"PORT":    "8080",
 				"APP_ENV": "staging",
 			}},
 		},
 	}
 	local := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"OVERRIDE": "local",
 			"NEW":      "local",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"APP_ENV": "production",
 			}},
-			"worker": {Variables: map[string]string{
+			{Name: "worker", Variables: config.Variables{
 				"QUEUE": "default",
 			}},
 		},
 	}
 	result := config.Merge(base, local)
 
-	// Shared: KEEP preserved, OVERRIDE overridden, NEW added
-	if result.Shared.Vars["KEEP"] != "base" {
-		t.Errorf("KEEP = %q, want base", result.Shared.Vars["KEEP"])
+	// Variables: KEEP preserved, OVERRIDE overridden, NEW added
+	if result.Variables["KEEP"] != "base" {
+		t.Errorf("KEEP = %q, want base", result.Variables["KEEP"])
 	}
-	if result.Shared.Vars["OVERRIDE"] != "local" {
-		t.Errorf("OVERRIDE = %q, want local", result.Shared.Vars["OVERRIDE"])
+	if result.Variables["OVERRIDE"] != "local" {
+		t.Errorf("OVERRIDE = %q, want local", result.Variables["OVERRIDE"])
 	}
-	if result.Shared.Vars["NEW"] != "local" {
-		t.Errorf("NEW = %q, want local", result.Shared.Vars["NEW"])
+	if result.Variables["NEW"] != "local" {
+		t.Errorf("NEW = %q, want local", result.Variables["NEW"])
 	}
 
 	// Service api: PORT preserved from base, APP_ENV overridden
-	if result.Services["api"].Variables["PORT"] != "8080" {
-		t.Errorf("api PORT = %q, want 8080", result.Services["api"].Variables["PORT"])
+	if result.Services[0].Variables["PORT"] != "8080" {
+		t.Errorf("api PORT = %q, want 8080", result.Services[0].Variables["PORT"])
 	}
-	if result.Services["api"].Variables["APP_ENV"] != "production" {
-		t.Errorf("api APP_ENV = %q, want production", result.Services["api"].Variables["APP_ENV"])
+	if result.Services[0].Variables["APP_ENV"] != "production" {
+		t.Errorf("api APP_ENV = %q, want production", result.Services[0].Variables["APP_ENV"])
 	}
 
 	// Service worker: added from local
-	if result.Services["worker"] == nil {
+	var worker *config.DesiredService
+	for _, svc := range result.Services {
+		if svc.Name == "worker" {
+			worker = svc
+		}
+	}
+	if worker == nil {
 		t.Fatal("expected worker service from local")
 	}
-	if result.Services["worker"].Variables["QUEUE"] != "default" {
+	if worker.Variables["QUEUE"] != "default" {
 		t.Error("expected worker QUEUE=default")
 	}
 }
@@ -96,22 +102,24 @@ func TestMerge_ResourcesAndDeployOverride(t *testing.T) {
 	builder := "NIXPACKS"
 
 	base := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Resources: &config.DesiredResources{VCPUs: &vcpus2, MemoryGB: &mem4},
 				Deploy:    &config.DesiredDeploy{Builder: &builder},
 			},
 		},
 	}
 	override := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Resources: &config.DesiredResources{VCPUs: &vcpus4},
 			},
 		},
 	}
 	result := config.Merge(base, override)
-	svc := result.Services["api"]
+	svc := result.Services[0]
 
 	if svc.Resources == nil || svc.Resources.VCPUs == nil || *svc.Resources.VCPUs != 4.0 {
 		t.Error("expected VCPUs overridden to 4")
@@ -124,64 +132,56 @@ func TestMerge_ResourcesAndDeployOverride(t *testing.T) {
 	}
 }
 
-func TestMerge_SharedNilInBaseNonNilInOverride(t *testing.T) {
-	base := &config.DesiredConfig{Services: map[string]*config.DesiredService{}}
+func TestMerge_VariablesNilInBaseNonNilInOverride(t *testing.T) {
+	base := &config.DesiredConfig{Services: []*config.DesiredService{}}
 	local := &config.DesiredConfig{
-		Shared:   &config.DesiredVariables{Vars: map[string]string{"X": "1"}},
-		Services: map[string]*config.DesiredService{},
+		Variables: config.Variables{"X": "1"},
+		Services:  []*config.DesiredService{},
 	}
 	result := config.Merge(base, local)
-	if result.Shared == nil || result.Shared.Vars["X"] != "1" {
-		t.Error("expected shared X=1 from override")
+	if result.Variables == nil || result.Variables["X"] != "1" {
+		t.Error("expected variables X=1 from override")
 	}
 }
 
-func TestMerge_ProjectEnvironment(t *testing.T) {
+func TestMerge_NameOverride(t *testing.T) {
 	base := &config.DesiredConfig{
-		Project:     "my-app",
-		Environment: "production",
-		Services:    map[string]*config.DesiredService{},
+		Name:     "production",
+		Services: []*config.DesiredService{},
 	}
-	// Local override sets environment but not project.
+	// Local override sets name.
 	local := &config.DesiredConfig{
-		Environment: "staging",
-		Services:    map[string]*config.DesiredService{},
+		Name:     "staging",
+		Services: []*config.DesiredService{},
 	}
 	result := config.Merge(base, local)
-	if result.Project != "my-app" {
-		t.Errorf("Project = %q, want %q (preserved from base)", result.Project, "my-app")
-	}
-	if result.Environment != "staging" {
-		t.Errorf("Environment = %q, want %q (overridden by local)", result.Environment, "staging")
+	if result.Name != "staging" {
+		t.Errorf("Name = %q, want %q (overridden by local)", result.Name, "staging")
 	}
 }
 
-func TestMerge_SensitiveKeywords(t *testing.T) {
-	base := &config.DesiredConfig{SensitiveKeywords: []string{"SECRET"}}
-	overlay := &config.DesiredConfig{SensitiveKeywords: []string{"TOKEN", "KEY"}}
+func TestMerge_ToolSettings(t *testing.T) {
+	base := &config.DesiredConfig{Tool: &config.ToolSettings{SensitiveKeywords: []string{"SECRET"}}}
+	overlay := &config.DesiredConfig{Tool: &config.ToolSettings{SensitiveKeywords: []string{"TOKEN", "KEY"}}}
 	result := config.Merge(base, overlay)
-	if len(result.SensitiveKeywords) != 2 || result.SensitiveKeywords[0] != "TOKEN" {
-		t.Errorf("expected overlay keywords to win: %v", result.SensitiveKeywords)
+	if result.Tool == nil || len(result.Tool.SensitiveKeywords) != 2 || result.Tool.SensitiveKeywords[0] != "TOKEN" {
+		t.Errorf("expected overlay tool settings to win")
 	}
 }
 
-func TestMerge_ProjectEnvironment_EmptyDoesNotOverride(t *testing.T) {
+func TestMerge_NameEmpty_DoesNotOverride(t *testing.T) {
 	base := &config.DesiredConfig{
-		Project:     "my-app",
-		Environment: "production",
-		Services:    map[string]*config.DesiredService{},
+		Name:     "production",
+		Services: []*config.DesiredService{},
 	}
-	// Overlay with empty project/environment should not wipe base values.
+	// Overlay with empty name should not wipe base values.
 	overlay := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "9090"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "9090"}},
 		},
 	}
 	result := config.Merge(base, overlay)
-	if result.Project != "my-app" {
-		t.Errorf("Project = %q, want %q (empty should not override)", result.Project, "my-app")
-	}
-	if result.Environment != "production" {
-		t.Errorf("Environment = %q, want %q (empty should not override)", result.Environment, "production")
+	if result.Name != "production" {
+		t.Errorf("Name = %q, want %q (empty should not override)", result.Name, "production")
 	}
 }

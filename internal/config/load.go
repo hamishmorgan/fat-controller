@@ -74,27 +74,27 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 // findOverrides detects variables in overlay that override variables in base.
 func findOverrides(base, overlay *DesiredConfig, sourceName string) []Override {
 	var overrides []Override
-	if base.Shared != nil && overlay.Shared != nil {
-		for k := range overlay.Shared.Vars {
-			if _, ok := base.Shared.Vars[k]; ok {
+	if base.Variables != nil && overlay.Variables != nil {
+		for k := range overlay.Variables {
+			if _, ok := base.Variables[k]; ok {
 				overrides = append(overrides, Override{
-					Path: "shared.variables." + k, Source: sourceName,
+					Path: "variables." + k, Source: sourceName,
 				})
 			}
 		}
 	}
-	for svcName, overlaySvc := range overlay.Services {
+	for _, overlaySvc := range overlay.Services {
 		if overlaySvc == nil {
 			continue
 		}
-		baseSvc, ok := base.Services[svcName]
-		if !ok || baseSvc == nil {
+		baseSvc := findServiceByName(base.Services, overlaySvc.Name)
+		if baseSvc == nil {
 			continue
 		}
 		for k := range overlaySvc.Variables {
 			if _, ok := baseSvc.Variables[k]; ok {
 				overrides = append(overrides, Override{
-					Path: svcName + ".variables." + k, Source: sourceName,
+					Path: overlaySvc.Name + ".variables." + k, Source: sourceName,
 				})
 			}
 		}

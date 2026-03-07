@@ -9,11 +9,11 @@ import (
 func TestInterpolate_LocalEnvResolved(t *testing.T) {
 	t.Setenv("MY_SECRET", "hunter2")
 	cfg := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"KEY": "${MY_SECRET}",
-		}},
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"SECRET": "${MY_SECRET}",
 			}},
 		},
@@ -22,18 +22,18 @@ func TestInterpolate_LocalEnvResolved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
-	if cfg.Shared.Vars["KEY"] != "hunter2" {
-		t.Errorf("shared KEY = %q, want hunter2", cfg.Shared.Vars["KEY"])
+	if cfg.Variables["KEY"] != "hunter2" {
+		t.Errorf("shared KEY = %q, want hunter2", cfg.Variables["KEY"])
 	}
-	if cfg.Services["api"].Variables["SECRET"] != "hunter2" {
-		t.Errorf("api SECRET = %q, want hunter2", cfg.Services["api"].Variables["SECRET"])
+	if cfg.Services[0].Variables["SECRET"] != "hunter2" {
+		t.Errorf("api SECRET = %q, want hunter2", cfg.Services[0].Variables["SECRET"])
 	}
 }
 
 func TestInterpolate_RailwayRefUntouched(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DB": "${{postgres.DATABASE_URL}}",
 			}},
 		},
@@ -42,16 +42,16 @@ func TestInterpolate_RailwayRefUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
-	if cfg.Services["api"].Variables["DB"] != "${{postgres.DATABASE_URL}}" {
-		t.Errorf("Railway ref was modified: %q", cfg.Services["api"].Variables["DB"])
+	if cfg.Services[0].Variables["DB"] != "${{postgres.DATABASE_URL}}" {
+		t.Errorf("Railway ref was modified: %q", cfg.Services[0].Variables["DB"])
 	}
 }
 
 func TestInterpolate_MixedInSameValue(t *testing.T) {
 	t.Setenv("HOST", "example.com")
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"URL": "https://${HOST}/${{api.PATH}}",
 			}},
 		},
@@ -61,8 +61,8 @@ func TestInterpolate_MixedInSameValue(t *testing.T) {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
 	want := "https://example.com/${{api.PATH}}"
-	if cfg.Services["api"].Variables["URL"] != want {
-		t.Errorf("URL = %q, want %q", cfg.Services["api"].Variables["URL"], want)
+	if cfg.Services[0].Variables["URL"] != want {
+		t.Errorf("URL = %q, want %q", cfg.Services[0].Variables["URL"], want)
 	}
 }
 
@@ -70,8 +70,8 @@ func TestInterpolate_MissingEnvVar(t *testing.T) {
 	// Ensure the var is definitely unset.
 	t.Setenv("DEFINITELY_MISSING_FC_TEST", "")
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"VAL": "${DEFINITELY_MISSING_FC_TEST_REALLY}",
 			}},
 		},
@@ -84,8 +84,8 @@ func TestInterpolate_MissingEnvVar(t *testing.T) {
 
 func TestInterpolate_NoInterpolation(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"PLAIN": "hello world",
 			}},
 		},
@@ -94,15 +94,15 @@ func TestInterpolate_NoInterpolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
-	if cfg.Services["api"].Variables["PLAIN"] != "hello world" {
+	if cfg.Services[0].Variables["PLAIN"] != "hello world" {
 		t.Error("plain value was modified")
 	}
 }
 
 func TestInterpolate_EmptyStringPreserved(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"DEL": "",
 			}},
 		},
@@ -111,7 +111,7 @@ func TestInterpolate_EmptyStringPreserved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
-	if cfg.Services["api"].Variables["DEL"] != "" {
+	if cfg.Services[0].Variables["DEL"] != "" {
 		t.Error("empty string was modified")
 	}
 }
@@ -120,8 +120,8 @@ func TestInterpolate_MultipleVarsInOneValue(t *testing.T) {
 	t.Setenv("USER_FC_TEST", "admin")
 	t.Setenv("PASS_FC_TEST", "secret")
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
 				"CREDS": "${USER_FC_TEST}:${PASS_FC_TEST}",
 			}},
 		},
@@ -130,14 +130,14 @@ func TestInterpolate_MultipleVarsInOneValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Interpolate() error: %v", err)
 	}
-	if cfg.Services["api"].Variables["CREDS"] != "admin:secret" {
-		t.Errorf("CREDS = %q, want admin:secret", cfg.Services["api"].Variables["CREDS"])
+	if cfg.Services[0].Variables["CREDS"] != "admin:secret" {
+		t.Errorf("CREDS = %q, want admin:secret", cfg.Services[0].Variables["CREDS"])
 	}
 }
 
 func TestInterpolate_NilShared(t *testing.T) {
 	cfg := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{},
+		Services: []*config.DesiredService{},
 	}
 	err := config.Interpolate(cfg)
 	if err != nil {

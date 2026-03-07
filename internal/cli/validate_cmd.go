@@ -1,7 +1,8 @@
 package cli
 
 import (
-	"errors"
+	"fmt"
+	"os"
 )
 
 // ValidateCmd implements the top-level `validate` command.
@@ -12,6 +13,10 @@ type ValidateCmd struct {
 
 // Run implements `validate`.
 func (c *ValidateCmd) Run(globals *Globals) error {
-	_ = globals
-	return errors.New("validate: not implemented")
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+	// TODO: Wire Path for scoped validation.
+	return RunConfigValidate(globals, wd, c.ConfigFiles, os.Stdout)
 }

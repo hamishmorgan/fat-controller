@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"errors"
+	"os"
 )
 
 // ShowCmd implements the `show` command.
@@ -15,6 +15,14 @@ type ShowCmd struct {
 
 // Run implements `show`.
 func (c *ShowCmd) Run(globals *Globals) error {
-	_ = globals
-	return errors.New("show: not implemented")
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+	fetcher := &defaultConfigFetcher{client: client}
+	// Raw flag overrides output format for single values.
+	_ = c.Raw // TODO: wire Raw into output formatting
+	return RunConfigGet(ctx, globals, c.Workspace, c.Project, c.Environment, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }

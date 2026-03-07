@@ -1,7 +1,8 @@
 package cli
 
 import (
-	"errors"
+	"fmt"
+	"os"
 )
 
 // DiffCmd implements the top-level `diff` command.
@@ -15,6 +16,19 @@ type DiffCmd struct {
 
 // Run implements `diff`.
 func (c *DiffCmd) Run(globals *Globals) error {
-	_ = globals
-	return errors.New("diff: not implemented")
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+	fetcher := &defaultConfigFetcher{client: client}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	// TODO: Wire MergeFlags and Path into diff computation.
+	return RunConfigDiff(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }

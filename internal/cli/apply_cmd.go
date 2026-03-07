@@ -1,7 +1,10 @@
 package cli
 
 import (
-	"errors"
+	"fmt"
+	"os"
+
+	"github.com/hamishmorgan/fat-controller/internal/apply"
 )
 
 // ApplyCmd implements the top-level `apply` command.
@@ -19,6 +22,33 @@ type ApplyCmd struct {
 
 // Run implements `apply`.
 func (c *ApplyCmd) Run(globals *Globals) error {
-	_ = globals
-	return errors.New("apply: not implemented")
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+	fetcher := &defaultConfigFetcher{client: client}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	pair, err := loadAndFetch(ctx, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, fetcher)
+	if err != nil {
+		return err
+	}
+
+	// Emit validation warnings to stderr.
+	emitWarnings(pair, globals.Quiet, wd)
+
+	applier := &apply.RailwayApplier{
+		Client:        client,
+		ProjectID:     pair.ProjectID,
+		EnvironmentID: pair.EnvironmentID,
+	}
+
+	// TODO: Wire MergeFlags and Path into apply computation.
+	return runConfigApplyWithPair(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, applier, os.Stdout)
 }

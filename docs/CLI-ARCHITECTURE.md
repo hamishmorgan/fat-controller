@@ -610,29 +610,55 @@ Read-only — no interactive resolution needed.
 
 ## File conventions
 
-### Config file (desired state)
+### Config file discovery
+
+When `--config` is not specified, the config file is found by
+searching from the working directory upward to the git root (or
+current directory only if not in a git repo). At each directory, three
+locations are checked in order — first match wins:
+
+1. `[path]/fat-controller.toml`
+2. `[path]/.config/fat-controller.toml`
+3. `[path]/.config/fat-controller/config.toml`
+
+Visible beats hidden. Simple beats nested.
+
+The secrets file is searched for in the same directory as the resolved
+config file:
+
+| Config location | Secrets location |
+|----------------|-----------------|
+| `[path]/fat-controller.toml` | `[path]/.env.fat-controller` |
+| `[path]/.config/fat-controller.toml` | `[path]/.config/.env.fat-controller` |
+| `[path]/.config/fat-controller/config.toml` | `[path]/.config/fat-controller/.env` |
+
+Both are overridable with `--config` and `--secrets`.
+
+### File locations summary
 
 | File | Purpose | Committed? |
 |------|---------|-----------|
-| `fat-controller.toml` | Desired state file | Yes |
+| `fat-controller.toml` | Desired state | Yes |
 | `.env.fat-controller` | Secret values for `${VAR}` interpolation | No (gitignored) |
+| `.fat-controller.toml` | Project-level tool settings | Yes |
 
-Default file names are overridable with `--config` and `--secrets`
-respectively.
+When using the `.config/fat-controller/` directory form, all files
+live together:
 
-### Settings file (tool behavior)
+| File | Purpose | Committed? |
+|------|---------|-----------|
+| `.config/fat-controller/config.toml` | Desired state | Yes |
+| `.config/fat-controller/.env` | Secret values for `${VAR}` interpolation | No (gitignored) |
+| `.config/fat-controller/settings.toml` | Project-level tool settings | Yes |
+
+### Global settings
 
 | File | Purpose |
 |------|---------|
 | `$XDG_CONFIG_HOME/fat-controller/config.toml` | Global user preferences |
-| `.fat-controller.toml` | Project-level tool settings |
 
-These configure the tool itself (output format, timeout, default
-project/env). They are distinct from the desired state file.
-
-The naming convention: dot-prefix (`.fat-controller.toml`) = tool
-settings. No dot-prefix (`fat-controller.toml`) = Railway desired
-state.
+Global settings are overridden by project-level settings, which are
+overridden by env vars, which are overridden by CLI flags.
 
 ---
 
@@ -883,16 +909,12 @@ given the current create/update/delete settings.
    `apply` can create the domain record in Railway, but the user still
    needs to set up DNS. Should `status` show verification state?
 
-5. **Config file discovery.** Should `fat-controller diff` (with no
-   `--config` flag) search upward for `fat-controller.toml` like git
-   searches for `.git`? Or only look in the current directory?
-
-6. **Service creation defaults.** When `apply` creates a new service,
+5. **Service creation defaults.** When `apply` creates a new service,
    what source does it use? Empty service (no repo)? The config would
    need to specify source (repo URL + branch, or Docker image) for
    new services. What's the minimal viable service definition?
 
-7. **Ordering of creation.** When bootstrapping from scratch, `apply`
+6. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require

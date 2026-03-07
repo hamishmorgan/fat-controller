@@ -14,10 +14,12 @@ fat-controller auth logout [flags]
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
-| `-o`, `--output` | text\|json\|toml | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml. |
+| `-o`, `--output` | text\|json\|toml\|raw | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml, raw. |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
-| `-v`, `--verbose` | bool |  |  | Enable debug logging (config loading, auth, HTTP requests, apply operations). |
-| `-q`, `--quiet` | bool |  |  | Suppress informational and debug output (warnings and errors only). |
+| `-v`, `--verbose` | int |  |  | Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace). |
+| `-q`, `--quiet` | int |  |  | Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only). |
+| `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path (disables cascade discovery). |
+| `--env-file` | string |  | `FAT_CONTROLLER_ENV_FILE` | Env file path for variable interpolation. |
 | `-V`, `--version` | bool |  |  | Print version. |
 
 ## See Also

@@ -14,13 +14,23 @@ fat-controller <command> [flags]
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
-| `-o`, `--output` | text\|json\|toml | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml. |
+| `-o`, `--output` | text\|json\|toml\|raw | `text` | `FAT_CONTROLLER_OUTPUT` | Output format: text, json, toml, raw. |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_COLOR` | Color mode: auto, always, never. |
-| `-v`, `--verbose` | bool |  |  | Enable debug logging (config loading, auth, HTTP requests, apply operations). |
-| `-q`, `--quiet` | bool |  |  | Suppress informational and debug output (warnings and errors only). |
+| `-v`, `--verbose` | int |  |  | Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace). |
+| `-q`, `--quiet` | int |  |  | Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only). |
+| `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path (disables cascade discovery). |
+| `--env-file` | string |  | `FAT_CONTROLLER_ENV_FILE` | Env file path for variable interpolation. |
 | `-V`, `--version` | bool |  |  | Print version. |
 
 ## Commands
+
+### adopt — Pull live Railway state into config
+
+- [fat-controller adopt](fat-controller_adopt.md) — Pull live Railway state into config.
+
+### apply — Push config changes to Railway
+
+- [fat-controller apply](fat-controller_apply.md) — Push config changes to Railway.
 
 ### auth — Manage authentication
 
@@ -28,24 +38,56 @@ fat-controller <command> [flags]
 - [fat-controller auth logout](fat-controller_auth_logout.md) — Clear stored credentials.
 - [fat-controller auth status](fat-controller_auth_status.md) — Show current authentication status.
 
-### config — Declarative configuration management
+### deploy — Trigger a deployment for services
 
-- [fat-controller config init](fat-controller_config_init.md) — Bootstrap a fat-controller.toml from live Railway state.
-- [fat-controller config get](fat-controller_config_get.md) — Fetch live config from Railway.
-- [fat-controller config set](fat-controller_config_set.md) — Set a single value by dot-path.
-- [fat-controller config delete](fat-controller_config_delete.md) — Delete a single value by dot-path.
-- [fat-controller config diff](fat-controller_config_diff.md) — Compare local config against live state.
-- [fat-controller config apply](fat-controller_config_apply.md) — Push configuration changes to Railway.
-- [fat-controller config validate](fat-controller_config_validate.md) — Check config file for warnings (no API calls).
+- [fat-controller deploy](fat-controller_deploy.md) — Trigger a deployment for services.
 
-### environment — Manage environments
+### diff — Compare config against live Railway state
 
-- [fat-controller environment list](fat-controller_environment_list.md) — List environments for a project.
+- [fat-controller diff](fat-controller_diff.md) — Compare config against live Railway state.
 
-### project — Manage projects
+### list — List Railway entities
 
-- [fat-controller project list](fat-controller_project_list.md) — List available projects.
+- [fat-controller list](fat-controller_list.md) — List Railway entities.
 
-### workspace — Manage workspaces
+### logs — Show service logs
 
-- [fat-controller workspace list](fat-controller_workspace_list.md) — List available workspaces.
+- [fat-controller logs](fat-controller_logs.md) — Show service logs.
+
+### new — Scaffold config entries
+
+- [fat-controller new project](fat-controller_new_project.md) — Create a new project.
+- [fat-controller new environment](fat-controller_new_environment.md) — Create a new environment.
+- [fat-controller new service](fat-controller_new_service.md) — Add a service to config.
+
+### open — Open Railway dashboard in browser
+
+- [fat-controller open](fat-controller_open.md) — Open Railway dashboard in browser.
+
+### redeploy — Redeploy services from current image
+
+- [fat-controller redeploy](fat-controller_redeploy.md) — Redeploy services from current image.
+
+### restart — Restart running deployments
+
+- [fat-controller restart](fat-controller_restart.md) — Restart running deployments.
+
+### rollback — Roll back services to previous deployment
+
+- [fat-controller rollback](fat-controller_rollback.md) — Roll back services to previous deployment.
+
+### show — Display live Railway state
+
+- [fat-controller show](fat-controller_show.md) — Display live Railway state.
+
+### status — Show deployment status
+
+- [fat-controller status](fat-controller_status.md) — Show deployment status.
+
+### stop — Cancel running deployments
+
+- [fat-controller stop](fat-controller_stop.md) — Cancel running deployments.
+
+### validate — Check config for errors (offline)
+
+- [fat-controller validate](fat-controller_validate.md) — Check config for errors (offline).

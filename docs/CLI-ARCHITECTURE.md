@@ -15,22 +15,23 @@ tool.
    single service. The file declares what it manages.
 
 2. **Declarative and imperative are separate.** Declarative commands
-   (`init`, `diff`, `apply`, `validate`) converge toward desired state.
-   Imperative commands (`deploy`, `restart`, `logs`) perform actions on a
-   running system. They share context resolution (project/env/service)
-   but not mechanics.
+   (`init`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
+   desired state. Imperative commands (`deploy`, `restart`, `logs`)
+   perform actions on a running system. They share context resolution
+   (project/env/service) but not mechanics.
 
 3. **Apply creates everything.** If the config declares a service,
    environment, volume, or domain that doesn't exist in Railway,
    `apply` creates it. The config file is the source of truth and
-   `apply` converges reality toward it.
+   `apply` converges reality toward it. Symmetrically, `adopt` adds
+   anything from Railway that isn't in the config.
 
-4. **Additive by default, opt-in ownership.** Unmentioned entities are
+4. **Additive by default, opt-in deletion.** Unmentioned entities are
    never touched by default. If your file doesn't mention a service,
-   that service is ignored — not deleted. Opt-in ownership mode
-   (`--prune` or a config key) enables full convergence: entities in
-   an owned scope that aren't in the config get deleted. This keeps
-   the safe default while allowing full IaC control when desired.
+   that service is ignored — not deleted. `--delete` enables full
+   convergence: entities in the target that aren't in the source get
+   removed. This keeps the safe default while allowing full IaC
+   control when desired. See [Merge behavior](#merge-behavior).
 
 5. **No local state file.** Live state always comes from Railway's API.
    Diffs are never stale.
@@ -215,9 +216,6 @@ fat-controller show [path]       Display live state (read-only)
 | `apply` | local config → Railway | Additive merge of config into live state. Only touches what's declared. |
 | `adopt` | Railway → local config | Additive merge of live state into config. Only adds what's missing or changed. |
 
-Neither overwrites the target wholesale. Both are additive merges in
-their respective directions.
-
 `show` is the read-only counterpart — display live state without
 modifying the config file. `show` with no path gives an overview.
 `show api.variables.PORT` gives a single value.
@@ -240,7 +238,7 @@ the dashboard).
 
 - **From scratch (`--new`):** Scaffolds a minimal config file. Prompts
   for project name, environment name, service names. Writes a skeleton
-  that you then `apply` to create resources in Railway.
+  that you then `apply` to create everything in Railway.
 
 - **From template:** `init --template <name>` scaffolds from a Railway
   template definition.
@@ -260,18 +258,22 @@ fat-controller logs [service]       Tail logs
 fat-controller status [service]     Show deployment status
 ```
 
-### Discovery commands
+### Discovery
 
-Read-only listing.
+`list` is a single command that takes a noun argument. Extensible to
+any entity type.
 
 ```text
-fat-controller workspace list
-fat-controller project list
-fat-controller environment list
-fat-controller service list
+fat-controller list workspaces
+fat-controller list projects
+fat-controller list environments
+fat-controller list services
+fat-controller list deployments
+fat-controller list volumes
+fat-controller list domains
 ```
 
-### Auth commands
+### Auth
 
 ```text
 fat-controller auth login
@@ -336,7 +338,7 @@ state.
 | Entity | Section | Fields |
 |--------|---------|--------|
 | Project settings | `[project]` | PR deploys, base environment |
-| Environments | `[project.environments]` | name, source |
+| Environments | `[project.environments]` | name |
 
 **Workspace scope:**
 
@@ -366,7 +368,6 @@ These are actions, not state — no declarative equivalent:
 These have state but small surface area:
 
 - Project/workspace membership (members, roles)
-- Notification rules
 - Integrations
 - Observability dashboards
 
@@ -424,8 +425,8 @@ Each service team owns their own file. A CI pipeline applies them all.
 
 ## Context resolution
 
-Imperative commands (`deploy`, `logs`, `status`, etc.) need to know
-which project/environment/service to target. Resolution order:
+All commands need to know which project/environment/service to target.
+Resolution order:
 
 1. CLI flags (`--project`, `--environment`, `--service`)
 2. Environment variables (`FAT_CONTROLLER_PROJECT`, etc.)
@@ -434,8 +435,6 @@ which project/environment/service to target. Resolution order:
 5. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
 6. Interactive picker (if TTY)
 7. Error with available options
-
-Imperative commands also read the config file for context.
 
 ---
 
@@ -504,22 +503,20 @@ old-data = { delete = true }
 ```
 
 `diff` reflects the active flags: it shows what `apply` would do
-given the current create/clobber/prune settings.
-
-This means `init --new` + `apply` is the full bootstrap path: scaffold
-a config from scratch, then apply it to create everything in Railway.
+given the current create/update/delete settings.
 
 ---
 
 ## Open questions
 
-1. **Prune mechanism.** `--prune` flag vs `managed = true` config key vs
-   per-section ownership. Need to decide granularity. Per-section is
-   most flexible but most complex.
+1. **Per-section delete granularity.** `--delete` applies globally.
+   Should there be a per-section equivalent (e.g. a `managed = true`
+   key within `[api.variables]` meaning "delete any variables not
+   listed here")? Per-section is more flexible but more complex.
 
-2. **`get` output format.** `get` outputs TOML matching the config file
-   format by default. Should it also support outputting just the raw
-   values for scripting? e.g. `fat-controller get api.variables.PORT`
+2. **`show` output format.** `show` outputs TOML matching the config
+   file format by default. Should it also support outputting just the
+   raw values for scripting? e.g. `fat-controller show api.variables.PORT`
    outputs `8080` with no formatting.
 
 3. **Volume sizing.** Volumes have a size, but Railway doesn't expose

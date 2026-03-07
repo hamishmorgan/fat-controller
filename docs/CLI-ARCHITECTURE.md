@@ -180,8 +180,8 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Config file path |
-| `--secrets` | `FAT_CONTROLLER_SECRETS` | `secrets` | `.env.fat-controller` | Secrets file path for `${VAR}` interpolation |
+| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
+| `--secrets` | `FAT_CONTROLLER_SECRETS` | `secrets` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
 
 ### Merge flags
 
@@ -260,7 +260,7 @@ Interactive resolution:
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
 | Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 | Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
 | Workspace (`--workspace`) | — | Picker (skip if only one) | Error if ambiguous |
 | Project (`--project`) | — | Picker | Error if not specified |
@@ -291,7 +291,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 | Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
 | Workspace | From config file | Prompt with default | Use default |
 | Project | From config file | Prompt with default | Use default |
@@ -314,7 +314,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 | Workspace | From config file | Prompt with default | Use default |
 | Project | From config file | Prompt with default | Use default |
 | Environment | From config file | Prompt with default | Use default |
@@ -337,7 +337,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 | Workspace | From config file | Prompt with default | Use default |
 | Project | From config file | Prompt with default | Use default |
 | Environment | From config file | Prompt with default | Use default |
@@ -357,7 +357,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 
 No API calls, no context flags needed.
 
@@ -857,16 +857,16 @@ Best for: large teams where each service team owns their config.
 ## Context resolution
 
 All commands need to know which project/environment/service to target.
-Resolution order:
+Context keys (`workspace`, `project`, `environment`, `service`) are
+resolved using the same precedence as all settings (see
+[File cascade](#file-cascade)), plus two additional sources:
 
 1. CLI flags (`--project`, `--environment`, `--service`)
 2. Environment variables (`FAT_CONTROLLER_PROJECT`, etc.)
-3. Local override keys (`fat-controller.local.toml`)
-4. Config file keys (`fat-controller.toml`)
-5. Global config keys (`$XDG_CONFIG_HOME/fat-controller/config.toml`)
-6. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
-7. Interactive picker (if TTY) — see below
-8. Error with available options
+3. Config file cascade (local override → discovered configs → global)
+4. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
+5. Interactive picker (if TTY) — see below
+6. Error with available options
 
 ---
 

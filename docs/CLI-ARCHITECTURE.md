@@ -230,6 +230,7 @@ Commands that read or write config files accept these flags.
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
 | `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Config file path |
+| `--secrets` | `FAT_CONTROLLER_SECRETS` | `secrets` | `.env.fat-controller` | Secrets file path for `${VAR}` interpolation |
 
 ### Merge flags
 
@@ -284,9 +285,9 @@ These are set only in the config file, not via flags or env vars.
 
 #### `init`
 
-Guided first-time config bootstrap. A guided version of `adopt` —
-selects workspace/project/environment/services, pulls live state,
-writes config file and `.env.fat-controller`.
+First-time setup. In "from remote" mode, resolves context (workspace,
+project, environment, services) and then runs `adopt` to pull live
+state. In `--new` mode, scaffolds an empty config file.
 
 ```text
 fat-controller init [--new] [--template <name>]
@@ -307,19 +308,23 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
+| Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
 | Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
-| Secrets file | `.env.fat-controller` | Prompt with default | Use default |
+| Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
 | Workspace (`--workspace`) | — | Picker (skip if only one) | Error if ambiguous |
 | Project (`--project`) | — | Picker | Error if not specified |
 | Environment (`--environment`) | — | Picker | Error if not specified |
 | Services | All | Checkbox list, all selected | All |
-| Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
+
+In `--new` mode, only config file path and secrets file path are
+resolved — no API calls, no context needed.
 
 #### `adopt`
 
-Merge live Railway state into the local config file. Additive by
-default — adds missing entries, updates changed entries, does not
-remove entries unless `--delete` is set.
+Merge live Railway state into the local config file. Detects sensitive
+values and writes them to the secrets file as `${VAR}` references.
+Additive by default — adds missing entries, updates changed entries,
+does not remove entries unless `--delete` is set.
 
 ```text
 fat-controller adopt [path]
@@ -336,6 +341,7 @@ Interactive resolution:
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
 | Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
+| Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
 | Workspace | From config file | Prompt with default | Use default |
 | Project | From config file | Prompt with default | Use default |
 | Environment | From config file | Prompt with default | Use default |
@@ -611,8 +617,8 @@ Read-only — no interactive resolution needed.
 | `fat-controller.toml` | Desired state file | Yes |
 | `.env.fat-controller` | Secret values for `${VAR}` interpolation | No (gitignored) |
 
-The default file name is `fat-controller.toml`, overridable with
-`--config`.
+Default file names are overridable with `--config` and `--secrets`
+respectively.
 
 ### Settings file (tool behavior)
 

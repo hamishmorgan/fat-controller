@@ -10,37 +10,22 @@ tool.
 
 ## Principles
 
-1. **Environment scope.** Each config file **is** an environment.
-   Top-level keys are the environment's identity, shared variables,
-   and tool settings. `[workspace]` and `[project]` provide parent
-   context. `[[service]]` arrays declare services.
+1. **One file, one environment.** Each config file describes a single
+   environment. Not a project, not a workspace — one environment
+   and its services. Multi-environment setups use multiple files.
 
 2. **Config is state, not actions.** The config file expresses what
    the infrastructure should look like — variables, domains, deploy
    settings, resources. It never expresses things that happen once:
    deployments, restarts, rollbacks. Those are commands.
 
-3. **Apply creates everything.** If the config declares a project,
-   environment, service, volume, or domain that doesn't exist in
-   Railway, `apply` creates it — from the project level down.
-   The config file is the source of truth and `apply` converges
-   reality toward it. Symmetrically, `adopt` adds anything from
-   Railway that isn't in the config. The only prerequisite is
-   that the workspace must already exist.
+3. **Additive by default.** Unmentioned entities are never touched.
+   If your file doesn't mention a service, that service is ignored
+   — not deleted. `--delete` opts in to full convergence.
 
-4. **Additive by default, opt-in deletion.** Unmentioned entities are
-   never touched by default. If your file doesn't mention a service,
-   that service is ignored — not deleted. `--delete` enables full
-   convergence: entities in the target that aren't in the source get
-   removed. This keeps the safe default while allowing full IaC
-   control when desired. See [Merge behavior](#merge-behavior).
-
-5. **No local state file.** Live state always comes from Railway's API.
-   Diffs are never stale.
-
-6. **Files cascade.** Multiple config files merge in precedence order
-   (global config → discovered configs shallowest-first → local
-   override → env vars → CLI flags). See [File cascade](#file-cascade).
+4. **No local state file.** Live state always comes from Railway's
+   API. Diffs compare config against live, never against a cached
+   snapshot.
 
 ---
 

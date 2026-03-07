@@ -241,7 +241,7 @@ func findOverrides(base, overlay *DesiredConfig, sourceName string) []Override {
 		if overlaySvc == nil {
 			continue
 		}
-		baseSvc := findServiceByName(base.Services, overlaySvc.Name)
+		baseSvc := findService(base.Services, overlaySvc)
 		if baseSvc == nil {
 			continue
 		}

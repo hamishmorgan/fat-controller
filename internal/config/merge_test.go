@@ -169,6 +169,197 @@ func TestMerge_ToolSettings(t *testing.T) {
 	}
 }
 
+func TestMerge_IDBasedMatching(t *testing.T) {
+	base := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", ID: "svc-123", Variables: config.Variables{"PORT": "8080"}},
+		},
+	}
+	// Overlay matches by ID even though name differs (e.g. rename).
+	overlay := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api-renamed", ID: "svc-123", Variables: config.Variables{"HOST": "0.0.0.0"}},
+		},
+	}
+	result := config.Merge(base, overlay)
+	if len(result.Services) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(result.Services))
+	}
+	svc := result.Services[0]
+	if svc.Name != "api-renamed" {
+		t.Errorf("Name = %q, want api-renamed (overlay name should win via ID match)", svc.Name)
+	}
+	if svc.Variables["PORT"] != "8080" {
+		t.Error("expected PORT preserved from base")
+	}
+	if svc.Variables["HOST"] != "0.0.0.0" {
+		t.Error("expected HOST added from overlay")
+	}
+}
+
+func TestMerge_AllDeployFields(t *testing.T) {
+	repo := "github.com/org/repo"
+	image := "docker.io/org/img"
+	branch := "main"
+	builder := "NIXPACKS"
+	buildCmd := "npm run build"
+	dockerfile := "Dockerfile"
+	rootDir := "/app"
+	startCmd := "npm start"
+	preDeployCmd := "npm run migrate"
+	cronSchedule := "0 * * * *"
+	healthPath := "/health"
+	healthTimeout := 30
+	restartPolicy := "always"
+	restartMax := 5
+	draining := 60
+	overlap := 10
+	sleepApp := true
+	numReplicas := 3
+	region := "us-west1"
+	ipv6 := true
+
+	base := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name: "api",
+				Deploy: &config.DesiredDeploy{
+					Repo:    &repo,
+					Builder: &builder,
+				},
+			},
+		},
+	}
+	overlay := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name: "api",
+				Deploy: &config.DesiredDeploy{
+					Image:                   &image,
+					Branch:                  &branch,
+					BuildCommand:            &buildCmd,
+					DockerfilePath:          &dockerfile,
+					RootDirectory:           &rootDir,
+					StartCommand:            &startCmd,
+					CronSchedule:            &cronSchedule,
+					HealthcheckPath:         &healthPath,
+					HealthcheckTimeout:      &healthTimeout,
+					RestartPolicy:           &restartPolicy,
+					RestartPolicyMaxRetries: &restartMax,
+					DrainingSeconds:         &draining,
+					OverlapSeconds:          &overlap,
+					SleepApplication:        &sleepApp,
+					NumReplicas:             &numReplicas,
+					Region:                  &region,
+					IPv6Egress:              &ipv6,
+				},
+			},
+		},
+	}
+	result := config.Merge(base, overlay)
+	d := result.Services[0].Deploy
+
+	// Base field preserved.
+	if d.Repo == nil || *d.Repo != repo {
+		t.Error("expected Repo preserved from base")
+	}
+	if d.Builder == nil || *d.Builder != builder {
+		t.Error("expected Builder preserved from base")
+	}
+	// Overlay fields applied.
+	checks := []struct {
+		name string
+		ok   bool
+	}{
+		{"Image", d.Image != nil && *d.Image == image},
+		{"Branch", d.Branch != nil && *d.Branch == branch},
+		{"BuildCommand", d.BuildCommand != nil && *d.BuildCommand == buildCmd},
+		{"DockerfilePath", d.DockerfilePath != nil && *d.DockerfilePath == dockerfile},
+		{"RootDirectory", d.RootDirectory != nil && *d.RootDirectory == rootDir},
+		{"StartCommand", d.StartCommand != nil && *d.StartCommand == startCmd},
+		{"CronSchedule", d.CronSchedule != nil && *d.CronSchedule == cronSchedule},
+		{"HealthcheckPath", d.HealthcheckPath != nil && *d.HealthcheckPath == healthPath},
+		{"HealthcheckTimeout", d.HealthcheckTimeout != nil && *d.HealthcheckTimeout == healthTimeout},
+		{"RestartPolicy", d.RestartPolicy != nil && *d.RestartPolicy == restartPolicy},
+		{"RestartPolicyMaxRetries", d.RestartPolicyMaxRetries != nil && *d.RestartPolicyMaxRetries == restartMax},
+		{"DrainingSeconds", d.DrainingSeconds != nil && *d.DrainingSeconds == draining},
+		{"OverlapSeconds", d.OverlapSeconds != nil && *d.OverlapSeconds == overlap},
+		{"SleepApplication", d.SleepApplication != nil && *d.SleepApplication == sleepApp},
+		{"NumReplicas", d.NumReplicas != nil && *d.NumReplicas == numReplicas},
+		{"Region", d.Region != nil && *d.Region == region},
+		{"IPv6Egress", d.IPv6Egress != nil && *d.IPv6Egress == ipv6},
+	}
+	for _, c := range checks {
+		if !c.ok {
+			t.Errorf("Deploy.%s not merged correctly", c.name)
+		}
+	}
+
+	// PreDeployCommand uses any type.
+	_ = preDeployCmd
+}
+
+func TestMerge_SubResources(t *testing.T) {
+	netTrue := true
+	base := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name:       "api",
+				Domains:    map[string]config.DomainConfig{"example.com": {Port: intPtr(443)}},
+				Volumes:    map[string]config.VolumeConfig{"data": {Mount: "/data"}},
+				TCPProxies: []int{5432},
+				Network:    &netTrue,
+				Triggers:   []config.TriggerConfig{{Branch: "main", Repository: "org/repo"}},
+				Egress:     []string{"us-west1"},
+				Scale:      map[string]int{"us-west1": 2},
+			},
+		},
+	}
+	overlay := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name:    "api",
+				Domains: map[string]config.DomainConfig{"api.example.com": {Port: intPtr(8080)}},
+				Volumes: map[string]config.VolumeConfig{"logs": {Mount: "/logs"}},
+				Scale:   map[string]int{"us-east1": 1},
+			},
+		},
+	}
+	result := config.Merge(base, overlay)
+	svc := result.Services[0]
+
+	// Domains merged (both present).
+	if len(svc.Domains) != 2 {
+		t.Errorf("expected 2 domains, got %d", len(svc.Domains))
+	}
+	// Volumes merged (both present).
+	if len(svc.Volumes) != 2 {
+		t.Errorf("expected 2 volumes, got %d", len(svc.Volumes))
+	}
+	// Scale merged (both present).
+	if len(svc.Scale) != 2 {
+		t.Errorf("expected 2 scale regions, got %d", len(svc.Scale))
+	}
+	// TCPProxies preserved from base (overlay nil).
+	if len(svc.TCPProxies) != 1 || svc.TCPProxies[0] != 5432 {
+		t.Error("expected TCPProxies preserved from base")
+	}
+	// Network preserved from base (overlay nil).
+	if svc.Network == nil || !*svc.Network {
+		t.Error("expected Network preserved from base")
+	}
+	// Triggers preserved from base (overlay nil).
+	if len(svc.Triggers) != 1 {
+		t.Error("expected Triggers preserved from base")
+	}
+	// Egress preserved from base (overlay nil).
+	if len(svc.Egress) != 1 {
+		t.Error("expected Egress preserved from base")
+	}
+}
+
+func intPtr(v int) *int { return &v }
+
 func TestMerge_NameEmpty_DoesNotOverride(t *testing.T) {
 	base := &config.DesiredConfig{
 		Name:     "production",

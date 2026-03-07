@@ -167,6 +167,45 @@ func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
 		}
 	}
 
+	// W070: Duplicate service name.
+	{
+		seen := make(map[string]int, len(cfg.Services))
+		for i, svc := range cfg.Services {
+			if prev, ok := seen[svc.Name]; ok {
+				warnings = append(warnings, Warning{
+					Code:    "W070",
+					Message: fmt.Sprintf("service name %q appears at index %d and %d — names must be unique", svc.Name, prev, i),
+					Path:    svc.Name,
+				})
+			}
+			seen[svc.Name] = i
+		}
+	}
+
+	// W071: Mutually exclusive repo + image.
+	for _, svc := range cfg.Services {
+		if svc.Deploy != nil && svc.Deploy.Repo != nil && svc.Deploy.Image != nil {
+			if *svc.Deploy.Repo != "" && *svc.Deploy.Image != "" {
+				warnings = append(warnings, Warning{
+					Code:    "W071",
+					Message: fmt.Sprintf("service %q sets both deploy.repo and deploy.image — only one source is allowed", svc.Name),
+					Path:    svc.Name + ".deploy",
+				})
+			}
+		}
+	}
+
+	// W072: scale + deploy.region both set.
+	for _, svc := range cfg.Services {
+		if len(svc.Scale) > 0 && svc.Deploy != nil && svc.Deploy.Region != nil && *svc.Deploy.Region != "" {
+			warnings = append(warnings, Warning{
+				Code:    "W072",
+				Message: fmt.Sprintf("service %q sets both scale and deploy.region — use scale for multi-region placement instead", svc.Name),
+				Path:    svc.Name + ".deploy.region",
+			})
+		}
+	}
+
 	// W080: Orphaned env-file key.
 	if cfg.Tool != nil && len(cfg.Tool.EnvFiles()) > 0 && len(opts.EnvFileVars) > 0 {
 		references := collectEnvReferences(cfg)

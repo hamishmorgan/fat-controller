@@ -4,7 +4,9 @@ name = "production"
 # Shared variables are available to all services in the environment.
 # Railway's own precedence applies: per-service values override shared
 # when both define the same key.
-variables = { NODE_ENV = "production", LOG_LEVEL = "info" }
+[variables]
+NODE_ENV = "production"
+LOG_LEVEL = "info"
 
 # Tool settings control how fat-controller behaves (not what it manages).
 # [tool]
@@ -15,6 +17,11 @@ variables = { NODE_ENV = "production", LOG_LEVEL = "info" }
 # sensitive_allowlist = ["KEYSTROKE"]
 # suppress_warnings = ["W012", "W030"]
 
+# Workspace metadata — identifies the Railway workspace (team).
+# Can also be set via --workspace flag or FAT_CONTROLLER_WORKSPACE env var.
+# [workspace]
+# name = "acme-corp"
+
 # Project metadata — identifies the Railway project.
 # Can also be set via --project flag or FAT_CONTROLLER_PROJECT env var.
 [project]
@@ -24,12 +31,21 @@ name = "my-railway-app"
 
 [[service]]
 name = "api"
-resources = { vcpus = 2, memory_gb = 4 }
+icon = "server"
+
+[service.resources]
+vcpus = 2
+memory_gb = 4
 
 [service.deploy]
 builder = "NIXPACKS"
 start_command = "node dist/server.js"
 healthcheck_path = "/health"
+healthcheck_timeout = 300
+restart_policy = "ON_FAILURE"
+restart_policy_max_retries = 3
+num_replicas = 2
+region = "us-west1"
 
 [service.variables]
 PORT = "8080"
@@ -42,18 +58,56 @@ STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}"
 # Empty string means "delete this variable if it exists in Railway".
 DEPRECATED_FLAG = ""
 
+# Custom domains (key = domain name, port = target port).
+[service.domains]
+"api.example.com" = { port = 8080 }
+"api-v2.example.com" = { port = 8080 }
+
+# Volumes (key = volume name, mount = mount path inside container).
+[service.volumes]
+data = { mount = "/app/data" }
+
+# TCP proxies — list of application ports to expose via TCP.
+# Each creates a public TCP endpoint on a random proxy port.
+# tcp_proxies = [5432]
+
+# Private networking — enable internal DNS between services.
+# network = true
+
+# Deployment triggers — connect to a Git repository for auto-deploy.
+# [[service.triggers]]
+# repository = "org/api-service"
+# branch = "main"
+
+# Egress gateways — static outbound IPs in specified regions.
+# egress = ["us-west1", "eu-west1"]
+
 # --- Background worker ---
 
 [[service]]
 name = "worker"
-resources = { vcpus = 1, memory_gb = 2 }
+
+[service.resources]
+vcpus = 1
+memory_gb = 2
 
 [service.deploy]
 builder = "DOCKERFILE"
 dockerfile_path = "./worker/Dockerfile"
 root_directory = "."
+cron_schedule = "*/5 * * * *"
 
 [service.variables]
 DATABASE_URL = "${{postgres.DATABASE_URL}}"
 QUEUE_NAME = "default"
 CONCURRENCY = "5"
+
+# --- Cron job service (minimal) ---
+
+# [[service]]
+# name = "cron"
+# [service.deploy]
+# cron_schedule = "0 */6 * * *"
+# start_command = "node jobs/cleanup.js"
+# [service.variables]
+# DATABASE_URL = "${{postgres.DATABASE_URL}}"

@@ -69,16 +69,24 @@ func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, e
 }
 
 // runConfigApplyWithPair contains the apply logic once configs are loaded and fetched.
+// diffOpts defaults to create+update+delete if nil-like (all false).
 func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, applier apply.Applier, out io.Writer) error {
+	return runConfigApplyWithPairAndOpts(ctx, globals, pair, dryRun, yes, showSecrets, skipDeploys, failFast, diff.Options{Create: true, Update: true, Delete: true}, "", applier, out)
+}
+
+func runConfigApplyWithPairAndOpts(ctx context.Context, globals *Globals, pair *configPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, diffOpts diff.Options, path string, applier apply.Applier, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
 	desired := pair.Desired
+	if path != "" {
+		desired = scopeDesiredByPath(desired, path)
+	}
 	live := pair.Live
 
 	// Compute diff.
-	changes := diff.Compute(desired, live)
+	changes := diff.ComputeWithOptions(desired, live, diffOpts)
 	slog.Debug("diff computed", "is_empty", changes.IsEmpty())
 
 	// If no changes, report and return.
@@ -145,6 +153,9 @@ func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configP
 	applyResult, applyErr := apply.Apply(ctx, desired, live, applier, apply.Options{
 		FailFast:    failFast,
 		SkipDeploys: skipDeploys,
+		AllowCreate: diffOpts.Create,
+		AllowUpdate: diffOpts.Update,
+		AllowDelete: diffOpts.Delete,
 	})
 
 	switch globals.Output {

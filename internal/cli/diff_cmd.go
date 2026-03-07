@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"os"
+
+	"github.com/hamishmorgan/fat-controller/internal/diff"
 )
 
 // DiffCmd implements the top-level `diff` command.
@@ -29,6 +31,13 @@ func (c *DiffCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	// TODO: Wire MergeFlags and Path into diff computation.
-	return RunConfigDiff(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
+	return RunConfigDiffWithOpts(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, DiffOpts{
+		ShowSecrets: c.ShowSecrets,
+		DiffOptions: diff.Options{
+			Create: c.Create,
+			Update: c.Update,
+			Delete: c.Delete,
+		},
+		Path: c.Path,
+	}, fetcher, os.Stdout)
 }

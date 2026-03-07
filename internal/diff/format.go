@@ -32,7 +32,7 @@ func Format(result *Result, showSecrets bool) string {
 	var out strings.Builder
 
 	// Shared section first.
-	if result.Shared != nil && (len(result.Shared.Variables) > 0 || len(result.Shared.Settings) > 0) {
+	if result.Shared != nil && (len(result.Shared.Variables) > 0 || len(result.Shared.Settings) > 0 || len(result.Shared.SubResources) > 0) {
 		out.WriteString(headerStyle.Render("shared") + "\n")
 		writeChanges(&out, result.Shared, masker, true)
 		out.WriteString("\n")
@@ -67,6 +67,16 @@ func writeChanges(out *strings.Builder, sd *SectionDiff, masker *config.Masker, 
 	for _, ch := range sd.Settings {
 		writeChange(out, ch, nil, false) // settings are not masked
 	}
+	for _, ch := range sd.SubResources {
+		writeSubResourceChange(out, ch)
+	}
+}
+
+func writeSubResourceChange(out *strings.Builder, ch SubResourceChange) {
+	prefix, style := actionPrefixAndStyle(ch.Action)
+	label := ch.Type + ":" + ch.Key
+	line := fmt.Sprintf("  %s %s", prefix, label)
+	out.WriteString(style.Render(line) + "\n")
 }
 
 func writeChange(out *strings.Builder, ch Change, masker *config.Masker, isVariable bool) {
@@ -123,6 +133,16 @@ func formatSummary(result *Result) string {
 			}
 		}
 		for _, ch := range sd.Settings {
+			switch ch.Action {
+			case ActionCreate:
+				creates++
+			case ActionUpdate:
+				updates++
+			case ActionDelete:
+				deletes++
+			}
+		}
+		for _, ch := range sd.SubResources {
 			switch ch.Action {
 			case ActionCreate:
 				creates++

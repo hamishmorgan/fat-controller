@@ -486,6 +486,112 @@ func TestValidate_W060_SharedVarUnknownServiceRef(t *testing.T) {
 	assertHasWarning(t, warnings, "W060")
 }
 
+// --- W070: Duplicate service name ---
+
+func TestValidate_W070_DuplicateServiceName(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
+			{Name: "api", Variables: config.Variables{"PORT": "9090"}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W070")
+}
+
+func TestValidate_W070_UniqueNamesNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
+			{Name: "worker", Variables: config.Variables{"PORT": "9090"}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W070")
+}
+
+// --- W071: Mutually exclusive repo + image ---
+
+func TestValidate_W071_RepoAndImage(t *testing.T) {
+	repo := "github.com/org/repo"
+	image := "docker.io/org/img"
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Deploy: &config.DesiredDeploy{Repo: &repo, Image: &image}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W071")
+}
+
+func TestValidate_W071_OnlyRepoNoWarning(t *testing.T) {
+	repo := "github.com/org/repo"
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Deploy: &config.DesiredDeploy{Repo: &repo}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W071")
+}
+
+func TestValidate_W071_OnlyImageNoWarning(t *testing.T) {
+	image := "docker.io/org/img"
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Deploy: &config.DesiredDeploy{Image: &image}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W071")
+}
+
+// --- W072: scale + deploy.region both set ---
+
+func TestValidate_W072_ScaleAndRegion(t *testing.T) {
+	region := "us-west1"
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name:   "api",
+				Deploy: &config.DesiredDeploy{Region: &region},
+				Scale:  map[string]int{"us-west1": 2, "us-east1": 1},
+			},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertHasWarning(t, warnings, "W072")
+}
+
+func TestValidate_W072_ScaleWithoutRegionNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name:  "api",
+				Scale: map[string]int{"us-west1": 2},
+			},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W072")
+}
+
+func TestValidate_W072_RegionWithoutScaleNoWarning(t *testing.T) {
+	region := "us-west1"
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name:   "api",
+				Deploy: &config.DesiredDeploy{Region: &region},
+			},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W072")
+}
+
+// --- W080: Orphaned env file key ---
+
 func TestValidate_W080_OrphanedEnvFileEntry(t *testing.T) {
 	cfg := &config.DesiredConfig{
 		Tool: &config.ToolSettings{EnvFile: ".env"},

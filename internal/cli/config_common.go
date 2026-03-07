@@ -97,6 +97,60 @@ func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 	}, nil
 }
 
+// scopeDesiredByPath narrows a DesiredConfig to only include the service or
+// section specified by path. A path of "api" keeps only the "api" service.
+// A path of "variables" keeps only shared variables. An unrecognized path
+// returns the config unchanged.
+func scopeDesiredByPath(cfg *config.DesiredConfig, path string) *config.DesiredConfig {
+	if cfg == nil || path == "" {
+		return cfg
+	}
+	// If path matches "variables" (shared), strip services.
+	if path == "variables" {
+		return &config.DesiredConfig{
+			Variables: cfg.Variables,
+		}
+	}
+	// If path matches a service name, keep only that service.
+	for _, svc := range cfg.Services {
+		if svc.Name == path {
+			return &config.DesiredConfig{
+				Services: []*config.DesiredService{svc},
+			}
+		}
+	}
+	// If path is "service.section" (e.g. "api.variables"), keep just the service.
+	parts := splitDotPath(path)
+	if len(parts) >= 1 {
+		for _, svc := range cfg.Services {
+			if svc.Name == parts[0] {
+				return &config.DesiredConfig{
+					Services: []*config.DesiredService{svc},
+				}
+			}
+		}
+	}
+	// Unrecognized path — return as-is.
+	return cfg
+}
+
+// splitDotPath splits a dot-separated path into parts.
+func splitDotPath(path string) []string {
+	if path == "" {
+		return nil
+	}
+	var parts []string
+	start := 0
+	for i, c := range path {
+		if c == '.' {
+			parts = append(parts, path[start:i])
+			start = i + 1
+		}
+	}
+	parts = append(parts, path[start:])
+	return parts
+}
+
 // emitWarnings runs validation on the config pair and emits warnings to stderr via slog.
 // Respects --quiet to suppress warnings. Callers that always want warnings (e.g. config validate)
 // should call config.Validate directly.

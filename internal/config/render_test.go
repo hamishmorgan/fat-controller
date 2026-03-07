@@ -33,10 +33,13 @@ func TestRender_TextIncludesServiceAndKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
-	if !strings.Contains(got, "[shared.variables]") {
+	if !strings.Contains(got, "[variables]") {
 		t.Fatalf("expected shared header, got: %s", got)
 	}
-	if !strings.Contains(got, "[api.variables]") {
+	if !strings.Contains(got, "[[service]]") {
+		t.Fatalf("expected service header, got: %s", got)
+	}
+	if !strings.Contains(got, "[service.variables]") {
 		t.Fatalf("expected service variables header, got: %s", got)
 	}
 	if !strings.Contains(got, "PORT = 8080") {
@@ -55,7 +58,7 @@ func TestRender_TextFullIncludesIDsAndDeploy(t *testing.T) {
 	if !strings.Contains(got, "svc-1") {
 		t.Errorf("expected service ID in full output, got:\n%s", got)
 	}
-	if !strings.Contains(got, "[api.deploy]") {
+	if !strings.Contains(got, "[service.deploy]") {
 		t.Errorf("expected deploy section in full output, got:\n%s", got)
 	}
 	if !strings.Contains(got, "NIXPACKS") {
@@ -73,7 +76,7 @@ func TestRender_TextFullOmitsDeployWhenEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Render() error: %v", err)
 	}
-	if strings.Contains(got, "[api.deploy]") {
+	if strings.Contains(got, "[service.deploy]") {
 		t.Errorf("deploy section should be omitted when empty, got:\n%s", got)
 	}
 }
@@ -138,7 +141,7 @@ func TestRender_TOMLFullIncludesIDs(t *testing.T) {
 	if !strings.Contains(got, `project_id = "proj-1"`) {
 		t.Errorf("expected project_id in full TOML, got:\n%s", got)
 	}
-	if !strings.Contains(got, `[api.deploy]`) {
+	if !strings.Contains(got, `[service.deploy]`) {
 		t.Errorf("expected deploy section in full TOML, got:\n%s", got)
 	}
 }
@@ -255,16 +258,16 @@ func TestRenderInitTOML_Header(t *testing.T) {
 		},
 	}
 	got := config.RenderInitTOML("", "my-app", "production", cfg)
-	if !strings.Contains(got, `project = "my-app"`) {
+	if !strings.Contains(got, "[project]") || !strings.Contains(got, `name = "my-app"`) {
 		t.Errorf("expected project header:\n%s", got)
 	}
-	if !strings.Contains(got, `environment = "production"`) {
-		t.Errorf("expected environment header:\n%s", got)
+	if !strings.Contains(got, `name = "production"`) {
+		t.Errorf("expected environment name:\n%s", got)
 	}
-	if strings.Contains(got, `workspace = `) {
+	if strings.Contains(got, `[workspace]`) {
 		t.Errorf("did not expect workspace header when not provided:\n%s", got)
 	}
-	if !strings.Contains(got, "[api.variables]") {
+	if !strings.Contains(got, "[service.variables]") {
 		t.Errorf("expected service section:\n%s", got)
 	}
 	if !strings.Contains(got, `PORT = "8080"`) {
@@ -398,10 +401,10 @@ func TestRenderInitTOML_SharedVariables(t *testing.T) {
 		Services:  map[string]*config.ServiceConfig{},
 	}
 	got := config.RenderInitTOML("ws", "proj", "env", cfg)
-	if !strings.Contains(got, `workspace = "ws"`) {
+	if !strings.Contains(got, `[workspace]`) || !strings.Contains(got, `name = "ws"`) {
 		t.Errorf("expected workspace header:\n%s", got)
 	}
-	if !strings.Contains(got, "[shared.variables]") {
-		t.Errorf("expected shared section:\n%s", got)
+	if !strings.Contains(got, "[variables]") {
+		t.Errorf("expected variables section:\n%s", got)
 	}
 }

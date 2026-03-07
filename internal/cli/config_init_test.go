@@ -96,16 +96,16 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 	}
 	got := string(content)
 	// Uses resolved names from the fakeInitResolver.
-	if !strings.Contains(got, `workspace = "acme-corp"`) {
+	if !strings.Contains(got, `[workspace]`) || !strings.Contains(got, `name = "acme-corp"`) {
 		t.Errorf("expected workspace header in file:\n%s", got)
 	}
-	if !strings.Contains(got, `project = "my-app"`) {
+	if !strings.Contains(got, `[project]`) || !strings.Contains(got, `name = "my-app"`) {
 		t.Errorf("expected project header in file:\n%s", got)
 	}
-	if !strings.Contains(got, `environment = "production"`) {
-		t.Errorf("expected environment header in file:\n%s", got)
+	if !strings.Contains(got, `name = "production"`) {
+		t.Errorf("expected environment name in file:\n%s", got)
 	}
-	if !strings.Contains(got, "[api.variables]") {
+	if !strings.Contains(got, "[service.variables]") {
 		t.Errorf("expected service section in file:\n%s", got)
 	}
 	if !strings.Contains(got, "PORT") {
@@ -370,10 +370,15 @@ func TestRunConfigInit_NonInteractiveIncludesAllServices(t *testing.T) {
 	}
 	got := string(content)
 
+	// In the new format, each service uses [[service]] + [service.variables].
+	// Verify all service names appear and we have the right number of service sections.
 	for _, svc := range []string{"api", "worker", "web"} {
-		if !strings.Contains(got, "["+svc+".variables]") {
-			t.Errorf("expected [%s.variables] section, got:\n%s", svc, got)
+		if !strings.Contains(got, `name = "`+svc+`"`) {
+			t.Errorf("expected service %s, got:\n%s", svc, got)
 		}
+	}
+	if count := strings.Count(got, "[[service]]"); count != 3 {
+		t.Errorf("expected 3 [[service]] sections, got %d:\n%s", count, got)
 	}
 
 	// Output should mention 3 services.
@@ -487,7 +492,7 @@ func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
 		t.Errorf("expected config file name in output, got:\n%s", got)
 	}
 	// Should preview the TOML content.
-	if !strings.Contains(got, `project = "my-app"`) {
+	if !strings.Contains(got, `name = "my-app"`) {
 		t.Errorf("expected TOML preview in output, got:\n%s", got)
 	}
 }

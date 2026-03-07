@@ -27,7 +27,7 @@ func TestRunStatus_JSON(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := RunStatus(ctx, globals, "env-1", targets, listLatest, &buf, &buf); err != nil {
+	if err := RunStatus(ctx, globals, "env-1", targets, nil, listLatest, &buf, &buf); err != nil {
 		t.Fatalf("RunStatus() error: %v", err)
 	}
 
@@ -56,7 +56,7 @@ func TestRunStatus_TOML(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := RunStatus(ctx, globals, "env-1", targets, listLatest, &buf, &buf); err != nil {
+	if err := RunStatus(ctx, globals, "env-1", targets, nil, listLatest, &buf, &buf); err != nil {
 		t.Fatalf("RunStatus() error: %v", err)
 	}
 

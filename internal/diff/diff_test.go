@@ -67,10 +67,30 @@ func TestComputeDiff_DeleteVariable(t *testing.T) {
 			"api": {Name: "api", Variables: map[string]string{"OLD": "value"}},
 		},
 	}
-	result := diff.Compute(desired, live)
+	// Deletes are only included when opts.Delete is true.
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
 	ch := result.Services["api"].Variables[0]
 	if ch.Action != diff.ActionDelete {
 		t.Errorf("action = %v, want Delete", ch.Action)
+	}
+}
+
+func TestComputeDiff_DeleteVariable_FilteredByDefault(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"OLD": ""}},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"OLD": "value"}},
+		},
+	}
+	// Default options exclude deletes.
+	result := diff.Compute(desired, live)
+	if _, ok := result.Services["api"]; ok {
+		t.Error("expected delete to be filtered out with default options")
 	}
 }
 
@@ -317,5 +337,326 @@ func TestComputeDiff_IsEmpty(t *testing.T) {
 	}
 	if result.IsEmpty() {
 		t.Error("result with shared change should not be empty")
+	}
+}
+
+// Sub-resource diff tests
+
+func TestDiff_DomainCreate(t *testing.T) {
+	port := 8080
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Domains: map[string]config.DomainConfig{
+				"api.example.com": {Port: &port},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if svc == nil {
+		t.Fatal("expected api in diff")
+	}
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	ch := svc.SubResources[0]
+	if ch.Type != "domain" || ch.Action != diff.ActionCreate {
+		t.Errorf("expected domain create, got type=%s action=%v", ch.Type, ch.Action)
+	}
+	if ch.Key != "api.example.com" || ch.Port != 8080 {
+		t.Errorf("unexpected values: key=%q port=%d", ch.Key, ch.Port)
+	}
+}
+
+func TestDiff_DomainDelete(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Domains: map[string]config.DomainConfig{
+				"old.example.com": {Delete: true},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Domains: []config.LiveDomain{
+					{ID: "dom-1", Domain: "old.example.com"},
+				},
+			},
+		},
+	}
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	svc := result.Services["api"]
+	if svc == nil {
+		t.Fatal("expected api in diff")
+	}
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	ch := svc.SubResources[0]
+	if ch.Type != "domain" || ch.Action != diff.ActionDelete || ch.LiveID != "dom-1" {
+		t.Errorf("unexpected: type=%s action=%v liveID=%s", ch.Type, ch.Action, ch.LiveID)
+	}
+}
+
+func TestDiff_DomainNoChange(t *testing.T) {
+	port := 8080
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Domains: map[string]config.DomainConfig{
+				"api.example.com": {Port: &port},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Domains: []config.LiveDomain{
+					{ID: "dom-1", Domain: "api.example.com"},
+				},
+			},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if svc, ok := result.Services["api"]; ok && len(svc.SubResources) > 0 {
+		t.Errorf("expected no domain changes, got %d", len(svc.SubResources))
+	}
+}
+
+func TestDiff_VolumeCreate(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Volumes: map[string]config.VolumeConfig{
+				"data": {Mount: "/data"},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	ch := svc.SubResources[0]
+	if ch.Type != "volume" || ch.Action != diff.ActionCreate || ch.Mount != "/data" {
+		t.Errorf("unexpected: type=%s action=%v mount=%s", ch.Type, ch.Action, ch.Mount)
+	}
+}
+
+func TestDiff_TCPProxyCreateAndDelete(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name:       "api",
+			TCPProxies: []int{8080, 9090},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				TCPProxies: []config.LiveTCPProxy{
+					{ID: "tcp-1", ApplicationPort: 8080, ProxyPort: 12345},
+					{ID: "tcp-2", ApplicationPort: 3000, ProxyPort: 12346},
+				},
+			},
+		},
+	}
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	svc := result.Services["api"]
+	if svc == nil {
+		t.Fatal("expected api in diff")
+	}
+	// Should create 9090, delete 3000. 8080 exists in both — no change.
+	var creates, deletes int
+	for _, ch := range svc.SubResources {
+		if ch.Type != "tcp_proxy" {
+			continue
+		}
+		switch ch.Action {
+		case diff.ActionCreate:
+			creates++
+			if ch.Port != 9090 {
+				t.Errorf("expected create for port 9090, got %d", ch.Port)
+			}
+		case diff.ActionDelete:
+			deletes++
+			if ch.LiveID != "tcp-2" {
+				t.Errorf("expected delete for tcp-2, got %s", ch.LiveID)
+			}
+		}
+	}
+	if creates != 1 || deletes != 1 {
+		t.Errorf("expected 1 create + 1 delete, got %d creates + %d deletes", creates, deletes)
+	}
+}
+
+func TestDiff_NetworkEnable(t *testing.T) {
+	enabled := true
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name:    "api",
+			Network: &enabled,
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	if svc.SubResources[0].Type != "network" || svc.SubResources[0].Action != diff.ActionCreate {
+		t.Errorf("expected network create, got %+v", svc.SubResources[0])
+	}
+}
+
+func TestDiff_TriggerCreate(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Triggers: []config.TriggerConfig{
+				{Repository: "org/repo", Branch: "main"},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	ch := svc.SubResources[0]
+	if ch.Type != "trigger" || ch.Action != diff.ActionCreate {
+		t.Errorf("expected trigger create, got type=%s action=%v", ch.Type, ch.Action)
+	}
+	if ch.Repo != "org/repo" || ch.Branch != "main" {
+		t.Errorf("unexpected trigger: repo=%q branch=%q", ch.Repo, ch.Branch)
+	}
+}
+
+func TestDiff_EgressUpdate(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name:   "api",
+			Egress: []string{"us-west-2", "eu-west-1"},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Egress: []config.LiveEgressGateway{
+					{Region: "us-west-2", IPv4: "1.2.3.4"},
+				},
+			},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.SubResources) != 1 {
+		t.Fatalf("expected 1 sub-resource change, got %d", len(svc.SubResources))
+	}
+	ch := svc.SubResources[0]
+	if ch.Type != "egress" || ch.Action != diff.ActionUpdate {
+		t.Errorf("expected egress update, got type=%s action=%v", ch.Type, ch.Action)
+	}
+	if len(ch.Regions) != 2 {
+		t.Errorf("expected 2 regions, got %d", len(ch.Regions))
+	}
+}
+
+func TestDiff_EgressNoChange(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name:   "api",
+			Egress: []string{"us-west-2"},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Egress: []config.LiveEgressGateway{
+					{Region: "us-west-2", IPv4: "1.2.3.4"},
+				},
+			},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if svc, ok := result.Services["api"]; ok && len(svc.SubResources) > 0 {
+		t.Errorf("expected no egress changes, got %d", len(svc.SubResources))
+	}
+}
+
+func TestDiff_SubResourcesFilteredByOptions(t *testing.T) {
+	port := 8080
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Domains: map[string]config.DomainConfig{
+				"new.example.com": {Port: &port},
+				"old.example.com": {Delete: true},
+			},
+		}},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Domains: []config.LiveDomain{
+					{ID: "dom-1", Domain: "old.example.com"},
+				},
+			},
+		},
+	}
+
+	// With creates only — should see create but not delete.
+	opts := diff.Options{Create: true, Update: false, Delete: false}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	svc := result.Services["api"]
+	if svc == nil {
+		t.Fatal("expected api in diff")
+	}
+	for _, ch := range svc.SubResources {
+		if ch.Action == diff.ActionDelete {
+			t.Error("delete should be filtered out with Create-only options")
+		}
+	}
+
+	// With deletes only — should see delete but not create.
+	opts = diff.Options{Create: false, Update: false, Delete: true}
+	result = diff.ComputeWithOptions(desired, live, opts)
+	svc = result.Services["api"]
+	if svc == nil {
+		t.Fatal("expected api in diff")
+	}
+	for _, ch := range svc.SubResources {
+		if ch.Action == diff.ActionCreate {
+			t.Error("create should be filtered out with Delete-only options")
+		}
 	}
 }

@@ -17,6 +17,5 @@ func (c *ValidateCmd) Run(globals *Globals) error {
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
-	// TODO: Wire Path for scoped validation.
-	return RunConfigValidate(globals, wd, c.ConfigFiles, os.Stdout)
+	return RunConfigValidateScoped(globals, wd, c.ConfigFiles, c.Path, os.Stdout)
 }

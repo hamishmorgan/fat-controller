@@ -13,6 +13,9 @@ import (
 type Options struct {
 	FailFast    bool
 	SkipDeploys bool
+	AllowCreate bool // include create changes (default true when zero value via Apply)
+	AllowUpdate bool // include update changes (default true when zero value via Apply)
+	AllowDelete bool // include delete changes
 }
 
 // Applier executes changes against Railway.
@@ -61,9 +64,11 @@ type Applier interface {
 }
 
 // Apply computes diffs and executes them in the required order:
+//  0. Service CRUD (create new services, delete marked ones)
 //  1. Service settings (deploy + resources), services sorted alphabetically
 //  2. Shared variables
 //  3. Per-service variables, services sorted alphabetically
+//  4. Sub-resources (domains, volumes, TCP proxies, network, triggers, egress)
 //
 // Returns a Result with counts. In best-effort mode (FailFast=false),
 // all operations are attempted and the error return is nil even if some
@@ -74,7 +79,28 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		return result, nil
 	}
 	slog.Debug("starting apply", "services", len(desired.Services))
-	changes := diff.Compute(desired, live)
+	// Map apply options to diff options. Zero-value Options means
+	// AllowCreate=false and AllowUpdate=false, but the conventional default
+	// is create+update on. Callers that care set them explicitly.
+	diffOpts := diff.Options{
+		Create: opts.AllowCreate,
+		Update: opts.AllowUpdate,
+		Delete: opts.AllowDelete,
+	}
+	// For backward compat: if nothing is enabled, default to create+update.
+	if !diffOpts.Create && !diffOpts.Update && !diffOpts.Delete {
+		diffOpts.Create = true
+		diffOpts.Update = true
+	}
+
+	// Phase 0: Service CRUD — create new services, delete marked ones.
+	// This must happen before diff computation so that newly created
+	// services exist when we try to apply settings/variables.
+	if err := applyServiceCRUD(ctx, desired, live, applier, opts, result); err != nil {
+		return result, err
+	}
+
+	changes := diff.ComputeWithOptions(desired, live, diffOpts)
 
 	if err := ctx.Err(); err != nil {
 		return result, err
@@ -136,8 +162,201 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		}
 	}
 
+	// Phase 4: Sub-resources (domains, volumes, TCP proxies, network, triggers, egress).
+	for _, name := range serviceNames {
+		if err := ctx.Err(); err != nil {
+			return result, err
+		}
+		sd := changes.Services[name]
+		if sd == nil {
+			continue
+		}
+		desiredSvc := findServiceByName(desired.Services, name)
+		liveSvc := findLiveServiceConfig(live, name, desiredSvc.ID)
+		serviceID := ""
+		if liveSvc != nil {
+			serviceID = liveSvc.ID
+		}
+		if err := applySubResources(ctx, applier, serviceID, sd.SubResources, opts, result); err != nil {
+			return result, err
+		}
+	}
+
 	slog.Debug("apply complete", "applied", result.Applied, "failed", result.Failed)
 	return result, nil
+}
+
+// applyServiceCRUD handles creating new services and deleting marked ones.
+func applyServiceCRUD(ctx context.Context, desired *config.DesiredConfig, live *config.LiveConfig, applier Applier, opts Options, result *Result) error {
+	for _, desiredSvc := range desired.Services {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		liveSvc := findLiveServiceConfig(live, desiredSvc.Name, desiredSvc.ID)
+
+		// Delete marked services.
+		if desiredSvc.Delete && liveSvc != nil && opts.AllowDelete {
+			slog.Debug("deleting service", "service", desiredSvc.Name)
+			if err := applier.DeleteService(ctx, liveSvc.ID); err != nil {
+				result.Failed++
+				if opts.FailFast {
+					return err
+				}
+			} else {
+				result.Applied++
+			}
+			continue
+		}
+
+		// Create new services.
+		if liveSvc == nil && !desiredSvc.Delete && (opts.AllowCreate || (!opts.AllowCreate && !opts.AllowUpdate && !opts.AllowDelete)) {
+			slog.Debug("creating service", "service", desiredSvc.Name)
+			newID, err := applier.CreateService(ctx, desiredSvc.Name)
+			if err != nil {
+				result.Failed++
+				if opts.FailFast {
+					return err
+				}
+			} else {
+				result.Applied++
+				// Add the new service to live config so subsequent phases can find it.
+				if live != nil {
+					live.Services[desiredSvc.Name] = &config.ServiceConfig{
+						ID:        newID,
+						Name:      desiredSvc.Name,
+						Variables: map[string]string{},
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// applySubResources executes sub-resource changes (domains, volumes, TCP proxies,
+// network, triggers, egress) for a single service.
+func applySubResources(ctx context.Context, applier Applier, serviceID string, changes []diff.SubResourceChange, opts Options, result *Result) error {
+	for _, ch := range changes {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		var err error
+		switch ch.Type {
+		case "domain":
+			err = applyDomainChange(ctx, applier, serviceID, ch)
+		case "volume":
+			err = applyVolumeChange(ctx, applier, serviceID, ch)
+		case "tcp_proxy":
+			err = applyTCPProxyChange(ctx, applier, serviceID, ch)
+		case "network":
+			err = applyNetworkChange(ctx, applier, serviceID, ch)
+		case "trigger":
+			err = applyTriggerChange(ctx, applier, serviceID, ch)
+		case "egress":
+			err = applyEgressChange(ctx, applier, serviceID, ch)
+		default:
+			slog.Warn("unknown sub-resource type", "type", ch.Type)
+			continue
+		}
+
+		if err != nil {
+			result.Failed++
+			if opts.FailFast {
+				return err
+			}
+		} else {
+			result.Applied++
+		}
+	}
+	return nil
+}
+
+func applyDomainChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	switch ch.Action {
+	case diff.ActionCreate:
+		if ch.IsCustom {
+			slog.Debug("creating custom domain", "service", serviceID, "domain", ch.Key)
+			return applier.CreateCustomDomain(ctx, serviceID, ch.Key, ch.Port)
+		}
+		slog.Debug("creating service domain", "service", serviceID)
+		return applier.CreateServiceDomain(ctx, serviceID, ch.Port)
+	case diff.ActionDelete:
+		if ch.IsCustom {
+			slog.Debug("deleting custom domain", "domain", ch.Key)
+			return applier.DeleteCustomDomain(ctx, ch.LiveID)
+		}
+		slog.Debug("deleting service domain", "domain", ch.Key)
+		return applier.DeleteServiceDomain(ctx, ch.LiveID)
+	}
+	return nil
+}
+
+func applyVolumeChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	switch ch.Action {
+	case diff.ActionCreate:
+		slog.Debug("creating volume", "service", serviceID, "mount", ch.Mount)
+		return applier.CreateVolume(ctx, serviceID, ch.Mount)
+	case diff.ActionDelete:
+		slog.Debug("deleting volume", "volume", ch.Key)
+		return applier.DeleteVolume(ctx, ch.LiveID)
+	}
+	return nil
+}
+
+func applyTCPProxyChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	switch ch.Action {
+	case diff.ActionCreate:
+		slog.Debug("creating TCP proxy", "service", serviceID, "port", ch.Port)
+		return applier.CreateTCPProxy(ctx, serviceID, ch.Port)
+	case diff.ActionDelete:
+		slog.Debug("deleting TCP proxy", "port", ch.Key)
+		return applier.DeleteTCPProxy(ctx, ch.LiveID)
+	}
+	return nil
+}
+
+func applyNetworkChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	switch ch.Action {
+	case diff.ActionCreate:
+		slog.Debug("enabling private network", "service", serviceID)
+		return applier.EnablePrivateNetwork(ctx, serviceID)
+	case diff.ActionDelete:
+		slog.Debug("disabling private network", "service", serviceID)
+		return applier.DisablePrivateNetwork(ctx, ch.LiveID)
+	}
+	return nil
+}
+
+func applyTriggerChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	switch ch.Action {
+	case diff.ActionCreate:
+		slog.Debug("creating trigger", "service", serviceID, "repo", ch.Repo, "branch", ch.Branch)
+		return applier.CreateDeploymentTrigger(ctx, serviceID, ch.Repo, ch.Branch)
+	case diff.ActionDelete:
+		slog.Debug("deleting trigger", "trigger", ch.Key)
+		return applier.DeleteDeploymentTrigger(ctx, ch.LiveID)
+	}
+	return nil
+}
+
+func applyEgressChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
+	slog.Debug("setting egress gateways", "service", serviceID, "regions", ch.Regions)
+	return applier.SetEgressGateways(ctx, serviceID, ch.Regions)
+}
+
+// findLiveServiceConfig looks up a service in the live config by ID then name.
+func findLiveServiceConfig(live *config.LiveConfig, name, id string) *config.ServiceConfig {
+	if live == nil {
+		return nil
+	}
+	if id != "" {
+		for _, svc := range live.Services {
+			if svc.ID == id {
+				return svc
+			}
+		}
+	}
+	return live.Services[name]
 }
 
 // applyVariables batches create/update changes into a single UpsertVariables
@@ -203,7 +422,14 @@ func applyVariables(ctx context.Context, applier Applier, service string, change
 func hasDeployChanges(changes []diff.Change) bool {
 	for _, ch := range changes {
 		switch ch.Key {
-		case "builder", "dockerfile_path", "root_directory", "start_command", "healthcheck_path":
+		case config.KeyBuilder, config.KeyRepo, config.KeyImage,
+			config.KeyBuildCommand, config.KeyDockerfilePath, config.KeyRootDirectory,
+			config.KeyWatchPatterns, config.KeyStartCommand, config.KeyCronSchedule,
+			config.KeyHealthcheckPath, config.KeyHealthcheckTimeout,
+			config.KeyRestartPolicy, config.KeyRestartPolicyMaxRetries,
+			config.KeyDrainingSeconds, config.KeyOverlapSeconds,
+			config.KeySleepApplication, config.KeyNumReplicas, config.KeyRegion,
+			config.KeyIPv6Egress:
 			return true
 		}
 	}

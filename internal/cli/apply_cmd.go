@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/hamishmorgan/fat-controller/internal/apply"
+	"github.com/hamishmorgan/fat-controller/internal/diff"
 )
 
 // ApplyCmd implements the top-level `apply` command.
@@ -49,6 +50,9 @@ func (c *ApplyCmd) Run(globals *Globals) error {
 		EnvironmentID: pair.EnvironmentID,
 	}
 
-	// TODO: Wire MergeFlags and Path into apply computation.
-	return runConfigApplyWithPair(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, applier, os.Stdout)
+	return runConfigApplyWithPairAndOpts(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, diff.Options{
+		Create: c.Create,
+		Update: c.Update,
+		Delete: c.Delete,
+	}, c.Path, applier, os.Stdout)
 }

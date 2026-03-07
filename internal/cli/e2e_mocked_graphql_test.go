@@ -223,6 +223,22 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleServiceInstanceLimitsUpdate(w, req)
 	case "ProjectToken":
 		m.handleProjectToken(w)
+	case "EnvironmentVolumes":
+		m.handleEnvironmentVolumes(w)
+	case "PrivateNetworks":
+		m.handlePrivateNetworks(w)
+	case "TCPProxies":
+		m.handleTCPProxies(w)
+	case "EgressGateways":
+		m.handleEgressGateways(w)
+	case "DeploymentTriggers":
+		m.handleDeploymentTriggers(w)
+	case "PrivateNetworkEndpoint":
+		m.handlePrivateNetworkEndpoint(w)
+	case "Deployments":
+		m.handleDeployments(w)
+	case "ServiceInstanceDeployV2":
+		m.handleServiceInstanceDeployV2(w)
 	default:
 		http.Error(w, "unknown operation", http.StatusBadRequest)
 		m.t.Errorf("unknown operation: %s", op)
@@ -422,6 +438,91 @@ func (m *mockGraphQLServer) handleProjectToken(w http.ResponseWriter) {
 				"projectId":     fixtureProjectID,
 				"environmentId": fixtureEnvironmentID,
 			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleEnvironmentVolumes(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"environment": map[string]any{
+				"volumeInstances": map[string]any{
+					"edges": []any{},
+				},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handlePrivateNetworks(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"privateNetworks": []any{},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleTCPProxies(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"tcpProxies": []any{},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleEgressGateways(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"egressGateways": []any{},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleDeploymentTriggers(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"deploymentTriggers": map[string]any{
+				"edges": []any{},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handlePrivateNetworkEndpoint(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"privateNetworkEndpoint": nil,
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleDeployments(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"deployments": map[string]any{
+				"edges": []any{
+					map[string]any{
+						"node": map[string]any{
+							"id":        "dep-1",
+							"status":    "SUCCESS",
+							"createdAt": "2026-03-07T12:00:00Z",
+							"staticUrl": "",
+						},
+					},
+				},
+				"pageInfo": map[string]any{
+					"hasNextPage": false,
+					"endCursor":   nil,
+				},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleServiceInstanceDeployV2(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"serviceInstanceDeployV2": true,
 		},
 	})
 }
@@ -809,10 +910,11 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		got := string(content)
 
 		for _, want := range []string{
-			`project = "` + fixtureProjectName + `"`,
-			`environment = "` + fixtureEnvironment + `"`,
-			"[shared.variables]",
-			"[api.variables]",
+			`[project]`,
+			`name = "` + fixtureProjectName + `"`,
+			`name = "` + fixtureEnvironment + `"`,
+			"[variables]",
+			"[service.variables]",
 		} {
 			if !strings.Contains(got, want) {
 				t.Errorf("expected %q in config file, got:\n%s", want, got)
@@ -946,8 +1048,8 @@ name = "existing"`)
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
-		if !strings.Contains(output, "[shared.variables]") {
-			t.Errorf("expected TOML shared section, got:\n%s", output)
+		if !strings.Contains(output, "[variables]") {
+			t.Errorf("expected TOML variables section, got:\n%s", output)
 		}
 		if !strings.Contains(output, `GLOBAL = "one"`) {
 			t.Errorf("expected TOML quoted value, got:\n%s", output)
@@ -1344,6 +1446,24 @@ name = "existing"`)
 			t.Fatal("expected error from cancelled context")
 		}
 	})
+
+	t.Run("list services returns service names", func(t *testing.T) {
+		_, fetcher := newTestFetcher(t)
+		ctx := context.Background()
+		globals := &cli.Globals{Output: "json"}
+		var out bytes.Buffer
+		if err := cli.RunConfigGet(ctx, globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", false, fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		output := out.String()
+		// Should include both services.
+		if !strings.Contains(output, "api") || !strings.Contains(output, "worker") {
+			t.Errorf("expected both services in output:\n%s", output)
+		}
+	})
+
+	// NOTE: RunStatus is tested via status_internal_test.go since it uses
+	// the unexported serviceTarget type.
 }
 
 // keys returns the top-level keys of a map for diagnostic messages.

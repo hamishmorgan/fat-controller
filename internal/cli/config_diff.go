@@ -30,8 +30,24 @@ func (c *ConfigDiffCmd) Run(globals *Globals) error {
 	return RunConfigDiff(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }
 
+// DiffOpts holds options for RunConfigDiffWithOpts.
+type DiffOpts struct {
+	ShowSecrets bool
+	DiffOptions diff.Options
+	Path        string // dot-path to scope diff (e.g. "api", "api.variables")
+}
+
 // RunConfigDiff is the testable core of `config diff`.
+// Legacy: always includes creates, updates, and deletes.
 func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+	return RunConfigDiffWithOpts(ctx, globals, workspace, project, environment, configDir, extraFiles, service, DiffOpts{
+		ShowSecrets: showSecrets,
+		DiffOptions: diff.Options{Create: true, Update: true, Delete: true},
+	}, fetcher, out)
+}
+
+// RunConfigDiffWithOpts is the full-featured diff entrypoint.
+func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, opts DiffOpts, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -44,17 +60,23 @@ func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, en
 	// Emit validation warnings to stderr.
 	emitWarnings(pair, globals.Quiet, configDir)
 
+	// Scope desired config by path if specified.
+	desired := pair.Desired
+	if opts.Path != "" {
+		desired = scopeDesiredByPath(desired, opts.Path)
+	}
+
 	// Compute diff.
-	result := diff.Compute(pair.Desired, pair.Live)
+	result := diff.ComputeWithOptions(desired, pair.Live, opts.DiffOptions)
 	slog.Debug("diff computed", "is_empty", result.IsEmpty())
 
 	if isStructuredOutput(globals) {
-		payload := renderDiffStructured(result, showSecrets)
+		payload := renderDiffStructured(result, opts.ShowSecrets)
 		return writeStructured(out, globals.Output, payload)
 	}
 
 	// Format and display (live values are masked unless --show-secrets is set).
-	formatted := diff.Format(result, showSecrets)
+	formatted := diff.Format(result, opts.ShowSecrets)
 	_, err = fmt.Fprintln(out, formatted)
 	return err
 }
@@ -67,8 +89,9 @@ type DiffChangeOut struct {
 }
 
 type DiffSectionOut struct {
-	Variables []DiffChangeOut `json:"variables,omitempty" toml:"variables"`
-	Settings  []DiffChangeOut `json:"settings,omitempty" toml:"settings"`
+	Variables    []DiffChangeOut `json:"variables,omitempty" toml:"variables"`
+	Settings     []DiffChangeOut `json:"settings,omitempty" toml:"settings"`
+	SubResources []DiffChangeOut `json:"sub_resources,omitempty" toml:"sub_resources"`
 }
 
 type DiffOutput struct {
@@ -111,7 +134,17 @@ func renderDiffStructured(result *diff.Result, showSecrets bool) DiffOutput {
 				sec.Settings = append(sec.Settings, DiffChangeOut{Key: ch.Key, Action: ch.Action.String(), LiveValue: ch.LiveValue, DesiredValue: ch.DesiredValue})
 			}
 		}
-		if len(sec.Variables) == 0 && len(sec.Settings) == 0 {
+		if len(sd.SubResources) > 0 {
+			sec.SubResources = make([]DiffChangeOut, 0, len(sd.SubResources))
+			for _, ch := range sd.SubResources {
+				sec.SubResources = append(sec.SubResources, DiffChangeOut{
+					Key:          ch.Type + ":" + ch.Key,
+					Action:       ch.Action.String(),
+					DesiredValue: ch.Key,
+				})
+			}
+		}
+		if len(sec.Variables) == 0 && len(sec.Settings) == 0 && len(sec.SubResources) == 0 {
 			return nil
 		}
 		return sec

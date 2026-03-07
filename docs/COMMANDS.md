@@ -1,62 +1,84 @@
-# Scope and Command Structure
+# Commands
+
+## Command Structure
+
+fat-controller has two interaction modes: **declarative** (config-file-driven
+diff and apply) and **imperative** (one-off operations against live Railway).
+
+### Core Declarative Commands
+
+```sh
+fat-controller adopt                # Pull live state into a config file
+fat-controller diff                 # Compare config against live Railway state
+fat-controller apply                # Push config changes to Railway
+fat-controller validate             # Check config for errors (offline)
+fat-controller show                 # Display live Railway state
+```
+
+### Discovery
+
+```sh
+fat-controller list services        # List services in the project
+fat-controller list deployments     # List recent deployments
+fat-controller list domains         # List domains across services
+fat-controller list all             # Full inventory
+```
+
+### Imperative Commands
+
+```sh
+fat-controller deploy [service]     # Trigger a deployment
+fat-controller redeploy [id]        # Redeploy an existing deployment
+fat-controller restart [id]         # Restart a deployment
+fat-controller rollback [id]        # Rollback a deployment
+fat-controller stop [id]            # Cancel a deployment
+fat-controller status [services]    # Show service deployment status
+fat-controller logs [service]       # Fetch logs
+fat-controller open                 # Open Railway dashboard
+```
+
+### Scaffolding
+
+```sh
+fat-controller new project          # Create a new Railway project
+fat-controller new environment      # Create a new environment
+```
+
+### Auth
+
+```sh
+fat-controller auth login           # Browser-based OAuth login
+fat-controller auth logout          # Clear stored credentials
+fat-controller auth status          # Show current auth state
+```
+
+### Legacy (deprecated, hidden)
+
+```sh
+fat-controller config get           # → use "show"
+fat-controller config diff          # → use "diff"
+fat-controller config apply         # → use "apply"
+fat-controller config init          # → use "adopt"
+fat-controller config validate      # → use "validate"
+```
+
+## Scope Resolution
 
 Railway has five scope levels: **user > workspace > project > environment >
-service**. A user account can access multiple workspaces, each containing
-multiple projects. Rather than encoding these as nested subcommands, scope
-is determined by context:
+service**. Scope is determined by context:
 
 1. **Auth token** — a project access token implicitly sets project +
-   environment (narrowest). An account-level token could access any
-   workspace/project the user belongs to (broadest).
-2. **Flags** — `--service <name>` narrows to a single service.
-3. **Future**: a local context file, workspace-level auth, or account-level
-   auth could broaden scope.
+   environment. An account-level token accesses any workspace/project.
+2. **Config file** — `[workspace]` and `[project]` tables in
+   `fat-controller.toml` set context.
+3. **Flags** — `--workspace`, `--project`, `--environment`, `--service`.
 
-The default is as broad as the auth allows. `config get` fetches all
-services in the project+environment; `--service` narrows when needed.
+When using an account-level token:
 
-Commands are grouped by **domain**, not by scope. There are two
-interaction modes: **imperative** (one-off CRUD against live Railway)
-and **declarative** (config-file-driven diff and apply).
-
-```sh
-fat-controller auth login       # Browser-based OAuth login
-fat-controller auth logout      # Clear stored credentials
-fat-controller auth status      # Show current auth state
-
-# Project / environment discovery
-fat-controller workspace list                     # list available workspaces
-fat-controller project list                       # list available projects (within workspace)
-fat-controller environment list --project my-app  # list environments for a project
-
-# Imperative — read/write live Railway directly
-fat-controller config get                         # all config (pipe to file to bootstrap)
-fat-controller config get api.variables           # all variables for a service
-fat-controller config get api.variables.PORT      # one specific value
-fat-controller config get --full                  # everything including IDs and read-only fields
-fat-controller config set api.variables.PORT 8080 # set a value
-fat-controller config delete api.variables.OLD    # delete a value
-# Note: In M3, config set/delete supports variables only (*.variables.KEY).
-# Other sections (resources, deploy settings) will be added in later milestones.
-
-# Declarative — config file driven
-fat-controller config diff      # compare fat-controller.toml against live state
-fat-controller config apply     # push differences from config file
-fat-controller config validate  # check config for warnings (no API calls)
-```
-
-Dot-path addressing (`service.section.key`) is used universally: in
-`get/set/delete` arguments, in `--service` scoping for diff/apply, and
-in config file section headers.
-
-Future command groups (not in scope for initial release):
-
-```sh
-fat-controller deploy list      # List deployments
-fat-controller deploy trigger   # Trigger a redeploy
-fat-controller service list     # List services in the project
-fat-controller logs tail        # Stream logs
-```
+1. If flags (or env vars) are set, use them.
+2. If only one workspace/project/environment exists, auto-select it.
+3. If a TTY is attached, show an interactive picker.
+4. Otherwise, error with a listing of available options.
 
 ## Settings
 
@@ -65,80 +87,35 @@ override lower ones:
 
 1. **Compiled-in defaults** (lowest)
 2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`
-3. **Local config** — `.fat-controller.toml` in working dir or git root
+3. **Config file** — `[tool]` table in `fat-controller.toml`
 4. **Environment variable**
 5. **CLI flag** (highest)
 
-The full settings table:
-
 | Setting | CLI flag | Env var | Config key | Default | Description |
 |---------|----------|---------|------------|---------|-------------|
-| Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token (all API commands). `RAILWAY_TOKEN` = project-scoped. `RAILWAY_API_TOKEN` = account/workspace. |
-| Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | — | Workspace ID or name (config/get/set/delete/init/diff/apply, project list, environment list). |
-| Project | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | — | Project ID or name (config/get/set/delete/init/diff/apply, environment list). |
-| Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | — | Environment name (config/get/set/delete/init/diff/apply). |
-| Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml`. |
-| Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR`. |
-| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout (all API commands). |
-| Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Answer yes to all confirmation prompts (set/delete/init/apply). |
-| Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Force preview of mutations (set/delete/init/apply). |
-| Config file | `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Railway config file path. Repeatable (diff/apply/validate). |
-| Service | `--service` | `FAT_CONTROLLER_SERVICE` | `service` | — | Scope to a single service (get/diff/apply). |
-| Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments (set/apply). |
-| Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error (apply only). |
-| Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking (get/diff/apply). |
-| Sensitive keywords | — | — | `sensitive_keywords` | *(see below)* | Keywords for detecting sensitive variable names (boundary match). |
-| Sensitive allowlist | — | — | `sensitive_allowlist` | *(see below)* | Keywords that suppress false-positive secret matches. |
-| Suppress warnings | — | — | `suppress_warnings` | `[]` | List of warning codes to suppress (e.g. `["W012", "W030"]`). |
-| Verbose | `--verbose`, `-v` | — | — | `false` | Debug output (HTTP requests, timing). |
-| Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output. |
-
-**Token precedence:** `--token` flag > `RAILWAY_API_TOKEN` env var >
-`RAILWAY_TOKEN` env var > stored OAuth credentials (keyring/file).
-`RAILWAY_TOKEN` uses the `Project-Access-Token` header (project-scoped).
-`RAILWAY_API_TOKEN` uses `Authorization: Bearer` (account/workspace-scoped).
-
-## Workspace, project, and environment resolution
-
-When using an account-level token (`RAILWAY_API_TOKEN` or stored OAuth),
-`config get/set/delete` need a workspace, project, and environment. Resolution works as:
-
-1. If `--workspace`/`--project`/`--environment` flags (or env vars) are set, use them.
-2. If only one workspace/project/environment exists, auto-select it.
-3. If a TTY is attached, show an interactive picker.
-4. Otherwise, error with a listing of available options.
-
-Use `workspace list`, `project list`, and `environment list` to discover available options.
-
-### Example: global config file
-
-```toml
-# ~/.config/fat-controller/config.toml
-# User-wide defaults
-
-output = "json"          # prefer JSON output everywhere
-color = "auto"
-timeout = "60s"
-```
-
-### Example: local config file
-
-```toml
-# .fat-controller.toml (in project root, committed)
-# Project-specific settings
-
-project = "my-railway-project"
-environment = "production"
-config = "infra/fat-controller.toml"    # non-default config location
-skip_deploys = true                      # batch changes, deploy separately
-sensitive_keywords = ["SECRET", "TOKEN", "PASSWORD", "KEY",
-  "SIGNING"]                             # replaces all defaults
-sensitive_allowlist = ["KEYSTROKE"]       # replaces all defaults
-```
+| Token | `--token` | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
+| Workspace | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `[workspace] name` | — | Workspace name |
+| Project | `--project` | `FAT_CONTROLLER_PROJECT` | `[project] name` | — | Project name |
+| Environment | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `name` | — | Environment name |
+| Output format | `--output`, `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | `text`, `json`, `toml` |
+| Color | `--color` | `FAT_CONTROLLER_COLOR` | `color` | `auto` | `auto`, `always`, `never` |
+| Timeout | `--timeout` | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
+| Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Skip confirmation prompts |
+| Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | — | `false` | Preview without executing |
+| Config file | `--config` | `FAT_CONTROLLER_CONFIG` | — | `fat-controller.toml` | Config file path(s) |
+| Service | `--service` | `FAT_CONTROLLER_SERVICE` | — | — | Scope to a single service |
+| Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `deploy` | `false` | Don't trigger redeployments |
+| Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |
+| Show secrets | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values |
+| Allow create | `--allow-create` | — | `allow_create` | `true` | Allow creating new resources |
+| Allow update | `--allow-update` | — | `allow_update` | `true` | Allow updating resources |
+| Allow delete | `--allow-delete` | — | `allow_delete` | `false` | Allow deleting resources |
+| Verbose | `--verbose`, `-v` | — | — | `false` | Debug output |
+| Quiet | `--quiet`, `-q` | — | — | `false` | Suppress informational output |
 
 ## Confirmation and dry-run
 
-All mutations (`init`, `set`, `delete`, `apply`) require confirmation:
+All mutations (`adopt`, `apply`) require confirmation:
 
 - **Interactive (TTY):** prompts for confirmation before writing/mutating.
   Pass `--yes` (`-y`) to skip all confirmation prompts.

@@ -101,11 +101,20 @@ func toJSONMap(cfg LiveConfig, full bool) map[string]any {
 	return m
 }
 
-// deployMap converts Deploy to a clean map, omitting nil fields.
+// deployMap converts Deploy to a clean map, omitting nil/zero fields.
 func deployMap(d Deploy) map[string]any {
 	m := map[string]any{}
 	if d.Builder != "" {
 		m["builder"] = d.Builder
+	}
+	if d.Repo != nil && *d.Repo != "" {
+		m["repo"] = *d.Repo
+	}
+	if d.Image != nil && *d.Image != "" {
+		m["image"] = *d.Image
+	}
+	if d.BuildCommand != nil {
+		m["build_command"] = *d.BuildCommand
 	}
 	if d.DockerfilePath != nil {
 		m["dockerfile_path"] = *d.DockerfilePath
@@ -116,13 +125,43 @@ func deployMap(d Deploy) map[string]any {
 	if d.StartCommand != nil {
 		m["start_command"] = *d.StartCommand
 	}
+	if d.CronSchedule != nil {
+		m["cron_schedule"] = *d.CronSchedule
+	}
 	if d.HealthcheckPath != nil {
 		m["healthcheck_path"] = *d.HealthcheckPath
+	}
+	if d.HealthcheckTimeout != nil {
+		m["healthcheck_timeout"] = *d.HealthcheckTimeout
+	}
+	if d.RestartPolicy != "" {
+		m["restart_policy"] = d.RestartPolicy
+	}
+	if d.RestartPolicyMaxRetries != nil {
+		m["restart_policy_max_retries"] = *d.RestartPolicyMaxRetries
+	}
+	if d.DrainingSeconds != nil {
+		m["draining_seconds"] = *d.DrainingSeconds
+	}
+	if d.OverlapSeconds != nil {
+		m["overlap_seconds"] = *d.OverlapSeconds
+	}
+	if d.SleepApplication != nil {
+		m["sleep_application"] = *d.SleepApplication
+	}
+	if d.NumReplicas != nil {
+		m["num_replicas"] = *d.NumReplicas
+	}
+	if d.Region != nil {
+		m["region"] = *d.Region
+	}
+	if d.IPv6Egress != nil {
+		m["ipv6_egress"] = *d.IPv6Egress
 	}
 	return m
 }
 
-// renderTOML builds valid TOML output with properly escaped string values.
+// renderTOML builds valid TOML output using [[service]] array-of-tables syntax.
 func renderTOML(cfg LiveConfig, full bool) string {
 	var out strings.Builder
 	if full {
@@ -130,7 +169,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		out.WriteString("environment_id = " + tomlQuote(cfg.EnvironmentID) + "\n\n")
 	}
 	if len(cfg.Variables) > 0 {
-		out.WriteString("[shared.variables]\n")
+		out.WriteString("[variables]\n")
 		keys := sortedKeys(cfg.Variables)
 		for _, k := range keys {
 			out.WriteString(tomlKey(k) + " = " + tomlQuote(cfg.Variables[k]) + "\n")
@@ -140,12 +179,15 @@ func renderTOML(cfg LiveConfig, full bool) string {
 	serviceNames := sortedServiceNames(cfg.Services)
 	for _, name := range serviceNames {
 		svc := cfg.Services[name]
-		if full {
-			out.WriteString("[" + name + "]\n")
-			out.WriteString("id = " + tomlQuote(svc.ID) + "\n\n")
+		out.WriteString("[[service]]\n")
+		out.WriteString("name = " + tomlQuote(name) + "\n")
+		if full && svc.ID != "" {
+			out.WriteString("id = " + tomlQuote(svc.ID) + "\n")
 		}
+		out.WriteString("\n")
+
 		if len(svc.Variables) > 0 {
-			out.WriteString("[" + name + ".variables]\n")
+			out.WriteString("[service.variables]\n")
 			keys := sortedKeys(svc.Variables)
 			for _, k := range keys {
 				out.WriteString(tomlKey(k) + " = " + tomlQuote(svc.Variables[k]) + "\n")
@@ -153,7 +195,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 			out.WriteString("\n")
 		}
 		if full {
-			writeTOMLDeploy(&out, name, svc.Deploy)
+			writeTOMLDeploy(&out, svc.Deploy)
 		}
 	}
 	return strings.TrimRight(out.String(), "\n")
@@ -222,18 +264,20 @@ func CollectSecrets(cfg LiveConfig) map[string]string {
 }
 
 // RenderInitTOML generates a fat-controller.toml for the init command.
-// It includes a workspace/project/environment header (when provided), uses
+// It includes workspace/project/environment header (when provided), uses
 // ${VAR} env references for secrets, and excludes deploy settings and IDs
 // (those are operational, not config).
 func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
 	replaced := envRefConfig(cfg)
 
 	var out strings.Builder
+	out.WriteString("name = " + tomlQuote(environment) + "\n\n")
 	if workspace != "" {
-		out.WriteString("workspace = " + tomlQuote(workspace) + "\n")
+		out.WriteString("[workspace]\n")
+		out.WriteString("name = " + tomlQuote(workspace) + "\n\n")
 	}
-	out.WriteString("project = " + tomlQuote(project) + "\n")
-	out.WriteString("environment = " + tomlQuote(environment) + "\n")
+	out.WriteString("[project]\n")
+	out.WriteString("name = " + tomlQuote(project) + "\n")
 
 	// Render service sections using the existing TOML renderer (without
 	// IDs or deploy settings — those are fetched live, not managed in config).
@@ -246,11 +290,31 @@ func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) stri
 	return out.String()
 }
 
-func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
-	// Only write deploy section if there's something to show.
+func writeTOMLDeploy(out *strings.Builder, d Deploy) {
+	lines := deployLines(d)
+	if len(lines) > 0 {
+		out.WriteString("[service.deploy]\n")
+		for _, line := range lines {
+			out.WriteString(line + "\n")
+		}
+		out.WriteString("\n")
+	}
+}
+
+// deployLines returns TOML key=value lines for all non-zero deploy fields.
+func deployLines(d Deploy) []string {
 	var lines []string
 	if d.Builder != "" {
 		lines = append(lines, "builder = "+tomlQuote(d.Builder))
+	}
+	if d.Repo != nil && *d.Repo != "" {
+		lines = append(lines, "repo = "+tomlQuote(*d.Repo))
+	}
+	if d.Image != nil && *d.Image != "" {
+		lines = append(lines, "image = "+tomlQuote(*d.Image))
+	}
+	if d.BuildCommand != nil {
+		lines = append(lines, "build_command = "+tomlQuote(*d.BuildCommand))
 	}
 	if d.DockerfilePath != nil {
 		lines = append(lines, "dockerfile_path = "+tomlQuote(*d.DockerfilePath))
@@ -261,16 +325,40 @@ func writeTOMLDeploy(out *strings.Builder, name string, d Deploy) {
 	if d.StartCommand != nil {
 		lines = append(lines, "start_command = "+tomlQuote(*d.StartCommand))
 	}
+	if d.CronSchedule != nil {
+		lines = append(lines, "cron_schedule = "+tomlQuote(*d.CronSchedule))
+	}
 	if d.HealthcheckPath != nil {
 		lines = append(lines, "healthcheck_path = "+tomlQuote(*d.HealthcheckPath))
 	}
-	if len(lines) > 0 {
-		out.WriteString("[" + name + ".deploy]\n")
-		for _, line := range lines {
-			out.WriteString(line + "\n")
-		}
-		out.WriteString("\n")
+	if d.HealthcheckTimeout != nil {
+		lines = append(lines, fmt.Sprintf("healthcheck_timeout = %d", *d.HealthcheckTimeout))
 	}
+	if d.RestartPolicy != "" {
+		lines = append(lines, "restart_policy = "+tomlQuote(d.RestartPolicy))
+	}
+	if d.RestartPolicyMaxRetries != nil {
+		lines = append(lines, fmt.Sprintf("restart_policy_max_retries = %d", *d.RestartPolicyMaxRetries))
+	}
+	if d.DrainingSeconds != nil {
+		lines = append(lines, fmt.Sprintf("draining_seconds = %d", *d.DrainingSeconds))
+	}
+	if d.OverlapSeconds != nil {
+		lines = append(lines, fmt.Sprintf("overlap_seconds = %d", *d.OverlapSeconds))
+	}
+	if d.SleepApplication != nil {
+		lines = append(lines, fmt.Sprintf("sleep_application = %t", *d.SleepApplication))
+	}
+	if d.NumReplicas != nil {
+		lines = append(lines, fmt.Sprintf("num_replicas = %d", *d.NumReplicas))
+	}
+	if d.Region != nil {
+		lines = append(lines, "region = "+tomlQuote(*d.Region))
+	}
+	if d.IPv6Egress != nil {
+		lines = append(lines, fmt.Sprintf("ipv6_egress = %t", *d.IPv6Egress))
+	}
+	return lines
 }
 
 // tomlKey returns a bare TOML key if it contains only safe characters
@@ -330,7 +418,7 @@ func renderText(cfg LiveConfig, full bool) string {
 	}
 
 	if len(cfg.Variables) > 0 {
-		out.WriteString("[shared.variables]\n")
+		out.WriteString("[variables]\n")
 		keys := sortedKeys(cfg.Variables)
 		for _, k := range keys {
 			out.WriteString(k + " = " + cfg.Variables[k] + "\n")
@@ -341,12 +429,14 @@ func renderText(cfg LiveConfig, full bool) string {
 	serviceNames := sortedServiceNames(cfg.Services)
 	for _, name := range serviceNames {
 		svc := cfg.Services[name]
-		if full {
-			out.WriteString("[" + name + "]\n")
-			out.WriteString("id = " + svc.ID + "\n\n")
+		out.WriteString("[[service]]\n")
+		out.WriteString("name = " + name + "\n")
+		if full && svc.ID != "" {
+			out.WriteString("id = " + svc.ID + "\n")
 		}
+		out.WriteString("\n")
 		if len(svc.Variables) > 0 {
-			out.WriteString("[" + name + ".variables]\n")
+			out.WriteString("[service.variables]\n")
 			keys := sortedKeys(svc.Variables)
 			for _, k := range keys {
 				out.WriteString(k + " = " + svc.Variables[k] + "\n")
@@ -354,37 +444,18 @@ func renderText(cfg LiveConfig, full bool) string {
 			out.WriteString("\n")
 		}
 		if full {
-			writeTextDeploy(&out, name, svc.Deploy)
+			lines := deployLines(svc.Deploy)
+			if len(lines) > 0 {
+				out.WriteString("[service.deploy]\n")
+				for _, line := range lines {
+					out.WriteString(line + "\n")
+				}
+				out.WriteString("\n")
+			}
 		}
 	}
 
 	return strings.TrimRight(out.String(), "\n")
-}
-
-func writeTextDeploy(out *strings.Builder, name string, d Deploy) {
-	var lines []string
-	if d.Builder != "" {
-		lines = append(lines, "builder = "+d.Builder)
-	}
-	if d.DockerfilePath != nil {
-		lines = append(lines, "dockerfile_path = "+*d.DockerfilePath)
-	}
-	if d.RootDirectory != nil {
-		lines = append(lines, "root_directory = "+*d.RootDirectory)
-	}
-	if d.StartCommand != nil {
-		lines = append(lines, "start_command = "+*d.StartCommand)
-	}
-	if d.HealthcheckPath != nil {
-		lines = append(lines, "healthcheck_path = "+*d.HealthcheckPath)
-	}
-	if len(lines) > 0 {
-		out.WriteString("[" + name + ".deploy]\n")
-		for _, line := range lines {
-			out.WriteString(line + "\n")
-		}
-		out.WriteString("\n")
-	}
 }
 
 func sortedKeys(m map[string]string) []string {

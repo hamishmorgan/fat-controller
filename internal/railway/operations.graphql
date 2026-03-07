@@ -440,6 +440,90 @@ query EnvironmentLogs(
   }
 }
 
+# Sub-resource queries for live state
+query TCPProxies($environmentId: String!, $serviceId: String!) {
+  tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {
+    id
+    applicationPort
+    proxyPort
+    domain
+  }
+}
+
+query EgressGateways($environmentId: String!, $serviceId: String!) {
+  egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
+    ipv4
+    region
+  }
+}
+
+query DeploymentTriggers(
+  $environmentId: String!
+  $projectId: String!
+  $serviceId: String!
+) {
+  deploymentTriggers(
+    environmentId: $environmentId
+    projectId: $projectId
+    serviceId: $serviceId
+    first: 100
+  ) {
+    edges {
+      node {
+        id
+        branch
+        repository
+        provider
+        checkSuites
+      }
+    }
+  }
+}
+
+query EnvironmentVolumes($environmentId: String!, $projectId: String) {
+  environment(id: $environmentId, projectId: $projectId) {
+    volumeInstances(first: 100) {
+      edges {
+        node {
+          id
+          mountPath
+          region
+          serviceId
+          volumeId
+          volume {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+}
+
+query PrivateNetworks($environmentId: String!) {
+  privateNetworks(environmentId: $environmentId) {
+    publicId
+    dnsName
+    name
+  }
+}
+
+query PrivateNetworkEndpoint(
+  $environmentId: String!
+  $privateNetworkId: String!
+  $serviceId: String!
+) {
+  privateNetworkEndpoint(
+    environmentId: $environmentId
+    privateNetworkId: $privateNetworkId
+    serviceId: $serviceId
+  ) {
+    publicId
+    dnsName
+    serviceInstanceId
+  }
+}
+
 # Deployment listing
 query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
   deployments(input: $input, first: $first, after: $after) {

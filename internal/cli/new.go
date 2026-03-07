@@ -25,8 +25,46 @@ type NewProjectCmd struct {
 
 // Run implements `new project`.
 func (c *NewProjectCmd) Run(globals *Globals) error {
-	_ = globals
-	return nil // stub
+	if c.Name == "" {
+		return fmt.Errorf("project name is required")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	// Try to load existing config.
+	result, loadErr := config.LoadCascade(config.LoadOptions{WorkDir: wd})
+	if loadErr == nil && result.Config.Project != nil && result.Config.Project.Name != "" {
+		return fmt.Errorf("project already defined in config as %q", result.Config.Project.Name)
+	}
+
+	configPath := ""
+	if result != nil && result.PrimaryFile != "" {
+		configPath = result.PrimaryFile
+	} else {
+		configPath = filepath.Join(wd, "fat-controller.toml")
+	}
+
+	var buf strings.Builder
+	buf.WriteString("\n[project]\n")
+	fmt.Fprintf(&buf, "name = %q\n", c.Name)
+
+	f, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("opening %s: %w", configPath, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := f.WriteString(buf.String()); err != nil {
+		return fmt.Errorf("writing to %s: %w", configPath, err)
+	}
+
+	if !globals.Quiet {
+		_, _ = fmt.Fprintf(os.Stdout, "Added project %q to %s\n", c.Name, configPath)
+	}
+	return nil
 }
 
 // NewEnvironmentCmd implements `new environment`.
@@ -38,8 +76,45 @@ type NewEnvironmentCmd struct {
 
 // Run implements `new environment`.
 func (c *NewEnvironmentCmd) Run(globals *Globals) error {
-	_ = globals
-	return nil // stub
+	if c.Name == "" {
+		return fmt.Errorf("environment name is required")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	// Try to load existing config.
+	result, loadErr := config.LoadCascade(config.LoadOptions{WorkDir: wd})
+	if loadErr == nil && result.Config.Name != "" {
+		return fmt.Errorf("environment already defined in config as %q", result.Config.Name)
+	}
+
+	configPath := ""
+	if result != nil && result.PrimaryFile != "" {
+		configPath = result.PrimaryFile
+	} else {
+		configPath = filepath.Join(wd, "fat-controller.toml")
+	}
+
+	// The environment name is the top-level `name` field.
+	snippet := fmt.Sprintf("name = %q\n", c.Name)
+
+	f, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("opening %s: %w", configPath, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := f.WriteString(snippet); err != nil {
+		return fmt.Errorf("writing to %s: %w", configPath, err)
+	}
+
+	if !globals.Quiet {
+		_, _ = fmt.Fprintf(os.Stdout, "Added environment %q to %s\n", c.Name, configPath)
+	}
+	return nil
 }
 
 // NewServiceCmd implements `new service`.

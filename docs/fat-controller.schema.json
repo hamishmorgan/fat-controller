@@ -4,44 +4,121 @@
   "description": "Configuration file for fat-controller — declarative Railway project management. See https://github.com/hamishmorgan/fat-controller",
   "type": "object",
   "properties": {
+    "name": {
+      "type": "string",
+      "description": "Railway environment name this config manages."
+    },
+    "id": {
+      "type": "string",
+      "description": "Railway environment ID (optional, for disambiguation)."
+    },
+    "variables": {
+      "$ref": "#/$defs/variables",
+      "description": "Shared variables available to all services."
+    },
+    "workspace": {
+      "$ref": "#/$defs/contextBlock",
+      "description": "Railway workspace (team) identity."
+    },
     "project": {
-      "type": "string",
-      "description": "Railway project name or ID."
+      "$ref": "#/$defs/contextBlock",
+      "description": "Railway project identity."
     },
-    "environment": {
-      "type": "string",
-      "description": "Railway environment name."
+    "tool": {
+      "$ref": "#/$defs/toolSettings",
+      "description": "Tool behavior settings (how fat-controller behaves)."
     },
-    "shared": {
-      "$ref": "#/$defs/sharedSection",
-      "description": "Variables shared across all services."
-    },
-    "sensitive_keywords": {
+    "service": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Keywords for detecting sensitive variable names (replaces defaults)."
-    },
-    "sensitive_allowlist": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Keywords that suppress false-positive secret matches (replaces defaults)."
-    },
-    "suppress_warnings": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^W\\d{3}$" },
-      "description": "Warning codes to suppress (e.g. [\"W012\", \"W030\"])."
+      "items": { "$ref": "#/$defs/service" },
+      "description": "Services in this environment (TOML array of tables: [[service]])."
     }
   },
-  "additionalProperties": {
-    "$ref": "#/$defs/service",
-    "description": "Per-service configuration. The key is the Railway service name."
-  },
+  "additionalProperties": false,
   "$defs": {
-    "sharedSection": {
+    "contextBlock": {
       "type": "object",
       "properties": {
-        "variables": {
-          "$ref": "#/$defs/variables"
+        "name": {
+          "type": "string",
+          "description": "Name of the workspace or project."
+        },
+        "id": {
+          "type": "string",
+          "description": "ID for disambiguation (optional)."
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "toolSettings": {
+      "type": "object",
+      "properties": {
+        "api_timeout": {
+          "type": "string",
+          "description": "API request timeout (e.g. '60s')."
+        },
+        "log_level": {
+          "type": "string",
+          "description": "Log level: debug, info, warn, error."
+        },
+        "output_format": {
+          "type": "string",
+          "description": "Default output format: text, json, toml."
+        },
+        "output_color": {
+          "type": "string",
+          "description": "Color mode: auto, always, never."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt mode: default, always, never."
+        },
+        "deploy": {
+          "type": "string",
+          "description": "Deploy mode after apply: auto, prompt, skip."
+        },
+        "show_secrets": {
+          "type": "boolean",
+          "description": "Show secret values in output."
+        },
+        "fail_fast": {
+          "type": "boolean",
+          "description": "Stop on first error during apply."
+        },
+        "allow_create": {
+          "type": "boolean",
+          "description": "Allow creating new resources."
+        },
+        "allow_update": {
+          "type": "boolean",
+          "description": "Allow updating existing resources."
+        },
+        "allow_delete": {
+          "type": "boolean",
+          "description": "Allow deleting resources."
+        },
+        "env_file": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Path(s) to .env file(s) for secret interpolation."
+        },
+        "sensitive_keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords for detecting sensitive variable names."
+        },
+        "sensitive_allowlist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords that suppress false-positive secret matches."
+        },
+        "suppress_warnings": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^W\\d{3}$" },
+          "description": "Warning codes to suppress (e.g. [\"W012\", \"W030\"])."
         }
       },
       "additionalProperties": false
@@ -75,40 +152,199 @@
       "properties": {
         "builder": {
           "type": "string",
-          "description": "Railway builder (e.g. NIXPACKS, RAILPACK, DOCKERFILE)."
+          "description": "Railway builder (NIXPACKS, RAILPACK, DOCKERFILE)."
+        },
+        "repo": {
+          "type": "string",
+          "description": "GitHub repository (owner/repo)."
+        },
+        "image": {
+          "type": "string",
+          "description": "Docker image (registry/image:tag)."
+        },
+        "branch": {
+          "type": "string",
+          "description": "Git branch to deploy from."
+        },
+        "build_command": {
+          "type": "string",
+          "description": "Custom build command."
         },
         "dockerfile_path": {
           "type": "string",
-          "description": "Path to Dockerfile relative to root directory."
+          "description": "Path to Dockerfile."
         },
         "root_directory": {
           "type": "string",
-          "description": "Root directory for the build context."
+          "description": "Root directory for build context."
+        },
+        "watch_patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File patterns to watch for changes."
         },
         "start_command": {
           "type": "string",
           "description": "Command to start the service."
         },
+        "pre_deploy_command": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Command(s) to run before deploy."
+        },
+        "cron_schedule": {
+          "type": "string",
+          "description": "Cron schedule expression."
+        },
         "healthcheck_path": {
           "type": "string",
           "description": "HTTP path for health checks."
+        },
+        "healthcheck_timeout": {
+          "type": "integer",
+          "description": "Healthcheck timeout in seconds."
+        },
+        "restart_policy": {
+          "type": "string",
+          "description": "Restart policy: ALWAYS, ON_FAILURE, NEVER."
+        },
+        "restart_policy_max_retries": {
+          "type": "integer",
+          "description": "Max restart retries."
+        },
+        "draining_seconds": {
+          "type": "integer",
+          "description": "Seconds to drain connections during deploy."
+        },
+        "overlap_seconds": {
+          "type": "integer",
+          "description": "Seconds of overlap between old and new instances."
+        },
+        "sleep_application": {
+          "type": "boolean",
+          "description": "Enable sleep when idle."
+        },
+        "num_replicas": {
+          "type": "integer",
+          "description": "Number of replicas.",
+          "minimum": 1
+        },
+        "region": {
+          "type": "string",
+          "description": "Railway region (e.g. us-west1)."
+        },
+        "ipv6_egress": {
+          "type": "boolean",
+          "description": "Enable IPv6 egress."
         }
       },
+      "additionalProperties": false
+    },
+    "domainConfig": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "description": "Target port for this domain."
+        },
+        "delete": {
+          "type": "boolean",
+          "description": "Mark this domain for deletion."
+        }
+      },
+      "additionalProperties": false
+    },
+    "volumeConfig": {
+      "type": "object",
+      "properties": {
+        "mount": {
+          "type": "string",
+          "description": "Mount path inside the container."
+        },
+        "region": { "type": "string", "description": "Volume region." },
+        "delete": {
+          "type": "boolean",
+          "description": "Mark this volume for deletion."
+        }
+      },
+      "required": ["mount"],
+      "additionalProperties": false
+    },
+    "triggerConfig": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Git repository (owner/repo)."
+        },
+        "branch": { "type": "string", "description": "Git branch." },
+        "provider": { "type": "string", "description": "Git provider." },
+        "check_suites": {
+          "type": "boolean",
+          "description": "Wait for check suites."
+        },
+        "root_directory": {
+          "type": "string",
+          "description": "Root directory filter."
+        }
+      },
+      "required": ["repository", "branch"],
       "additionalProperties": false
     },
     "service": {
       "type": "object",
       "properties": {
-        "variables": {
-          "$ref": "#/$defs/variables"
+        "name": { "type": "string", "description": "Railway service name." },
+        "id": {
+          "type": "string",
+          "description": "Railway service ID (for disambiguation)."
         },
-        "resources": {
-          "$ref": "#/$defs/resources"
+        "icon": { "type": "string", "description": "Service icon name." },
+        "delete": {
+          "type": "boolean",
+          "description": "Mark service for deletion."
         },
-        "deploy": {
-          "$ref": "#/$defs/deploy"
+        "variables": { "$ref": "#/$defs/variables" },
+        "deploy": { "$ref": "#/$defs/deploy" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "scale": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" },
+          "description": "Per-region replica counts."
+        },
+        "domains": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/domainConfig" },
+          "description": "Custom domains (key = domain name)."
+        },
+        "volumes": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/volumeConfig" },
+          "description": "Attached volumes (key = volume name)."
+        },
+        "tcp_proxies": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Application ports to expose as TCP proxies."
+        },
+        "network": {
+          "type": "boolean",
+          "description": "Enable private networking for this service."
+        },
+        "triggers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/triggerConfig" },
+          "description": "Deployment triggers (Git integration)."
+        },
+        "egress": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Egress gateway regions for static outbound IPs."
         }
       },
+      "required": ["name"],
       "additionalProperties": false
     }
   }

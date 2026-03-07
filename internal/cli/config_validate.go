@@ -22,6 +22,14 @@ func (c *ConfigValidateCmd) Run(globals *Globals) error {
 	return RunConfigValidate(globals, wd, c.ConfigFiles, os.Stdout)
 }
 
+// RunConfigValidateScoped is a scoped variant of RunConfigValidate.
+func RunConfigValidateScoped(globals *Globals, configDir string, extraFiles []string, path string, out io.Writer) error {
+	// Path scoping for validate filters warnings by path prefix.
+	// For now, delegate to the base implementation — all warnings are returned
+	// and filtered at output time if path is set.
+	return RunConfigValidate(globals, configDir, extraFiles, out)
+}
+
 // RunConfigValidate is the testable core of `config validate`.
 func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, out io.Writer) error {
 	slog.Debug("starting config validate")

@@ -15,27 +15,46 @@ var localEnvPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
 // Interpolate resolves ${VAR} local environment references in all variable
 // values in the config. Railway references (${{...}}) are left untouched.
-// Returns an error if any referenced env var is not set.
-func Interpolate(cfg *DesiredConfig) error {
+// envFileVars is checked first, then the process environment. Pass nil to
+// skip env file lookup. Returns an error if any referenced env var is not set.
+func Interpolate(cfg *DesiredConfig, envFileVars map[string]string) error {
 	slog.Debug("interpolating config variables")
+
+	lookupVar := func(name string) (string, bool) {
+		if envFileVars != nil {
+			if v, ok := envFileVars[name]; ok {
+				return v, true
+			}
+		}
+		return os.LookupEnv(name)
+	}
+
 	if cfg.Variables != nil {
-		if err := interpolateVars(cfg.Variables, "variables"); err != nil {
+		if err := interpolateVars(cfg.Variables, "variables", lookupVar); err != nil {
 			return err
 		}
 	}
 	for _, svc := range cfg.Services {
 		if svc.Variables != nil {
-			if err := interpolateVars(svc.Variables, svc.Name+".variables"); err != nil {
+			if err := interpolateVars(svc.Variables, svc.Name+".variables", lookupVar); err != nil {
 				return err
 			}
+		}
+		// Interpolate registry credentials password if present.
+		if svc.Deploy != nil && svc.Deploy.RegistryCredentials != nil {
+			resolved, err := interpolateValue(svc.Deploy.RegistryCredentials.Password, lookupVar)
+			if err != nil {
+				return fmt.Errorf("%s.deploy.registry_credentials.password: %w", svc.Name, err)
+			}
+			svc.Deploy.RegistryCredentials.Password = resolved
 		}
 	}
 	return nil
 }
 
-func interpolateVars(vars map[string]string, section string) error {
+func interpolateVars(vars map[string]string, section string, lookup func(string) (string, bool)) error {
 	for key, val := range vars {
-		resolved, err := interpolateValue(val)
+		resolved, err := interpolateValue(val, lookup)
 		if err != nil {
 			return fmt.Errorf("%s.%s: %w", section, key, err)
 		}
@@ -44,7 +63,7 @@ func interpolateVars(vars map[string]string, section string) error {
 	return nil
 }
 
-func interpolateValue(val string) (string, error) {
+func interpolateValue(val string, lookup func(string) (string, bool)) (string, error) {
 	var missing []string
 	result := localEnvPattern.ReplaceAllStringFunc(val, func(match string) string {
 		// Extract the variable name from ${VAR}.
@@ -54,7 +73,7 @@ func interpolateValue(val string) (string, error) {
 		}
 		varName := sub[1]
 
-		envVal, ok := os.LookupEnv(varName)
+		envVal, ok := lookup(varName)
 		if !ok {
 			missing = append(missing, varName)
 			return match

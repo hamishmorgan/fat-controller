@@ -33,7 +33,7 @@ func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 	}
 
 	// 2. Interpolate local env vars.
-	if err := config.Interpolate(desired); err != nil {
+	if err := config.Interpolate(desired, nil); err != nil {
 		return nil, err
 	}
 

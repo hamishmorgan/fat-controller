@@ -348,6 +348,60 @@ or env vars.
 | `tool.sensitive_allowlist` | *(built-in list)* | Keywords that suppress false-positive secret matches |
 | `tool.suppress_warnings` | `[]` | Warning codes to suppress (e.g. `["W012"]`) |
 
+### Environment variables
+
+#### fat-controller variables
+
+Every `FAT_CONTROLLER_*` variable maps to a config key or CLI
+flag. The variable name is the config key uppercased with the
+`FAT_CONTROLLER_` prefix — e.g. `tool.api_timeout` →
+`FAT_CONTROLLER_API_TIMEOUT`.
+
+| Variable | Config key | CLI flag | Values |
+|----------|------------|----------|--------|
+| `FAT_CONTROLLER_API_TIMEOUT` | `tool.api_timeout` | `--timeout` | Duration string (`30s`, `2m`) |
+| `FAT_CONTROLLER_LOG_LEVEL` | `tool.log_level` | `--verbose` / `--quiet` | `trace`, `debug`, `info`, `warn`, `error`, `silent` |
+| `FAT_CONTROLLER_OUTPUT_FORMAT` | `tool.output_format` | `--json` / `--toml` / `--raw` | `auto`, `text`, `json`, `toml`, `raw` |
+| `FAT_CONTROLLER_OUTPUT_COLOR` | `tool.output_color` | `--color` | `auto`, `always`, `never` |
+| `FAT_CONTROLLER_PROMPT` | `tool.prompt` | `--ask` / `--yes` | `all`, `default`, `none` |
+| `FAT_CONTROLLER_SHOW_SECRETS` | `tool.show_secrets` | `--show-secrets` | `true`, `false` |
+| `FAT_CONTROLLER_DEPLOY` | `tool.deploy` | `--skip-deploys` | `run`, `skip` |
+| `FAT_CONTROLLER_ALLOW_CREATE` | `tool.allow_create` | `--create` / `--no-create` | `true`, `false` |
+| `FAT_CONTROLLER_ALLOW_UPDATE` | `tool.allow_update` | `--update` / `--no-update` | `true`, `false` |
+| `FAT_CONTROLLER_ALLOW_DELETE` | `tool.allow_delete` | `--delete` / `--no-delete` | `true`, `false` |
+| `FAT_CONTROLLER_DRY_RUN` | — | `--dry-run` | `true`, `false` |
+| `FAT_CONTROLLER_CONFIG_FILE` | — | `--config-file` | File path |
+| `FAT_CONTROLLER_ENV_FILE` | `tool.env_file` | `--env-file` | File path(s), comma-separated |
+| `FAT_CONTROLLER_WORKSPACE` | `workspace.id` / `workspace.name` | `--workspace` | Name or ID |
+| `FAT_CONTROLLER_PROJECT` | `project.id` / `project.name` | `--project` | Name or ID |
+| `FAT_CONTROLLER_ENVIRONMENT` | `id` / `name` | `--environment` | Name or ID |
+| `FAT_CONTROLLER_SERVICE` | — | `--service` | Name or ID |
+
+#### Standard variables
+
+These are defined by other tools and conventions. fat-controller
+reads them but never sets them.
+
+| Variable | Spec / convention | Effect |
+|----------|-------------------|--------|
+| `RAILWAY_TOKEN` | Railway CLI | Project-scoped auth token. Implies a specific project and environment |
+| `RAILWAY_API_TOKEN` | Railway CLI | Account/workspace-scoped auth token. Higher precedence than `RAILWAY_TOKEN` |
+| `NO_COLOR` | [no-color.org](https://no-color.org) | When set (any value), disables color output. Equivalent to `--color=never` |
+| `FORCE_COLOR` | [force-color](https://force-color.org) | When set (any non-zero value), forces color output. Equivalent to `--color=always`. `NO_COLOR` takes precedence |
+| `CLICOLOR` | [CLICOLOR](https://bixense.com/clicolors/) | `0` disables color (like `NO_COLOR`). `1` is the default (color when TTY) |
+| `CLICOLOR_FORCE` | [CLICOLOR](https://bixense.com/clicolors/) | When set to non-zero, forces color (like `FORCE_COLOR`). `NO_COLOR` takes precedence |
+| `TERM` | Terminal | When set to `dumb`, disables color and interactive features |
+| `XDG_CONFIG_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for global config. Default: `~/.config` |
+| `XDG_DATA_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for persistent data (auth credentials). Default: `~/.local/share` |
+| `BROWSER` | Unix convention | Program to open URLs. Used by `open` and `auth login` |
+
+**Color precedence:** CLI flag (`--color`) > `NO_COLOR` /
+`FORCE_COLOR` > `CLICOLOR` / `CLICOLOR_FORCE` > `TERM=dumb` >
+auto-detect (TTY check).
+
+**Auth precedence:** `--token` flag > `RAILWAY_API_TOKEN` >
+`RAILWAY_TOKEN` > stored credentials (from `auth login`).
+
 ---
 
 ## Commands

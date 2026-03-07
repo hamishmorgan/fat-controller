@@ -284,3 +284,176 @@ mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
     id
   }
 }
+
+# Project CRUD operations
+mutation ProjectCreate($input: ProjectCreateInput!) {
+  projectCreate(input: $input) {
+    id
+    name
+  }
+}
+
+mutation ProjectDelete($id: String!) {
+  projectDelete(id: $id)
+}
+
+# Environment CRUD operations
+mutation EnvironmentCreate($input: EnvironmentCreateInput!) {
+  environmentCreate(input: $input) {
+    id
+    name
+  }
+}
+
+mutation EnvironmentDelete($id: String!) {
+  environmentDelete(id: $id)
+}
+
+# Deployment lifecycle operations
+mutation ServiceInstanceDeployV2(
+  $environmentId: String!
+  $serviceId: String!
+  $commitSha: String
+) {
+  serviceInstanceDeployV2(
+    environmentId: $environmentId
+    serviceId: $serviceId
+    commitSha: $commitSha
+  )
+}
+
+mutation DeploymentRedeploy($id: String!, $usePreviousImageTag: Boolean) {
+  deploymentRedeploy(id: $id, usePreviousImageTag: $usePreviousImageTag) {
+    id
+    status
+  }
+}
+
+mutation DeploymentRestart($id: String!) {
+  deploymentRestart(id: $id)
+}
+
+mutation DeploymentCancel($id: String!) {
+  deploymentCancel(id: $id)
+}
+
+mutation DeploymentRollback($id: String!) {
+  deploymentRollback(id: $id)
+}
+
+# Bucket operations
+mutation BucketCreate($input: BucketCreateInput!) {
+  bucketCreate(input: $input) {
+    id
+    name
+  }
+}
+
+mutation BucketUpdate($id: String!, $input: BucketUpdateInput!) {
+  bucketUpdate(id: $id, input: $input) {
+    id
+    name
+  }
+}
+
+query BucketS3Credentials(
+  $bucketId: String!
+  $environmentId: String!
+  $projectId: String!
+) {
+  bucketS3Credentials(
+    bucketId: $bucketId
+    environmentId: $environmentId
+    projectId: $projectId
+  ) {
+    accessKeyId
+    bucketName
+    endpoint
+    region
+    secretAccessKey
+    urlStyle
+  }
+}
+
+# Log fetching operations
+query DeploymentLogs(
+  $deploymentId: String!
+  $limit: Int
+  $startDate: DateTime
+  $endDate: DateTime
+  $filter: String
+) {
+  deploymentLogs(
+    deploymentId: $deploymentId
+    limit: $limit
+    startDate: $startDate
+    endDate: $endDate
+    filter: $filter
+  ) {
+    message
+    severity
+    timestamp
+  }
+}
+
+query BuildLogs(
+  $deploymentId: String!
+  $limit: Int
+  $startDate: DateTime
+  $endDate: DateTime
+  $filter: String
+) {
+  buildLogs(
+    deploymentId: $deploymentId
+    limit: $limit
+    startDate: $startDate
+    endDate: $endDate
+    filter: $filter
+  ) {
+    message
+    severity
+    timestamp
+  }
+}
+
+query EnvironmentLogs(
+  $environmentId: String!
+  $anchorDate: String
+  $afterDate: String
+  $afterLimit: Int
+  $beforeDate: String
+  $beforeLimit: Int
+  $filter: String
+) {
+  environmentLogs(
+    environmentId: $environmentId
+    anchorDate: $anchorDate
+    afterDate: $afterDate
+    afterLimit: $afterLimit
+    beforeDate: $beforeDate
+    beforeLimit: $beforeLimit
+    filter: $filter
+  ) {
+    message
+    severity
+    timestamp
+  }
+}
+
+# Deployment listing
+query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
+  deployments(input: $input, first: $first, after: $after) {
+    edges {
+      node {
+        id
+        status
+        createdAt
+        staticUrl
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

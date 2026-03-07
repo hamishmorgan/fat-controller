@@ -1,7 +1,7 @@
 # CLI Architecture Design
 
-**Goal:** Define the end-state command structure, scope model, and config
-file conventions for fat-controller as a comprehensive Railway management
+**Goal:** Define the end-state command structure, config file format, and
+interaction model for fat-controller as a comprehensive Railway management
 tool.
 
 **Status:** Draft.
@@ -10,9 +10,9 @@ tool.
 
 ## Principles
 
-1. **Scope lives in the file, not the command.** `fat-controller apply`
-   works the same whether the file describes a whole environment or a
-   single service. The file declares what it manages.
+1. **Environment scope.** Every config file has the same schema and
+   manages services within a single project+environment. Top-level
+   keys are tool settings and context. TOML tables are services.
 
 2. **Declarative and imperative are separate.** Declarative commands
    (`init`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
@@ -36,9 +36,9 @@ tool.
 5. **No local state file.** Live state always comes from Railway's API.
    Diffs are never stale.
 
-6. **One file, one scope.** Each config file is self-contained and
-   targets one scope. Multi-environment setups use one file per
-   environment, not overlays.
+6. **Files cascade.** Multiple config files merge in precedence order
+   (global → project → directory → local). Later files override
+   earlier ones. Multi-environment setups use one file per environment.
 
 ---
 
@@ -73,31 +73,44 @@ User
           Deployment Triggers
 ```
 
-Every level has configurable state.
+Every level has configurable state. fat-controller manages the
+**Environment** level and below declaratively. Higher levels (User,
+Workspace, Project) are context for targeting — set via config keys,
+env vars, or CLI flags — but not managed as desired state.
 
 ---
 
-## Scope model
+## Config file schema
 
-A config file targets exactly one scope. The scope is inferred from
-which keys are present:
+Every config file has the same schema. There is one scope:
+environment. A file manages services within a single
+project+environment.
 
-| Scope | Required keys | What it manages |
-|-------|--------------|-----------------|
-| **User** | (none — implied by auth) | API tokens, SSH keys, preferences |
-| **Workspace** | `workspace` (no `project`) | Workspace settings, trusted domains, notification rules, members |
-| **Project** | `project` (no `environment`) | Project settings, tokens, members, environments |
-| **Environment** | `project` + `environment` | All services in one environment: shared vars, per-service vars, deploy settings, resources, domains, volumes, networking |
-| **Service** | `project` + `environment` + `service` | One service: its vars, deploy settings, resources, domains, volumes |
+**Top-level keys** are tool settings and context:
 
-### Environment scope
+| Key | Description |
+|-----|-------------|
+| `workspace` | Workspace name or ID |
+| `project` | Project name or ID |
+| `environment` | Environment name |
+| `timeout` | API request timeout |
+| `output` | Output format: `text`, `json`, `toml` |
+| `color` | Color: `auto`, `always`, `never` |
+| `show_secrets` | Show secret values instead of masking |
+| `sensitive_keywords` | Keywords for detecting sensitive variable names |
+| `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
+| `suppress_warnings` | Warning codes to suppress |
+| `create` | Merge flag default |
+| `update` | Merge flag default |
+| `delete` | Merge flag default |
 
-Manages all services within a single project+environment.
+**TOML tables** are Railway state — services and their entities:
 
 ```toml
 workspace = "Hamish Morgan's Projects"
 project = "Life"
 environment = "production"
+timeout = "60s"
 
 [shared.variables]
 NODE_ENV = "production"
@@ -121,75 +134,10 @@ memory_gb = 4
 data = { mount = "/data", size_gb = 10 }
 ```
 
-### Service scope
-
-A subset of environment scope, targeting one service. Useful in
-monorepos where each service team owns their own config file.
-
-```toml
-project = "Life"
-environment = "production"
-service = "api"
-
-[variables]
-PORT = "8080"
-
-[deploy]
-builder = "NIXPACKS"
-start_command = "node dist/server.js"
-
-[resources]
-vcpus = 2
-memory_gb = 4
-
-[domains]
-"api.example.com" = { port = 8080 }
-```
-
-Note: no service name prefix on section headers — the `service` key
-establishes the scope. `[variables]` instead of `[api.variables]`.
-
-### Project scope
-
-Manages project-level settings and can declare which environments
-should exist. When `apply` runs against a project-scope file and an
-environment doesn't exist, it creates it.
-
-```toml
-workspace = "Hamish Morgan's Projects"
-project = "Life"
-
-[project]
-pr_deploys = true
-base_environment = "production"
-
-[project.environments]
-production = {}
-staging = {}
-```
-
-### Workspace scope
-
-```toml
-workspace = "Hamish Morgan's Projects"
-
-[workspace]
-preferred_region = "us-west1"
-two_factor_required = true
-
-[workspace.trusted_domains]
-"example.com" = {}
-```
-
-### User scope
-
-```toml
-[user.preferences]
-# notification settings, etc.
-```
-
-Smallest surface area. Most user settings are better managed in the
-dashboard.
+A file doesn't need to include everything. A global config might only
+set `timeout` and `output`. A project-level file might set `workspace`,
+`project`, and `[shared.variables]`. An environment-level file sets
+`environment` and per-service config. The cascade merges them all.
 
 ---
 
@@ -213,15 +161,15 @@ Default log level is INFO.
 ### Context flags
 
 Commands that target Railway resources accept these flags. Values are
-also resolved from the config file, settings file, env vars, and token
-scope — see [Context resolution](#context-resolution).
+also resolved from the config file, env vars, and token scope — see
+[Context resolution](#context-resolution).
 
 | Flag | Env var | Config key | Description |
 |------|---------|------------|-------------|
 | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | Workspace name or ID |
 | `--project` | `FAT_CONTROLLER_PROJECT` | `project` | Project name or ID |
 | `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | Environment name |
-| `--service` | `FAT_CONTROLLER_SERVICE` | `service` | Service name (narrows scope) |
+| `--service` | `FAT_CONTROLLER_SERVICE` | `service` | Service name (filters to one service) |
 
 ### Config flags
 
@@ -707,8 +655,6 @@ Settings are resolved in order, highest priority last:
 
 ### What the TOML can express
 
-**Environment / service scope:**
-
 | Entity | Section | Fields |
 |--------|---------|--------|
 | Variables (shared) | `[shared.variables]` | key-value pairs |
@@ -723,27 +669,6 @@ Settings are resolved in order, highest priority last:
 | Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
 | Egress gateways | `[svc.egress]` | service association |
 
-**Project scope:**
-
-| Entity | Section | Fields |
-|--------|---------|--------|
-| Project settings | `[project]` | PR deploys, base environment |
-| Environments | `[project.environments]` | name |
-
-**Workspace scope:**
-
-| Entity | Section | Fields |
-|--------|---------|--------|
-| Workspace settings | `[workspace]` | Preferred region, 2FA enforcement |
-| Trusted domains | `[workspace.trusted_domains]` | domain |
-| Notification rules | `[workspace.notifications]` | TBD |
-
-**User scope:**
-
-| Entity | Section | Fields |
-|--------|---------|--------|
-| Preferences | `[user.preferences]` | TBD |
-
 ### What stays imperative-only
 
 These are actions, not state — no declarative equivalent:
@@ -752,14 +677,6 @@ These are actions, not state — no declarative equivalent:
 - Logs (tail, fetch)
 - Volume backups (create, restore)
 - Template deployment
-
-### Potentially declarative
-
-These have state but small surface area:
-
-- Project/workspace membership (members, roles)
-- Integrations
-- Observability dashboards
 
 ---
 
@@ -781,16 +698,19 @@ fat-controller apply --config environments/production/fat-controller.toml
 fat-controller apply --config environments/staging/fat-controller.toml
 ```
 
-### Pattern 2: Service-scoped files (monorepo)
+### Pattern 2: Per-service files (monorepo)
 
 ```text
 services/
-  api/fat-controller.toml           # service = "api"
-  worker/fat-controller.toml        # service = "worker"
+  api/fat-controller.toml           # declares only [api.*] tables
+  worker/fat-controller.toml        # declares only [worker.*] tables
 ```
 
-Each service team owns their own file. A CI pipeline applies each
-file independently.
+Each file is environment-scoped but only declares one service's
+tables. Because `apply` is additive by default, each file only
+touches the services it mentions. A CI pipeline applies each file
+independently. Shared variables live in a root-level config or are
+duplicated across files.
 
 ---
 

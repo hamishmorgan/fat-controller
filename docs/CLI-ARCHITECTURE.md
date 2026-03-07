@@ -86,14 +86,20 @@ env vars, or CLI flags — but not managed as desired state.
 
 ## Config file schema
 
-The file **is** the environment. Top-level keys are the environment's
-identity, state, and tool settings:
+The file **is** the environment. Top-level keys are the
+environment's identity and state:
 
 | Key | Description |
 |-----|-------------|
 | `name` | Environment name |
 | `id` | Environment ID (optional, populated by `adopt`) |
 | `variables` | Environment-wide shared variables |
+
+**`[tool]`** holds tool settings — how fat-controller behaves,
+not what it manages:
+
+| Key | Description |
+|-----|-------------|
 | `timeout` | API request timeout |
 | `format` | Output format: `text`, `json`, `toml` |
 | `color` | Color: `auto`, `always`, `never` |
@@ -116,15 +122,17 @@ for variables, deploy settings, etc.
 
 ### Reserved names
 
-`workspace` and `project` are TOML tables and structurally cannot
-collide with `[[service]]` entries. `variables` is a top-level
-key. No service name reservation is needed.
+`tool`, `workspace`, and `project` are TOML tables and
+structurally cannot collide with `[[service]]` entries. No
+service name reservation is needed.
 
 ```toml
 name = "production"
 id = "env_abc123"
-timeout = "60s"
 variables = { NODE_ENV = "production" }
+
+[tool]
+timeout = "60s"
 
 [workspace]
 name = "Hamish Morgan's Projects"
@@ -176,11 +184,11 @@ Every command accepts these flags.
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
 | `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
-| `--json` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output as JSON |
-| `--toml` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output as TOML |
-| `--raw` | | `FAT_CONTROLLER_FORMAT` | `format` | | Output bare value, no formatting |
-| `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
-| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
+| `--json` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output as JSON |
+| `--toml` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output as TOML |
+| `--raw` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output bare value, no formatting |
+| `--color` | | `FAT_CONTROLLER_COLOR` | `tool.color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
+| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.timeout` | `30s` | API request timeout |
 | `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
 | `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
@@ -217,8 +225,8 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
-| `--secrets` | `FAT_CONTROLLER_SECRETS` | `secrets` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
+| `--config` | `FAT_CONTROLLER_CONFIG` | `tool.config` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
+| `--secrets` | `FAT_CONTROLLER_SECRETS` | `tool.secrets` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
 
 ### Merge flags
 
@@ -227,9 +235,9 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `create` | on | Add entities that exist in source but not target |
-| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `update` | on | Overwrite entities that exist in both |
-| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `delete` | off | Remove entities that exist in target but not source |
+| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `tool.create` | on | Add entities that exist in source but not target |
+| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `tool.update` | on | Overwrite entities that exist in both |
+| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `tool.delete` | off | Remove entities that exist in target but not source |
 
 ### Mutation flags
 
@@ -238,14 +246,14 @@ Commands that modify state (`adopt`, `apply`, `deploy`, `redeploy`,
 
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
-| `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Preview changes without executing |
-| `--fail-fast` | | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |
+| `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `tool.dry_run` | `false` | Preview changes without executing |
+| `--fail-fast` | | `FAT_CONTROLLER_FAIL_FAST` | `tool.fail_fast` | `false` | Stop on first error |
 
 ### Apply-specific flags
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments after variable changes |
+| `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `tool.skip_deploys` | `false` | Don't trigger redeployments after variable changes |
 
 ### Display flags
 
@@ -254,17 +262,18 @@ these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking |
+| `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `tool.show_secrets` | `false` | Show secret values instead of masking |
 
 ### Config-only keys
 
-These are set only in the config file, not via flags or env vars.
+These are set only in the config file (`[tool]`), not via flags
+or env vars.
 
 | Config key | Default | Description |
 |------------|---------|-------------|
-| `sensitive_keywords` | *(built-in list)* | Keywords for detecting sensitive variable names |
-| `sensitive_allowlist` | *(built-in list)* | Keywords that suppress false-positive secret matches |
-| `suppress_warnings` | `[]` | Warning codes to suppress (e.g. `["W012"]`) |
+| `tool.sensitive_keywords` | *(built-in list)* | Keywords for detecting sensitive variable names |
+| `tool.sensitive_allowlist` | *(built-in list)* | Keywords that suppress false-positive secret matches |
+| `tool.suppress_warnings` | `[]` | Warning codes to suppress (e.g. `["W012"]`) |
 
 ---
 
@@ -887,6 +896,7 @@ preferences that shouldn't be committed:
 
 ```toml
 # fat-controller.local.toml
+[tool]
 format = "json"
 show_secrets = true
 ```
@@ -898,8 +908,9 @@ lowest priority first:
 
 1. **Compiled-in defaults** — built into the binary.
 2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`.
-   Always at this fixed path. Useful for setting `format`, `color`,
-   `timeout`, or a default `workspace` across all projects.
+   Always at this fixed path. Useful for setting `[tool]` preferences
+   (`format`, `color`, `timeout`) or a default `[workspace]` across
+   all projects.
 3. **Discovered config files** — all config files found by walking
    upward from the working directory to the git root (see
    [Config file discovery](#config-file-discovery)). Merged
@@ -914,10 +925,10 @@ lowest priority first:
 Concrete example with this directory structure:
 
 ```text
-$XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
+$XDG_CONFIG_HOME/fat-controller/config.toml   # [tool] timeout = "60s"
 repo-root/fat-controller.toml                  # [workspace], [project], [[service]]
 environments/production/fat-controller.toml    # name, variables, [[service]] overrides
-environments/production/fat-controller.local.toml  # show_secrets = true
+environments/production/fat-controller.local.toml  # [tool] show_secrets = true
 ```
 
 Running from `environments/production/`, the merge order is:
@@ -932,10 +943,12 @@ Running from `environments/production/`, the merge order is:
 
 **Merge rules:**
 
-- **Top-level scalar keys** (`name`, `id`, `timeout`, etc.): later
-  values replace earlier ones.
+- **Top-level scalar keys** (`name`, `id`): later values replace
+  earlier ones.
 - **Top-level `variables`**: deep merge. Individual keys from
   higher-precedence files override lower-precedence ones.
+- **`[tool]`**: deep merge. A global config can set `timeout` and
+  a project config can override it.
 - **`[workspace]`, `[project]`**: deep merge. A root config
   typically sets these; environment configs inherit them.
 - **`[[service]]` entries**: matched by `id` (if present) or

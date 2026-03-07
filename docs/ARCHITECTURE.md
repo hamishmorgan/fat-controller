@@ -83,7 +83,7 @@ not what it manages:
 
 | Key | Description |
 |-----|-------------|
-| `api_timeout` | API request timeout |
+| `api_timeout` | Overall time limit per API request (connect through response) |
 | `output_format` | Output format: `text`, `json`, `toml` |
 | `output_color` | Color: `auto`, `always`, `never` |
 | `show_secrets` | Show secret values instead of masking |
@@ -213,7 +213,7 @@ Every command accepts these flags.
 | `--toml` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output as TOML |
 | `--raw` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output bare value, no formatting |
 | `--color` | | `FAT_CONTROLLER_COLOR` | `tool.output_color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
-| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.api_timeout` | `30s` | API request timeout |
+| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.api_timeout` | `30s` | Time limit per API request |
 | `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
 | `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |

@@ -156,11 +156,11 @@ sub-header form also works — the parser treats both identically.
 
 Two interpolation syntaxes serve different purposes:
 
-- **`${VAR}`** — local secret substitution. Resolved by
-  fat-controller at load time from the secrets file (if declared)
-  or the process environment. The value never appears in the
-  config file. Use for passwords, API keys, and other values that
-  should not be committed.
+- **`${VAR}`** — variable substitution. Resolved by fat-controller
+  at load time from env files (if declared) or the process
+  environment. The value never appears in the config file. Use for
+  any values that should be sourced externally — secrets, but also
+  environment-specific settings, feature flags, etc.
 
 - **`${{service.VAR}}`** — Railway reference variable. Passed
   through to Railway verbatim. Railway resolves the reference at
@@ -176,46 +176,60 @@ variables = {
 }
 ```
 
-In this example, `SECRET_KEY` is resolved from the secrets file
-or process environment and sent to Railway as a literal value.
+In this example, `SECRET_KEY` is resolved from an env file or the
+process environment and sent to Railway as a literal value.
 `DATABASE_URL` is stored in Railway as a reference — Railway
 resolves it to the `postgres` service's `DATABASE_URL` at deploy
 time.
 
 **`${VAR}` resolution order:**
 
-1. **Secrets file** — if declared via `tool.secrets_file`,
-   `--secrets`, or `FAT_CONTROLLER_SECRETS_FILE`.
-2. **Process environment** — `os.Getenv`. In CI, secrets are
-   typically injected as environment variables by the provider.
+1. **Env files** — checked in declaration order if declared via
+   `tool.env_file`, `--env-file`, or `FAT_CONTROLLER_ENV_FILE`.
+   First match wins.
+2. **Process environment** — `os.Getenv`. In CI, variables are
+   typically injected by the provider.
 3. **Error** — `validate` warns, `apply` errors.
 
 No magic file discovery. If the process environment already has
-the variable, no secrets file is needed.
+the variable, no env file is needed.
 
-### Secrets file
+### Env files
 
-The secrets file is optional — a convenience for loading multiple
-`${VAR}` values at once. It uses dotenv format (`KEY=value`, one
+Env files are optional — a convenience for loading multiple
+`${VAR}` values at once. They use dotenv format (`KEY=value`, one
 per line):
 
 ```text
 SECRET_KEY=super-secret-value
-REGISTRY_PASSWORD=hunter2
+DATABASE_HOST=db.example.com
 ```
 
-A config file can declare its own secrets file:
+A config file can declare one or more env files:
 
 ```toml
 [tool]
-secrets_file = ".env.production"
+env_file = [".env", ".env.production"]
+```
+
+A single file can be specified as a string instead of a list:
+
+```toml
+[tool]
+env_file = ".env.production"
 ```
 
 Paths are relative to the config file that declares them. This
 participates in the cascade normally — a root config could set
-`secrets_file = ".env"` and an environment config could override
-it. `--secrets` and `FAT_CONTROLLER_SECRETS_FILE` override
-everything, relative to the working directory.
+`env_file = ".env"` and an environment config could override it.
+`--env-file` and `FAT_CONTROLLER_ENV_FILE` override everything,
+relative to the working directory.
+
+During `adopt`, sensitive values are detected and written as
+`${VAR}` references in the config. The actual values are written
+to the last env file in the list. If no env file is declared,
+`adopt` prompts for where to write them — or errors in
+non-interactive mode.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -276,7 +290,7 @@ Commands that read or write config files accept these flags.
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
 | `--config` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
-| `--secrets` | `FAT_CONTROLLER_SECRETS_FILE` | `tool.secrets_file` | *(none)* | Secrets file path for `${VAR}` interpolation |
+| `--env-file` | `FAT_CONTROLLER_ENV_FILE` | `tool.env_file` | *(none)* | Env file path(s) for `${VAR}` interpolation |
 
 ### Merge flags
 
@@ -430,10 +444,8 @@ is recorded as bookkeeping.
 
 Pull live Railway state into the local config file. Sensitive
 values are detected and written as `${VAR}` references in the
-config, with the actual values written to the secrets file (if
-declared via `tool.secrets_file`). If no secrets file is declared,
-`adopt` prompts for where to write them — or errors in
-non-interactive mode.
+config, with the actual values written to an env file (see
+[Env files](#env-files)).
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
 
@@ -457,7 +469,7 @@ Interactive resolution:
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
 | Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default, error if missing |
-| Secrets file (`--secrets`) | From `tool.secrets_file` | Use default, prompt if missing | Use default, error if missing |
+| Env file (`--env-file`) | From `tool.env_file` | Use default, prompt if missing | Use default, error if missing |
 | Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
 | Project | From config file | Use default, prompt if missing | Use default, error if missing |
 | Environment | From config file | Use default, prompt if missing | Use default, error if missing |
@@ -551,8 +563,8 @@ calls. Catches problems before `apply`:
 - Duplicate service names
 - Broken `${{service.VAR}}` references (referencing services
   not defined in the config)
-- Unresolvable `${VAR}` references (not in secrets file or
-  process environment)
+- Unresolvable `${VAR}` references (not in env files or process
+  environment)
 - Mutually exclusive fields (`repo` + `image`, `scale` +
   `deploy.region`)
 
@@ -947,9 +959,8 @@ When using the `.config/fat-controller/` directory form:
 | `.config/fat-controller/config.toml` | Desired state + shared settings | Yes |
 | `.config/fat-controller/config.local.toml` | Personal overrides | No (gitignored) |
 
-The secrets file is not convention-based — declare it explicitly
-via `tool.secrets_file` or pass `--secrets`. See
-[Secrets file](#secrets-file).
+Env files are not convention-based — declare them explicitly via
+`tool.env_file` or pass `--env-file`. See [Env files](#env-files).
 
 ### Local overrides
 
@@ -1071,8 +1082,8 @@ repo-sourced services (e.g. `"main"`). If neither `repo` nor
 `image` is specified, `apply` creates the service with no source.
 
 `registry_credentials` authenticates to a private Docker registry.
-It takes `username` and `password` — passwords should use `${VAR}`
-interpolation to avoid storing secrets in the config file:
+It takes `username` and `password` — use `${VAR}` interpolation
+for credentials to keep them out of the config file:
 
 ```toml
 deploy = {

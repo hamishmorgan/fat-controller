@@ -512,20 +512,20 @@ fat-controller show [path]
 
 | Path | What it shows |
 |------|---------------|
-| *(none)* | Full managed scope: environment + all services |
-| `workspace` | Workspace metadata (name, ID, members, settings) |
-| `project` | Project metadata (name, ID, settings, tokens) |
-| `environment` | Environment metadata and shared variables |
-| `environment.variables` | Just the shared variables |
+| *(none)* | Everything in the current environment |
+| `variables` | Shared variables for this environment |
 | `api` | Everything about the `api` service |
 | `api.variables` | Just `api`'s variables |
 | `api.variables.PORT` | Single value |
+| `workspace` | Peek up: workspace metadata (name, ID, members, settings) |
+| `project` | Peek up: project metadata (name, ID, settings, tokens) |
 
-Paths mirror the config file structure. `workspace`, `project`,
-and `environment` map to their corresponding config tables. All
-other top-level paths are resolved as service names — the tool
-matches the name to a `[[service]]` entry, using its `id` if
-present.
+The environment is the implicit scope — the tool always operates
+within one environment. Paths without a qualifier refer to things
+*in* the environment: `variables` for shared variables, service
+names for services. `workspace` and `project` navigate upward to
+parent resources. All other top-level paths are resolved as
+service names, matched to `[[service]]` entries by `id` or `name`.
 
 Flags: global, context, display.
 

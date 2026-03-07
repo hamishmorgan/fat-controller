@@ -76,7 +76,7 @@ environment's identity and state:
 | `id` | Environment ID (optional, populated by `adopt`) |
 | `variables` | Environment-wide shared variables |
 | `volumes` | Unattached volumes (name → mount path) |
-| `buckets` | S3-compatible object storage buckets (name only; credentials are read-only) |
+| `buckets` | S3-compatible object storage buckets |
 
 **`[tool]`** holds tool settings — how fat-controller behaves,
 not what it manages:
@@ -150,6 +150,48 @@ BurntSushi/toml v1.6.0+). This keeps all fields visually grouped
 under their parent entry. The equivalent `[service.variables]`
 sub-header form also works — the parser treats both identically.
 
+### Variable interpolation
+
+Two interpolation syntaxes serve different purposes:
+
+- **`${VAR}`** — local secret substitution. Resolved by
+  fat-controller at load time from the secrets file (see
+  [Secrets file](#secrets-file)). The value never appears in the
+  config file. Use for passwords, API keys, and other values that
+  should not be committed.
+
+- **`${{service.VAR}}`** — Railway reference variable. Passed
+  through to Railway verbatim. Railway resolves the reference at
+  deploy time, substituting the value from the named service. Use
+  for cross-service references like database URLs.
+
+```toml
+[[service]]
+name = "api"
+variables = {
+    SECRET_KEY = "${SECRET_KEY}",
+    DATABASE_URL = "${{postgres.DATABASE_URL}}",
+}
+```
+
+In this example, `SECRET_KEY` is read from the local secrets file
+and sent to Railway as a literal value. `DATABASE_URL` is stored
+in Railway as a reference — Railway resolves it to the `postgres`
+service's `DATABASE_URL` at deploy time.
+
+### Secrets file
+
+The secrets file uses dotenv format (`KEY=value`, one per line).
+It is co-located with the primary config file and gitignored:
+
+```text
+SECRET_KEY=super-secret-value
+REGISTRY_PASSWORD=hunter2
+```
+
+See [File locations summary](#file-locations-summary) for the
+exact co-location rules.
+
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
 A root config might set `[workspace]`, `[project]`, and shared
@@ -177,8 +219,8 @@ Every command accepts these flags.
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
-Default format is `auto` — the tool infers the best format from
-context (e.g. file extension, whether stdout is a TTY). `--json`,
+Default format is `auto` — the tool picks the best format from
+context (e.g. text for TTY, JSON for piped output). `--json`,
 `--toml`, and `--raw` are mutually exclusive. `--raw` outputs the
 bare value with no quoting or structure — only valid when the
 result is a single scalar (e.g. `show api.variables.PORT`); errors
@@ -473,7 +515,17 @@ and configured in parallel.
 
 ### `validate`
 
-Check config file for warnings without making API calls.
+Check config file for errors and warnings without making API
+calls. Catches problems before `apply`:
+
+- TOML syntax and schema errors
+- Unknown keys or invalid value types
+- Duplicate service names
+- Broken `${{service.VAR}}` references (referencing services
+  not defined in the config)
+- Missing `${VAR}` entries in the secrets file
+- Mutually exclusive fields (`repo` + `image`, `scale` +
+  `deploy.region`)
 
 ```text
 fat-controller validate [path]
@@ -516,11 +568,10 @@ fat-controller show [path]
 The environment is the implicit scope — the tool always operates
 within one environment. Paths without a qualifier refer to things
 *in* the environment: `variables` for shared variables, `volumes`
-for unattached volumes, `buckets` for object storage, service
-names for services. `workspace`
-and `project` navigate upward to parent resources. All other
-top-level paths are resolved as service names, matched to
-`[[service]]` entries by `id` or `name`.
+for unattached volumes, `buckets` for object storage, and service
+names for services. `workspace` and `project` navigate upward to
+parent resources. All other top-level paths are resolved as service
+names, matched to `[[service]]` entries by `id` or `name`.
 
 Flags: global, context, display.
 
@@ -1028,15 +1079,71 @@ scale = { us-west1 = 3, europe-west4 = 2 }
 
 `deploy.num_replicas` and `deploy.region` handle the common
 single-region case. `service.scale` handles multi-region. When
-`scale` is present, it takes precedence over `deploy.num_replicas`
-and `deploy.region` — the tool errors if both are set with
-conflicting values. Single-region services can use either form:
+both are present, `scale` takes precedence — `deploy.region` and
+`deploy.num_replicas` are ignored. Single-region services can use
+either form:
 
 ```toml
 # These are equivalent:
 deploy = { region = "us-west1", num_replicas = 2 }
 scale = { us-west1 = 2 }
 ```
+
+### Comprehensive service example
+
+A service using all sub-resource types:
+
+```toml
+[[service]]
+name = "api"
+id = "srv_abc123"
+icon = "server"
+variables = {
+    PORT = "8080",
+    SECRET_KEY = "${SECRET_KEY}",
+    DATABASE_URL = "${{postgres.DATABASE_URL}}",
+}
+deploy = {
+    repo = "org/api",
+    branch = "main",
+    builder = "NIXPACKS",
+    build_command = "npm run build",
+    start_command = "node dist/server.js",
+    pre_deploy_command = ["npx", "prisma", "migrate", "deploy"],
+    root_directory = "apps/api",
+    dockerfile_path = "Dockerfile",
+    healthcheck_path = "/health",
+    healthcheck_timeout = 30,
+    restart_policy = "ON_FAILURE",
+    restart_policy_max_retries = 5,
+    cron_schedule = "",
+    draining_seconds = 30,
+    overlap_seconds = 5,
+    sleep_application = false,
+    watch_patterns = ["apps/api/**", "packages/shared/**"],
+    ipv6_egress = false,
+}
+resources = { vcpus = 2, memory_gb = 4 }
+scale = { us-west1 = 3, europe-west4 = 2 }
+domains = {
+    "api.example.com" = { port = 8080 },
+    service_domain = { port = 8080 },
+}
+volumes = {
+    data = { mount = "/data" },
+    cache = { mount = "/cache", region = "us-west1" },
+}
+tcp_proxies = [5432]
+network = true
+triggers = [
+    { branch = "main", repository = "org/api", check_suites = true },
+]
+egress = ["us-west1"]
+```
+
+Most services need only a few of these. The
+[minimal service definition](#what-the-toml-can-express) is just
+`name`.
 
 ### What stays imperative-only
 
@@ -1237,9 +1344,9 @@ $ fat-controller show --ask --project Life
                 staging
 ```
 
-Without `--ask`, if the config file has `project = "Life"` and
-`environment = "production"`, `show` uses those silently — no
-prompts at all.
+Without `--ask`, if the config file sets the project name to
+`"Life"` and the environment name to `"production"`, `show` uses
+those silently — no prompts at all.
 
 **`--ask`, `--yes`, and `--dry-run`:**
 
@@ -1316,7 +1423,11 @@ adopt --delete api.variables       # sync api variables, remove stale
 This eliminates the need for per-section `managed` keys — scope
 `--delete` with a path to get per-section delete granularity.
 
-Without `--delete`, explicit delete markers handle one-off removals:
+Without `--delete`, individual resources can be marked for removal
+with `delete = true`. This is a config-file directive, not Railway
+state — apply removes the resource from Railway and then removes
+the marker from the config file. Works at any level: a service, a
+variable, a volume, a domain.
 
 ```toml
 [[service]]

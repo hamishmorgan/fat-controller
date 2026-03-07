@@ -15,12 +15,10 @@ tool.
    and tool settings. `[workspace]` and `[project]` provide parent
    context. `[[service]]` arrays declare services.
 
-2. **Declarative and imperative are separate.** Declarative commands
-   (`new`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
-   desired state — `new` scaffolds it, `adopt` imports it, `apply`
-   converges it. Imperative commands (`deploy`, `restart`, `logs`,
-   etc.) perform actions on a running system. Both share context
-   resolution but not mechanics.
+2. **Config is state, not actions.** The config file expresses what
+   the infrastructure should look like — variables, domains, deploy
+   settings, resources. It never expresses things that happen once:
+   deployments, restarts, rollbacks. Those are commands.
 
 3. **Apply creates everything.** If the config declares a project,
    environment, service, volume, or domain that doesn't exist in

@@ -195,91 +195,297 @@ dashboard.
 
 ## Command structure
 
-### Declarative commands
+### Global flags
 
-The primary workflow. These operate on whatever scope the config file
-declares.
+Every command accepts these flags.
+
+| Flag | Short | Env var | Config key | Default | Description |
+|------|-------|---------|------------|---------|-------------|
+| `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
+| `--output` | `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml` |
+| `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
+| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
+| `--verbose` | `-v` | — | — | `false` | Debug output |
+| `--quiet` | `-q` | — | — | `false` | Suppress informational output |
+
+### Context flags
+
+Commands that target Railway resources accept these flags. Values are
+also resolved from the config file, settings file, env vars, and token
+scope — see [Context resolution](#context-resolution).
+
+| Flag | Env var | Config key | Description |
+|------|---------|------------|-------------|
+| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | Workspace name or ID |
+| `--project` | `FAT_CONTROLLER_PROJECT` | `project` | Project name or ID |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | Environment name |
+| `--service` | `FAT_CONTROLLER_SERVICE` | `service` | Service name (narrows scope) |
+
+### Config flags
+
+Commands that read or write config files accept these flags.
+
+| Flag | Env var | Config key | Default | Description |
+|------|---------|------------|---------|-------------|
+| `--config` | `FAT_CONTROLLER_CONFIG` | `config` | `fat-controller.toml` | Config file path. Repeatable for overlays. |
+
+### Merge flags
+
+`apply` and `adopt` accept these flags. See
+[Merge behavior](#merge-behavior) for details.
+
+| Flag | Env var | Config key | Default | Description |
+|------|---------|------------|---------|-------------|
+| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `create` | on | Add entities that exist in source but not target |
+| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `update` | on | Overwrite entities that exist in both |
+| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `delete` | off | Remove entities that exist in target but not source |
+
+### Mutation flags
+
+Commands that modify Railway state (`apply`, `deploy`, `redeploy`,
+`restart`, `rollback`, `stop`) accept these flags.
+
+| Flag | Short | Env var | Config key | Default | Description |
+|------|-------|---------|------------|---------|-------------|
+| `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Skip confirmation prompts |
+| `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `dry_run` | `false` | Preview changes without executing |
+| `--fail-fast` | | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |
+
+### Apply-specific flags
+
+| Flag | Env var | Config key | Default | Description |
+|------|---------|------------|---------|-------------|
+| `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `skip_deploys` | `false` | Don't trigger redeployments after variable changes |
+
+### Display flags
+
+Commands that show config or state (`show`, `diff`, `adopt`) accept
+these flags.
+
+| Flag | Env var | Config key | Default | Description |
+|------|---------|------------|---------|-------------|
+| `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `show_secrets` | `false` | Show secret values instead of masking |
+
+### Config-only keys
+
+These are set only in the config file, not via flags or env vars.
+
+| Config key | Default | Description |
+|------------|---------|-------------|
+| `sensitive_keywords` | *(built-in list)* | Keywords for detecting sensitive variable names |
+| `sensitive_allowlist` | *(built-in list)* | Keywords that suppress false-positive secret matches |
+| `suppress_warnings` | `[]` | Warning codes to suppress (e.g. `["W012"]`) |
+
+---
+
+### Commands
+
+#### `init`
+
+Guided first-time config bootstrap. A guided version of `adopt` —
+interactive prompts to select workspace/project/environment/services,
+plus secret extraction into `.env.fat-controller`.
 
 ```text
-fat-controller init              Guided first-time config bootstrap
-fat-controller adopt [path]      Merge live Railway state into config
-fat-controller diff              Compare config against live state
-fat-controller apply             Merge config into live Railway state
-fat-controller validate          Check config for warnings (no API)
-fat-controller show [path]       Display live state (read-only)
+fat-controller init [--new] [--template <name>]
 ```
 
-`apply` and `adopt` are symmetric:
-
-| Command | Direction | Behavior |
-|---------|-----------|----------|
-| `apply` | local config → Railway | Additive merge of config into live state. Only touches what's declared. |
-| `adopt` | Railway → local config | Additive merge of live state into config. Only adds what's missing or changed. |
-
-`show` is the read-only counterpart — display live state without
-modifying the config file. `show` with no path gives an overview.
-`show api.variables.PORT` gives a single value.
-
-### Init
-
-`fat-controller init` creates a config file for the first time. It is
-a guided version of `adopt` — interactive prompts to select
-workspace/project/environment/services, plus secret extraction into
-`.env.fat-controller`.
+| Arg/flag | Description |
+|----------|-------------|
+| `--new` | Scaffold from scratch instead of importing from remote |
+| `--template <name>` | Scaffold from a Railway template |
 
 After the initial bootstrap, use `adopt` to bring additional resources
 into an existing config (e.g. `adopt redis` after adding a service in
 the dashboard).
 
-`init` modes:
+Flags: global, context, config, mutation (`--yes`, `--dry-run`).
 
-- **From remote (default when remote exists):** Guided `adopt` with
-  interactive selection and secret extraction.
+#### `adopt`
 
-- **From scratch (`--new`):** Scaffolds a minimal config file. Prompts
-  for project name, environment name, service names. Writes a skeleton
-  that you then `apply` to create everything in Railway.
-
-- **From template:** `init --template <name>` scaffolds from a Railway
-  template definition.
-
-### Imperative action commands
-
-Actions on running services. No argument = all services in the
-environment. One or more service names = filter to those services.
+Merge live Railway state into the local config file. Additive by
+default — adds missing entries, updates changed entries, does not
+remove entries unless `--delete` is set.
 
 ```text
-fat-controller deploy [service...]     Trigger a deployment
-fat-controller redeploy [service...]   Redeploy current image
-fat-controller restart [service...]    Restart running deployment
-fat-controller rollback [service...]   Rollback to previous deployment
-fat-controller stop [service...]       Stop running deployment
-fat-controller logs [service...]       Tail logs
-fat-controller status [service...]     Show deployment status
+fat-controller adopt [path]
 ```
 
-### Discovery
+| Arg/flag | Description |
+|----------|-------------|
+| `path` | Optional dot-path to narrow scope (e.g. `redis`, `api.variables`) |
 
-`list` is a single command that takes a noun argument. Extensible to
-any entity type.
+Flags: global, context, config, merge, mutation, display.
+
+#### `diff`
+
+Compare local config against live Railway state. Read-only — no
+changes are made. Output reflects what `apply` would do given the
+current merge flag settings.
 
 ```text
-fat-controller list workspaces
-fat-controller list projects
-fat-controller list environments
-fat-controller list services
-fat-controller list deployments
-fat-controller list volumes
-fat-controller list domains
+fat-controller diff
 ```
 
-### Auth
+Flags: global, context, config, merge, display.
+
+#### `apply`
+
+Merge local config into live Railway state. Additive by default —
+creates missing entities, updates changed entities, does not delete
+unless `--delete` is set.
+
+```text
+fat-controller apply
+```
+
+Flags: global, context, config, merge, mutation, apply-specific.
+
+#### `validate`
+
+Check config file for warnings without making API calls.
+
+```text
+fat-controller validate
+```
+
+Flags: global, config.
+
+#### `show`
+
+Display live Railway state. Read-only. No path = full overview.
+Dot-path = narrow to a specific section or value.
+
+```text
+fat-controller show [path]
+```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `path` | Optional dot-path (e.g. `api`, `api.variables.PORT`) |
+
+Flags: global, context, display.
+
+#### `deploy`
+
+Trigger a deployment. No arguments = all services in the environment.
+
+```text
+fat-controller deploy [service...]
+```
+
+Flags: global, context, mutation.
+
+#### `redeploy`
+
+Redeploy the current image.
+
+```text
+fat-controller redeploy [service...]
+```
+
+Flags: global, context, mutation.
+
+#### `restart`
+
+Restart running deployments.
+
+```text
+fat-controller restart [service...]
+```
+
+Flags: global, context, mutation.
+
+#### `rollback`
+
+Rollback to the previous deployment.
+
+```text
+fat-controller rollback [service...]
+```
+
+Flags: global, context, mutation.
+
+#### `stop`
+
+Stop running deployments.
+
+```text
+fat-controller stop [service...]
+```
+
+Flags: global, context, mutation.
+
+#### `logs`
+
+Tail logs. No arguments = all services in the environment.
+
+```text
+fat-controller logs [service...]
+```
+
+Flags: global, context.
+
+#### `status`
+
+Show deployment status. No arguments = all services in the
+environment.
+
+```text
+fat-controller status [service...]
+```
+
+Flags: global, context.
+
+#### `list`
+
+List entities. Takes a noun argument for the entity type.
+
+```text
+fat-controller list <type>
+```
+
+| Type | Description |
+|------|-------------|
+| `workspaces` | Workspaces accessible to the current token |
+| `projects` | Projects in the workspace |
+| `environments` | Environments in the project |
+| `services` | Services in the project |
+| `deployments` | Deployments in the environment |
+| `volumes` | Volumes in the project |
+| `domains` | Domains in the environment |
+
+Flags: global, context.
+
+#### `auth login`
+
+Authenticate via browser-based OAuth.
 
 ```text
 fat-controller auth login
+```
+
+Flags: global.
+
+#### `auth logout`
+
+Clear stored credentials.
+
+```text
 fat-controller auth logout
+```
+
+Flags: global.
+
+#### `auth status`
+
+Show current authentication state.
+
+```text
 fat-controller auth status
 ```
+
+Flags: global.
 
 ---
 
@@ -440,39 +646,18 @@ Resolution order:
 
 ## Merge behavior
 
-`apply` and `adopt` share three boolean flags that control what the
-merge does. Each flag has both `--X` and `--no-X` forms. Defaults are
-configurable via settings file, env vars, or CLI flags (highest
-priority).
+`apply` and `adopt` share three merge flags (`--create`, `--update`,
+`--delete`) that control what the merge does. See
+[Merge flags](#merge-flags) for flag details and defaults.
 
-| Flag | Default | What it controls |
-|------|---------|-----------------|
-| `--create` / `--no-create` | on | Add entities that exist in source but not target |
-| `--update` / `--no-update` | on | Overwrite entities that exist in both source and target |
-| `--delete` / `--no-delete` | off | Remove entities that exist in target but not source |
-
-Applied to each command:
+`apply` and `adopt` are symmetric — the same flags have parallel
+meaning in opposite directions:
 
 | Flag | `apply` (config → Railway) | `adopt` (Railway → config) |
 |------|---------------------------|---------------------------|
 | `--create` | Create Railway entities not in Railway | Add config entries not in config |
 | `--update` | Update Railway entities that differ from config | Update config entries that differ from Railway |
 | `--delete` | Delete Railway entities not in config | Remove config entries not in Railway |
-
-Defaults are configurable at every settings level:
-
-```toml
-# .fat-controller.toml or $XDG_CONFIG_HOME/fat-controller/config.toml
-create = true
-update = true
-delete = false
-```
-
-```bash
-FAT_CONTROLLER_CREATE=true
-FAT_CONTROLLER_UPDATE=true
-FAT_CONTROLLER_DELETE=false
-```
 
 Common patterns:
 

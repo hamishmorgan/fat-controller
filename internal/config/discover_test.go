@@ -83,9 +83,13 @@ func TestLocalOverridePath(t *testing.T) {
 
 func TestDiscoverConfigs_WalkToGitRoot(t *testing.T) {
 	root := t.TempDir()
-	os.Mkdir(filepath.Join(root, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	deep := filepath.Join(root, "envs", "production")
-	os.MkdirAll(deep, 0o755)
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, filepath.Join(root, "fat-controller.toml"), "[workspace]\nname = \"Acme\"\n")
 	writeFile(t, filepath.Join(deep, "fat-controller.toml"), "name = \"production\"\n")
 
@@ -118,7 +122,9 @@ func TestDiscoverConfigs_NotInGitRepo(t *testing.T) {
 
 func TestDiscoverConfigs_NoConfigs(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	paths, err := config.DiscoverConfigs(dir)
 	if err != nil {
 		t.Fatal(err)

@@ -129,9 +129,13 @@ func TestLoadCascade_ConfigFile(t *testing.T) {
 
 func TestLoadCascade_Discovery(t *testing.T) {
 	root := t.TempDir()
-	os.Mkdir(filepath.Join(root, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	deep := filepath.Join(root, "envs", "prod")
-	os.MkdirAll(deep, 0o755)
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
 
 	writeFile(t, filepath.Join(root, "fat-controller.toml"), "[workspace]\nname = \"Acme\"")
 	writeFile(t, filepath.Join(deep, "fat-controller.toml"), "name = \"production\"")
@@ -153,7 +157,9 @@ func TestLoadCascade_Discovery(t *testing.T) {
 
 func TestLoadCascade_LocalOverride(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, filepath.Join(dir, "fat-controller.toml"), "name = \"base\"\nvariables = { A = \"1\" }")
 	writeFile(t, filepath.Join(dir, "fat-controller.local.toml"), "variables = { A = \"override\" }")
 
@@ -168,7 +174,9 @@ func TestLoadCascade_LocalOverride(t *testing.T) {
 
 func TestLoadCascade_NoConfigError(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	_, err := config.LoadCascade(config.LoadOptions{WorkDir: dir})
 	if err == nil {
 		t.Fatal("expected error when no config files found")
@@ -177,7 +185,9 @@ func TestLoadCascade_NoConfigError(t *testing.T) {
 
 func TestLoadCascade_EnvFileLoading(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, filepath.Join(dir, "fat-controller.toml"), "name = \"test\"\n[tool]\nenv_file = \".env\"")
 	writeFile(t, filepath.Join(dir, ".env"), "SECRET=hunter2\nAPI_KEY=abc123")
 
@@ -198,7 +208,9 @@ func TestLoadCascade_EnvFileLoading(t *testing.T) {
 
 func TestLoadCascade_EnvFileMissing(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".git"), 0o755)
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, filepath.Join(dir, "fat-controller.toml"), "name = \"test\"\n[tool]\nenv_file = \".env.missing\"")
 
 	result, err := config.LoadCascade(config.LoadOptions{WorkDir: dir})

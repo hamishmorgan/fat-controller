@@ -13,8 +13,17 @@ func IsInteractive(f *os.File) bool {
 	return term.IsTerminal(f.Fd())
 }
 
+// IsCI returns true when the CI environment variable is set to "true".
+func IsCI() bool {
+	return os.Getenv("CI") == "true"
+}
+
 // StdinIsInteractive checks if os.Stdin is a TTY.
+// Returns false when running in CI, even if stdin happens to be a terminal.
 func StdinIsInteractive() bool {
+	if IsCI() {
+		return false
+	}
 	return IsInteractive(os.Stdin)
 }
 

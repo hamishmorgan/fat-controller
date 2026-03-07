@@ -6,6 +6,7 @@ import (
 	"go/doc"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -403,6 +404,11 @@ func (h *helpBuf) Flush(w io.Writer) error {
 // guessWidth attempts to determine terminal width.
 // Falls back to 80 columns.
 func guessWidth(w io.Writer) int {
+	if s := os.Getenv("COLUMNS"); s != "" {
+		if n, err := strconv.Atoi(s); err == nil && n > 0 {
+			return n
+		}
+	}
 	if f, ok := w.(*os.File); ok {
 		if width, _, err := term.GetSize(f.Fd()); err == nil && width > 0 {
 			return width

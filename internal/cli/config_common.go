@@ -18,22 +18,32 @@ type configPair struct {
 }
 
 // loadAndFetch runs the shared pipeline used by both `config diff` and `config apply`:
-//  1. Load and merge config files
-//  2. Interpolate local env vars
+//  1. Load and merge config files via cascade
+//  2. Interpolate ${VAR} references (env files → process env)
 //  3. Fall back to config-file project/environment when flags are empty
 //  4. Resolve project and environment IDs
 //  5. Fetch live state
 //  6. Filter desired config by --service if set
 func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironment, configDir string, extraFiles []string, service string, fetcher configFetcher) (*configPair, error) {
-	// 1. Load and merge config files.
+	// 1. Load and merge config files via cascade.
 	slog.Debug("loading config", "dir", configDir)
-	desired, err := config.LoadConfigs(configDir, extraFiles)
+	result, err := config.LoadCascade(config.LoadOptions{WorkDir: configDir})
 	if err != nil {
 		return nil, err
 	}
+	desired := result.Config
 
-	// 2. Interpolate local env vars.
-	if err := config.Interpolate(desired, nil); err != nil {
+	// Merge extra config files (--file flags) on top.
+	for _, f := range extraFiles {
+		extra, err := config.ParseFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", f, err)
+		}
+		desired = config.Merge(desired, extra)
+	}
+
+	// 2. Interpolate ${VAR} references (env files → process env).
+	if err := config.Interpolate(desired, result.EnvVars); err != nil {
 		return nil, err
 	}
 

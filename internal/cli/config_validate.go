@@ -26,10 +26,20 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 		out = os.Stdout
 	}
 
-	// Load and merge config files.
-	desired, err := config.LoadConfigs(configDir, extraFiles)
+	// Load and merge config files via cascade.
+	result, err := config.LoadCascade(config.LoadOptions{WorkDir: configDir})
 	if err != nil {
 		return err
+	}
+	desired := result.Config
+
+	// Merge extra config files (--file flags) on top.
+	for _, f := range extraFiles {
+		extra, err := config.ParseFile(f)
+		if err != nil {
+			return fmt.Errorf("parsing %s: %w", f, err)
+		}
+		desired = config.Merge(desired, extra)
 	}
 
 	// Interpolation is not required for validation — we check the raw config.

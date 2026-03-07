@@ -183,16 +183,28 @@ service's `DATABASE_URL` at deploy time.
 
 ### Secrets file
 
-The secrets file uses dotenv format (`KEY=value`, one per line).
-It is co-located with the primary config file and gitignored:
+The secrets file uses dotenv format (`KEY=value`, one per line):
 
 ```text
 SECRET_KEY=super-secret-value
 REGISTRY_PASSWORD=hunter2
 ```
 
-See [File locations summary](#file-locations-summary) for the
-exact co-location rules.
+A config file can declare its own secrets file:
+
+```toml
+[tool]
+secrets_file = ".env.production"
+```
+
+Paths are relative to the config file that declares them. This
+participates in the cascade normally — a root config could set
+`secrets_file = ".env"` and an environment config could override
+it. When no `secrets_file` is set, the default is a co-located
+file based on naming convention (see
+[File locations summary](#file-locations-summary)). `--secrets`
+and `FAT_CONTROLLER_SECRETS_FILE` override everything, relative
+to the working directory.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -903,16 +915,18 @@ The **primary config file** is the deepest one found — this is
 where `adopt` writes state, where ID bookkeeping is recorded, and
 where the local override is resolved.
 
-The secrets file is co-located with the primary (deepest) config file:
+When no `tool.secrets_file` is set, the secrets file defaults to a
+co-located path based on the primary (deepest) config file:
 
-| Config location | Secrets location |
-|----------------|-----------------|
+| Config location | Default secrets location |
+|----------------|------------------------|
 | `[path]/fat-controller.toml` | `[path]/.env.fat-controller` |
 | `[path]/.config/fat-controller.toml` | `[path]/.config/.env.fat-controller` |
 | `[path]/.config/fat-controller/config.toml` | `[path]/.config/fat-controller/.env` |
 
-Both are overridable with `--config` and `--secrets`. When `--config`
-is specified, only that single file is loaded — no upward walk.
+Overridable with `tool.secrets_file` in any config file, or with
+`--secrets` / `FAT_CONTROLLER_SECRETS_FILE`. When `--config` is
+specified, only that single file is loaded — no upward walk.
 
 ### File locations summary
 

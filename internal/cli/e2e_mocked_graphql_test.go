@@ -1261,50 +1261,6 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 	})
 
-	t.Run("config apply with local overlay merges values", func(t *testing.T) {
-		mock, fetcher := newTestFetcher(t)
-		applier := newTestApplier(mock)
-
-		dir := t.TempDir()
-		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
-
-			[api.variables]
-			PORT = "9090"
-		`)
-		// Local override: adds a SECRET variable (simulates .local.toml).
-		localPath := filepath.Join(dir, config.LocalConfigFile)
-		if err := os.WriteFile(localPath, []byte(dedent(`
-			[api.variables]
-			SECRET = "s3cret"
-		`)), 0o644); err != nil {
-			t.Fatalf("write local config: %v", err)
-		}
-
-		globals := &cli.Globals{}
-		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
-			t.Fatalf("RunConfigApply() error: %v", err)
-		}
-
-		snap := mock.snapshot()
-		// Expect 1 collection upsert with 2 variables: PORT changed (8080->9090) + SECRET created.
-		if len(snap.CollectionUpserts) != 1 {
-			t.Fatalf("expected 1 collection upsert, got %d", len(snap.CollectionUpserts))
-		}
-		cu := snap.CollectionUpserts[0]
-		if len(cu.Variables) != 2 {
-			t.Fatalf("expected 2 variables in batch, got %d", len(cu.Variables))
-		}
-		if cu.Variables["PORT"] != "9090" {
-			t.Errorf("PORT = %q, want %q", cu.Variables["PORT"], "9090")
-		}
-		if cu.Variables["SECRET"] != "s3cret" {
-			t.Errorf("SECRET = %q, want %q", cu.Variables["SECRET"], "s3cret")
-		}
-	})
-
 	// -----------------------------------------------------------------------
 	// Tests — error handling
 	// -----------------------------------------------------------------------

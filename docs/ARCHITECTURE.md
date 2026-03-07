@@ -384,6 +384,7 @@ reads them but never sets them.
 
 | Variable | Spec / convention | Effect |
 |----------|-------------------|--------|
+| `CI` | [CI convention](https://github.com/watson/ci-info) | When `true`, forces non-interactive mode regardless of TTY. Suppresses prompts and pickers |
 | `RAILWAY_TOKEN` | Railway CLI | Project-scoped auth token. Implies a specific project and environment |
 | `RAILWAY_API_TOKEN` | Railway CLI | Account/workspace-scoped auth token. Higher precedence than `RAILWAY_TOKEN` |
 | `NO_COLOR` | [no-color.org](https://no-color.org) | When set (any value), disables color output. Equivalent to `--color=never` |
@@ -391,9 +392,15 @@ reads them but never sets them.
 | `CLICOLOR` | [CLICOLOR](https://bixense.com/clicolors/) | `0` disables color (like `NO_COLOR`). `1` is the default (color when TTY) |
 | `CLICOLOR_FORCE` | [CLICOLOR](https://bixense.com/clicolors/) | When set to non-zero, forces color (like `FORCE_COLOR`). `NO_COLOR` takes precedence |
 | `TERM` | Terminal | When set to `dumb`, disables color and interactive features |
+| `COLUMNS` | Terminal / POSIX | Terminal width override. Used for help text wrapping and table formatting. Useful when output is piped or in Docker/CI |
 | `XDG_CONFIG_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for global config. Default: `~/.config` |
 | `XDG_DATA_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for persistent data (auth credentials). Default: `~/.local/share` |
 | `BROWSER` | Unix convention | Program to open URLs. Used by `open` and `auth login` |
+
+**Implicitly handled** by Go or dependencies — no special code
+needed: `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` (Go's
+`http.DefaultTransport`), `HOME` (Go stdlib + `adrg/xdg`),
+`TMPDIR` (Go stdlib).
 
 **Color precedence:** CLI flag (`--color`) > `NO_COLOR` /
 `FORCE_COLOR` > `CLICOLOR` / `CLICOLOR_FORCE` > `TERM=dumb` >
@@ -1433,9 +1440,12 @@ files — with two additional fallback sources:
 
 ## Interactive vs non-interactive mode
 
-**Detection:** interactive mode is active when stdin is a TTY.
-Piped or redirected stdin = non-interactive. This is not a flag — it
-is determined by the terminal environment.
+**Detection:** interactive mode is active when stdin is a TTY and
+`CI` is not set to `true`. Some CI environments (e.g. GitHub
+Actions) allocate pseudo-TTYs, so the TTY check alone is
+insufficient. `CI=true` forces non-interactive mode regardless
+of TTY state. This is not a flag — it is determined by the
+terminal environment.
 
 **Core principle:** every command parameter is resolved the same way,
 but the behavior for "unspecified" depends on the mode and prompting

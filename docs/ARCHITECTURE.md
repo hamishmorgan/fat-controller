@@ -296,7 +296,7 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
+| `--config-file` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
 | `--env-file` | `FAT_CONTROLLER_ENV_FILE` | `tool.env_file` | *(none)* | Env file path(s) for `${VAR}` interpolation |
 
 ### Merge flags
@@ -389,7 +389,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Use default, prompt if missing | Use default |
+| Config file (`--config-file`) | `fat-controller.toml` | Use default, prompt if missing | Use default |
 | Workspace | From config file | Use default, picker if missing | Use default, error if missing |
 | Name | — | Prompt | Error if not specified |
 
@@ -475,7 +475,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default, error if missing |
+| Config file (`--config-file`) | Auto-discover | Use default, prompt if missing | Use default, error if missing |
 | Env file (`--env-file`) | From `tool.env_file` | Use default, prompt if missing | Use default, error if missing |
 | Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
 | Project | From config file | Use default, prompt if missing | Use default, error if missing |
@@ -519,7 +519,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
+| Config file (`--config-file`) | Auto-discover | Use default, prompt if missing | Use default |
 | Workspace | From config file | Use default, prompt if missing | Use default |
 | Project | From config file | Use default, prompt if missing | Use default |
 | Environment | From config file | Use default, prompt if missing | Use default |
@@ -546,7 +546,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
+| Config file (`--config-file`) | Auto-discover | Use default, prompt if missing | Use default |
 | Workspace | From config file | Use default, prompt if missing | Use default |
 | Project | From config file | Use default, prompt if missing | Use default |
 | Environment | From config file | Use default, prompt if missing | Use default |
@@ -589,7 +589,7 @@ Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default |
+| Config file (`--config-file`) | Auto-discover | Use default, prompt if missing | Use default |
 
 No API calls, no context flags needed.
 
@@ -916,7 +916,7 @@ Supported shells: `bash`, `zsh`, `fish`, `powershell`.
 
 ### Config file discovery
 
-When `--config` is not specified, config files are found by walking
+When `--config-file` is not specified, config files are found by walking
 from the working directory upward to the git root (or current
 directory only if not in a git repo). At each directory, three
 locations are checked in order — first match at that level wins:
@@ -949,7 +949,7 @@ The **primary config file** is the deepest one found — this is
 where `adopt` writes state, where ID bookkeeping is recorded, and
 where the local override is resolved.
 
-When `--config` is specified, only that single file is loaded — no
+When `--config-file` is specified, only that single file is loaded — no
 upward walk.
 
 ### File locations summary
@@ -1265,13 +1265,13 @@ first, then the environment override on top.
 ```bash
 # From environments/production/:
 fat-controller apply
-# Or from anywhere, using --config (skips walk, loads only this file):
-fat-controller apply --config environments/production/fat-controller.toml
+# Or from anywhere, using --config-file (skips walk, loads only this file):
+fat-controller apply --config-file environments/production/fat-controller.toml
 ```
 
-Note: `--config` loads a single file with no upward walk. For CI
+Note: `--config-file` loads a single file with no upward walk. For CI
 pipelines that need the cascade, run from the environment directory
-rather than using `--config`.
+rather than using `--config-file`.
 
 Best for: most projects. Keeps shared config DRY, with per-environment
 differences clearly separated.
@@ -1285,11 +1285,11 @@ environments/
 ```
 
 Each file is fully self-contained with all settings and service
-definitions. No cascade — use `--config` to target a specific file.
+definitions. No cascade — use `--config-file` to target a specific file.
 
 ```bash
-fat-controller apply --config environments/production/fat-controller.toml
-fat-controller apply --config environments/staging/fat-controller.toml
+fat-controller apply --config-file environments/production/fat-controller.toml
+fat-controller apply --config-file environments/staging/fat-controller.toml
 ```
 
 Best for: projects where environments differ substantially, or teams

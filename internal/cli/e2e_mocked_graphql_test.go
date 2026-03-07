@@ -18,6 +18,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/config"
+	"github.com/hamishmorgan/fat-controller/internal/diff"
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 	"github.com/zalando/go-keyring"
@@ -1464,6 +1465,150 @@ name = "existing"`)
 
 	// NOTE: RunStatus is tested via status_internal_test.go since it uses
 	// the unexported serviceTarget type.
+
+	// -----------------------------------------------------------------------
+	// Tests — top-level diff (with merge flags)
+	// -----------------------------------------------------------------------
+
+	t.Run("diff with create-only flag excludes updates", func(t *testing.T) {
+		_, fetcher := newTestFetcher(t)
+
+		dir := t.TempDir()
+		writeConfigTOML(t, dir, `
+			name = "`+fixtureEnvironment+`"
+
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090", NEW_VAR = "added" }
+		`)
+
+		globals := &cli.Globals{Output: "text"}
+		var out bytes.Buffer
+		opts := cli.DiffOpts{
+			DiffOptions: diff.Options{Create: true, Update: false, Delete: false},
+		}
+		if err := cli.RunConfigDiffWithOpts(context.Background(), globals, "", "", "", dir, nil, "", opts, fetcher, &out); err != nil {
+			t.Fatalf("RunConfigDiffWithOpts() error: %v", err)
+		}
+		output := out.String()
+		// NEW_VAR is a create — should be present.
+		if !strings.Contains(output, "NEW_VAR") {
+			t.Errorf("expected NEW_VAR (create) in diff output:\n%s", output)
+		}
+		// PORT change (8080→9090) is an update — should NOT be present.
+		if strings.Contains(output, "9090") {
+			t.Errorf("expected PORT update excluded from create-only diff:\n%s", output)
+		}
+	})
+
+	t.Run("diff JSON output is valid JSON", func(t *testing.T) {
+		_, fetcher := newTestFetcher(t)
+
+		dir := t.TempDir()
+		writeConfigTOML(t, dir, `
+			name = "`+fixtureEnvironment+`"
+
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090" }
+		`)
+
+		globals := &cli.Globals{Output: "json"}
+		var out bytes.Buffer
+		if err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &out); err != nil {
+			t.Fatalf("RunConfigDiff() error: %v", err)
+		}
+		var parsed any
+		if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
+			t.Errorf("diff JSON output is not valid JSON: %v\n%s", err, out.String())
+		}
+	})
+
+	// -----------------------------------------------------------------------
+	// Tests — validate
+	// -----------------------------------------------------------------------
+
+	t.Run("validate clean config reports no warnings", func(t *testing.T) {
+		dir := t.TempDir()
+		writeConfigTOML(t, dir, `
+			name = "production"
+
+			[project]
+			name = "my-app"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "8080" }
+		`)
+
+		globals := &cli.Globals{Output: "text"}
+		var out bytes.Buffer
+		if err := cli.RunConfigValidate(globals, dir, nil, &out); err != nil {
+			t.Fatalf("RunConfigValidate() error: %v", err)
+		}
+		if !strings.Contains(out.String(), "No warnings") {
+			t.Errorf("expected 'No warnings' for clean config, got:\n%s", out.String())
+		}
+	})
+
+	t.Run("validate detects repo+image conflict", func(t *testing.T) {
+		dir := t.TempDir()
+		writeConfigTOML(t, dir, `
+			name = "production"
+
+			[project]
+			name = "my-app"
+
+			[[service]]
+			name = "api"
+
+			[service.deploy]
+			repo = "org/repo"
+			image = "docker.io/org/img"
+		`)
+
+		globals := &cli.Globals{Output: "text"}
+		var out bytes.Buffer
+		err := cli.RunConfigValidate(globals, dir, nil, &out)
+		output := out.String()
+		if err != nil {
+			output += err.Error()
+		}
+		if !strings.Contains(output, "W071") {
+			t.Errorf("expected W071 repo+image conflict warning, got:\n%s", output)
+		}
+	})
+
+	// -----------------------------------------------------------------------
+	// Tests — show (JSON)
+	// -----------------------------------------------------------------------
+
+	t.Run("show JSON output includes service data", func(t *testing.T) {
+		_, fetcher := newTestFetcher(t)
+
+		globals := &cli.Globals{Output: "json"}
+		var out bytes.Buffer
+		if err := cli.RunConfigGet(context.Background(), globals, "", fixtureProjectName, fixtureEnvironment, "", false, "", false, fetcher, &out); err != nil {
+			t.Fatalf("RunConfigGet() error: %v", err)
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
+			t.Fatalf("show JSON output is not valid JSON: %v", err)
+		}
+		// Services appear as top-level keys (service name → config).
+		if _, ok := parsed["api"]; !ok {
+			t.Errorf("expected 'api' key in JSON output, got keys: %v", keys(parsed))
+		}
+		if _, ok := parsed["worker"]; !ok {
+			t.Errorf("expected 'worker' key in JSON output, got keys: %v", keys(parsed))
+		}
+	})
 }
 
 // keys returns the top-level keys of a map for diagnostic messages.

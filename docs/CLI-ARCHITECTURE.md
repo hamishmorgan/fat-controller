@@ -104,7 +104,10 @@ project+environment.
 | `update` | Merge flag default |
 | `delete` | Merge flag default |
 
-**TOML tables** are Railway state — services and their entities:
+**TOML tables** are Railway state — services and their entities.
+`shared` is a reserved table name for environment-wide shared
+variables (`[shared.variables]`). A Railway service cannot be named
+"shared". All other table names are treated as service names.
 
 ```toml
 workspace = "Hamish Morgan's Projects"

@@ -656,15 +656,12 @@ fat-controller list [type]
 
 Flags: global, context.
 
-**No argument behavior:**
-
-| | Interactive | Non-interactive |
-|---|---|---|
-| Type | Picker: all, workspaces, projects, ... | `all` |
-| Format | Formatted tree | JSON |
+**No argument behavior:** lists services in the current environment
+(same as `list services`). Both `list` and `show` are
+environment-scoped by default.
 
 `list all` outputs the full hierarchy from workspaces down to
-services. Interactive mode renders a tree:
+services as a tree:
 
 ```text
 Hamish Morgan's Projects
@@ -678,12 +675,12 @@ Hamish Morgan's Projects
       web
 ```
 
-Non-interactive mode defaults to JSON for reliable parsing.
-
-For other types, context flags follow the standard pattern —
-prompt with default if interactive, use default or error if
-non-interactive. Only the context required for the entity type
-is resolved.
+Context flags follow the standard pattern — prompt with default
+if interactive, use default or error if non-interactive. Only the
+context required for the entity type is resolved. `list all` and
+`list workspaces` need no context. `list projects` needs a
+workspace. `list services` (and the no-argument default) needs
+workspace + project + environment.
 
 ### `auth login`
 

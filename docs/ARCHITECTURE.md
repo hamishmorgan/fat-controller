@@ -45,6 +45,7 @@ User
       Environment
         Shared Variables
         Private Networks
+        Buckets
         Service
           Variables
           Deploy Settings
@@ -75,6 +76,7 @@ environment's identity and state:
 | `id` | Environment ID (optional, populated by `adopt`) |
 | `variables` | Environment-wide shared variables |
 | `volumes` | Unattached volumes (name → mount path) |
+| `buckets` | S3-compatible object storage buckets (name only; credentials are read-only) |
 
 **`[tool]`** holds tool settings — how fat-controller behaves,
 not what it manages:
@@ -504,6 +506,7 @@ fat-controller show [path]
 | *(none)* | Everything in the current environment |
 | `variables` | Shared variables for this environment |
 | `volumes` | Unattached volumes for this environment |
+| `buckets` | S3-compatible buckets (name, credentials, endpoint, size) |
 | `api` | Everything about the `api` service |
 | `api.variables` | Just `api`'s variables |
 | `api.variables.PORT` | Single value |
@@ -513,7 +516,8 @@ fat-controller show [path]
 The environment is the implicit scope — the tool always operates
 within one environment. Paths without a qualifier refer to things
 *in* the environment: `variables` for shared variables, `volumes`
-for unattached volumes, service names for services. `workspace`
+for unattached volumes, `buckets` for object storage, service
+names for services. `workspace`
 and `project` navigate upward to parent resources. All other
 top-level paths are resolved as service names, matched to
 `[[service]]` entries by `id` or `name`.
@@ -722,6 +726,7 @@ fat-controller list [type]
 | `services` | Workspace + project + environment | |
 | `deployments` | Workspace + project + environment | |
 | `volumes` | Workspace + project | |
+| `buckets` | Workspace + project | |
 | `domains` | Workspace + project + environment | |
 
 Flags: global, context.
@@ -960,6 +965,7 @@ Running from `environments/production/`, the merge order is:
 | Service domains | `service.domains` | enabled (boolean), target port. Subdomain is assigned by Railway (read-only via `show`) |
 | Volumes (attached) | `service.volumes` | name, mount path, optional region (size is read-only, visible via `show`) |
 | Volumes (unattached) | `volumes` (top-level) | name, mount path, optional region |
+| Buckets | `buckets` (top-level) | name (credentials, endpoint, region are assigned by Railway, read-only via `show`) |
 | TCP proxies | `service.tcp_proxies` | application port. Proxy port and domain are assigned by Railway (read-only via `show`) |
 | Private network endpoints | `service.network` | enabled (boolean). DNS name is assigned by Railway (read-only via `show`) |
 | Deployment triggers | `service.triggers` | branch, repository, provider, check suites, root directory |
@@ -1332,13 +1338,7 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Buckets (S3-compatible object storage).** Railway supports
-   managed S3-compatible buckets with their own lifecycle (create,
-   delete, rename, credentials). Should these be declarative
-   (`[service.buckets]`) or imperative-only? They have state (name,
-   region) but also credentials that are more like secrets.
-
-2. **Functions (serverless).** Railway supports serverless functions
+1. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough

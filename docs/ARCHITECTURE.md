@@ -157,8 +157,8 @@ sub-header form also works — the parser treats both identically.
 Two interpolation syntaxes serve different purposes:
 
 - **`${VAR}`** — local secret substitution. Resolved by
-  fat-controller at load time from the secrets file (see
-  [Secrets file](#secrets-file)). The value never appears in the
+  fat-controller at load time from the secrets file (if declared)
+  or the process environment. The value never appears in the
   config file. Use for passwords, API keys, and other values that
   should not be committed.
 
@@ -176,14 +176,28 @@ variables = {
 }
 ```
 
-In this example, `SECRET_KEY` is read from the local secrets file
-and sent to Railway as a literal value. `DATABASE_URL` is stored
-in Railway as a reference — Railway resolves it to the `postgres`
-service's `DATABASE_URL` at deploy time.
+In this example, `SECRET_KEY` is resolved from the secrets file
+or process environment and sent to Railway as a literal value.
+`DATABASE_URL` is stored in Railway as a reference — Railway
+resolves it to the `postgres` service's `DATABASE_URL` at deploy
+time.
+
+**`${VAR}` resolution order:**
+
+1. **Secrets file** — if declared via `tool.secrets_file`,
+   `--secrets`, or `FAT_CONTROLLER_SECRETS_FILE`.
+2. **Process environment** — `os.Getenv`. In CI, secrets are
+   typically injected as environment variables by the provider.
+3. **Error** — `validate` warns, `apply` errors.
+
+No magic file discovery. If the process environment already has
+the variable, no secrets file is needed.
 
 ### Secrets file
 
-The secrets file uses dotenv format (`KEY=value`, one per line):
+The secrets file is optional — a convenience for loading multiple
+`${VAR}` values at once. It uses dotenv format (`KEY=value`, one
+per line):
 
 ```text
 SECRET_KEY=super-secret-value
@@ -200,11 +214,8 @@ secrets_file = ".env.production"
 Paths are relative to the config file that declares them. This
 participates in the cascade normally — a root config could set
 `secrets_file = ".env"` and an environment config could override
-it. When no `secrets_file` is set, the default is a co-located
-file based on naming convention (see
-[File locations summary](#file-locations-summary)). `--secrets`
-and `FAT_CONTROLLER_SECRETS_FILE` override everything, relative
-to the working directory.
+it. `--secrets` and `FAT_CONTROLLER_SECRETS_FILE` override
+everything, relative to the working directory.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -265,7 +276,7 @@ Commands that read or write config files accept these flags.
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
 | `--config` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
-| `--secrets` | `FAT_CONTROLLER_SECRETS_FILE` | `tool.secrets_file` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
+| `--secrets` | `FAT_CONTROLLER_SECRETS_FILE` | `tool.secrets_file` | *(none)* | Secrets file path for `${VAR}` interpolation |
 
 ### Merge flags
 
@@ -418,8 +429,11 @@ is recorded as bookkeeping.
 ### `adopt`
 
 Pull live Railway state into the local config file. Sensitive
-values are detected and written to the secrets file as `${VAR}`
-references.
+values are detected and written as `${VAR}` references in the
+config, with the actual values written to the secrets file (if
+declared via `tool.secrets_file`). If no secrets file is declared,
+`adopt` prompts for where to write them — or errors in
+non-interactive mode.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
 
@@ -443,7 +457,7 @@ Interactive resolution:
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
 | Config file (`--config`) | Auto-discover | Use default, prompt if missing | Use default, error if missing |
-| Secrets file (`--secrets`) | Co-located | Use default, prompt if missing | Use default, error if missing |
+| Secrets file (`--secrets`) | From `tool.secrets_file` | Use default, prompt if missing | Use default, error if missing |
 | Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
 | Project | From config file | Use default, prompt if missing | Use default, error if missing |
 | Environment | From config file | Use default, prompt if missing | Use default, error if missing |
@@ -537,7 +551,8 @@ calls. Catches problems before `apply`:
 - Duplicate service names
 - Broken `${{service.VAR}}` references (referencing services
   not defined in the config)
-- Missing `${VAR}` entries in the secrets file
+- Unresolvable `${VAR}` references (not in secrets file or
+  process environment)
 - Mutually exclusive fields (`repo` + `image`, `scale` +
   `deploy.region`)
 
@@ -915,18 +930,8 @@ The **primary config file** is the deepest one found — this is
 where `adopt` writes state, where ID bookkeeping is recorded, and
 where the local override is resolved.
 
-When no `tool.secrets_file` is set, the secrets file defaults to a
-co-located path based on the primary (deepest) config file:
-
-| Config location | Default secrets location |
-|----------------|------------------------|
-| `[path]/fat-controller.toml` | `[path]/.env.fat-controller` |
-| `[path]/.config/fat-controller.toml` | `[path]/.config/.env.fat-controller` |
-| `[path]/.config/fat-controller/config.toml` | `[path]/.config/fat-controller/.env` |
-
-Overridable with `tool.secrets_file` in any config file, or with
-`--secrets` / `FAT_CONTROLLER_SECRETS_FILE`. When `--config` is
-specified, only that single file is loaded — no upward walk.
+When `--config` is specified, only that single file is loaded — no
+upward walk.
 
 ### File locations summary
 
@@ -934,7 +939,6 @@ specified, only that single file is loaded — no upward walk.
 |------|---------|-----------|
 | `fat-controller.toml` | Desired state + shared settings | Yes |
 | `fat-controller.local.toml` | Personal overrides | No (gitignored) |
-| `.env.fat-controller` | Secret values for `${VAR}` interpolation | No (gitignored) |
 
 When using the `.config/fat-controller/` directory form:
 
@@ -942,7 +946,10 @@ When using the `.config/fat-controller/` directory form:
 |------|---------|-----------|
 | `.config/fat-controller/config.toml` | Desired state + shared settings | Yes |
 | `.config/fat-controller/config.local.toml` | Personal overrides | No (gitignored) |
-| `.config/fat-controller/.env` | Secret values for `${VAR}` interpolation | No (gitignored) |
+
+The secrets file is not convention-based — declare it explicitly
+via `tool.secrets_file` or pass `--secrets`. See
+[Secrets file](#secrets-file).
 
 ### Local overrides
 

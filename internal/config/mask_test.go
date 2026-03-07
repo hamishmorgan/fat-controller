@@ -70,6 +70,15 @@ func TestMaskValue_RailwayReferenceShownAsIs(t *testing.T) {
 	}
 }
 
+func TestMaskValue_EnvReferenceShownAsIs(t *testing.T) {
+	m := config.NewMasker(nil, nil)
+	ref := "${DATABASE_PASSWORD}"
+	got := m.MaskValue("DATABASE_PASSWORD", ref)
+	if got != ref {
+		t.Errorf("env reference should be shown, got %q", got)
+	}
+}
+
 func TestMaskValue_CustomKeywordsReplaceDefaults(t *testing.T) {
 	// Passing custom keywords replaces all defaults.
 	// Passing nil allowlist keeps the default allowlist.

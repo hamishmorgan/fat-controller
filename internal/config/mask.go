@@ -112,6 +112,11 @@ func (m *Masker) MaskValue(name, value string) string {
 	if strings.Contains(value, "${{") {
 		return value
 	}
+	// Environment references like ${VAR} are always shown (safe to reveal).
+	// This helps keep generated configs readable while still masking real secrets.
+	if isEnvReference(value) {
+		return value
+	}
 	// Check allowlist first — suppresses false positives.
 	if m.allowlist != nil && m.allowlist.MatchString(name) {
 		return value
@@ -125,6 +130,31 @@ func (m *Masker) MaskValue(name, value string) string {
 		return MaskedValue
 	}
 	return value
+}
+
+func isEnvReference(value string) bool {
+	v := strings.TrimSpace(value)
+	if len(v) < 4 {
+		return false
+	}
+	if !strings.HasPrefix(v, "${") || !strings.HasSuffix(v, "}") {
+		return false
+	}
+	name := v[2 : len(v)-1]
+	if name == "" {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' {
+			continue
+		}
+		if i > 0 && (c >= '0' && c <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // Entropy detection thresholds (matching truffleHog / detect-secrets).

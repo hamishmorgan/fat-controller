@@ -91,6 +91,10 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 		return err
 	}
 
+	if globals.Output == "raw" {
+		return errors.New("raw output requires a single scalar value (e.g. show api.variables.PORT)")
+	}
+
 	// Section-level lookup: filter config to just that section.
 	if parsed.Section != "" {
 		filtered := filterSection(*cfg, parsed)

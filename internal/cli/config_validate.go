@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
@@ -50,9 +52,34 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 
 	if len(warnings) == 0 {
 		if !globals.Quiet {
-			_, _ = fmt.Fprintln(out, "No warnings found.")
+			if _, err := fmt.Fprintln(out, "No warnings found."); err != nil {
+				return err
+			}
 		}
 		return nil
+	}
+
+	// Structured output: emit machine-readable warnings.
+	if globals.Output == "json" || globals.Output == "toml" {
+		type warningOut struct {
+			Code    string `json:"code" toml:"code"`
+			Message string `json:"message" toml:"message"`
+			Path    string `json:"path" toml:"path"`
+		}
+		payload := struct {
+			Warnings []warningOut `json:"warnings" toml:"warnings"`
+		}{Warnings: make([]warningOut, 0, len(warnings))}
+		for _, w := range warnings {
+			payload.Warnings = append(payload.Warnings, warningOut{Code: w.Code, Message: w.Message, Path: w.Path})
+		}
+		switch globals.Output {
+		case "json":
+			enc := json.NewEncoder(out)
+			enc.SetIndent("", "  ")
+			return enc.Encode(payload)
+		case "toml":
+			return toml.NewEncoder(out).Encode(payload)
+		}
 	}
 
 	for _, w := range warnings {
@@ -60,7 +87,9 @@ func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, 
 		if w.Path != "" {
 			path = " (" + w.Path + ")"
 		}
-		_, _ = fmt.Fprintf(out, "[%s]%s %s\n", w.Code, path, w.Message)
+		if _, err := fmt.Fprintf(out, "[%s]%s %s\n", w.Code, path, w.Message); err != nil {
+			return err
+		}
 	}
 
 	// Exit cleanly — warnings are advisory, not errors.

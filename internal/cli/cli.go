@@ -17,7 +17,7 @@ import (
 // ApiFlags → WorkspaceFlags → ProjectFlags → EnvironmentFlags → ServiceFlags)
 // or directly on command structs — not here.
 type Globals struct {
-	Output     string `help:"Output format: text, json, toml." enum:"text,json,toml" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
+	Output     string `help:"Output format: text, json, toml, raw." enum:"text,json,toml,raw" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT"`
 	Color      string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_COLOR"`
 	Verbose    bool   `help:"Enable debug logging (config loading, auth, HTTP requests, apply operations)." short:"v"`
 	Quiet      bool   `help:"Suppress informational and debug output (warnings and errors only)." short:"q"`

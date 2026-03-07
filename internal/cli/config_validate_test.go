@@ -2,9 +2,11 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 )
 
@@ -78,5 +80,63 @@ name = "api"
 	// Warnings are advisory — should return nil, not an error.
 	if err != nil {
 		t.Fatalf("expected no error (warnings are advisory), got: %v", err)
+	}
+}
+
+func TestRunConfigValidate_JSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	// Empty service block triggers W003.
+	writeTOML(t, dir, "fat-controller.toml", `
+[[service]]
+name = "api"
+`)
+
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "json"}
+	if err := cli.RunConfigValidate(globals, dir, nil, &buf); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var payload struct {
+		Warnings []struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Path    string `json:"path"`
+		} `json:"warnings"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &payload); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
+	}
+	if len(payload.Warnings) == 0 {
+		t.Fatalf("expected at least one warning, got 0")
+	}
+}
+
+func TestRunConfigValidate_TOMLOutput(t *testing.T) {
+	dir := t.TempDir()
+	// Empty service block triggers W003.
+	writeTOML(t, dir, "fat-controller.toml", `
+[[service]]
+name = "api"
+`)
+
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "toml"}
+	if err := cli.RunConfigValidate(globals, dir, nil, &buf); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var payload struct {
+		Warnings []struct {
+			Code    string `toml:"code"`
+			Message string `toml:"message"`
+			Path    string `toml:"path"`
+		} `toml:"warnings"`
+	}
+	if _, err := toml.Decode(buf.String(), &payload); err != nil {
+		t.Fatalf("output is not valid TOML: %v\n%s", err, buf.String())
+	}
+	if len(payload.Warnings) == 0 {
+		t.Fatalf("expected at least one warning, got 0")
 	}
 }

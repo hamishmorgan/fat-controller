@@ -37,6 +37,8 @@ func Render(cfg LiveConfig, opts RenderOptions) (string, error) {
 		return renderTOML(masked, opts.Full), nil
 	case "text", "":
 		return renderText(masked, opts.Full), nil
+	case "raw":
+		return "", errors.New("raw output is only supported for single values")
 	default:
 		return "", errors.New("unsupported output format")
 	}

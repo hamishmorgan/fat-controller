@@ -79,6 +79,37 @@ func TestRunConfigGet_RendersJSON(t *testing.T) {
 	}
 }
 
+func TestRunConfigGet_RawRequiresScalar(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Variables: map[string]string{"A": "1"},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "raw"}
+	err := cli.RunConfigGet(context.Background(), globals, "", "", "", "", false, "", false, fetcher, &buf)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestRunConfigGet_RawScalarOutputsBareValue(t *testing.T) {
+	fetcher := &fakeFetcher{
+		cfg: &config.LiveConfig{
+			Variables: map[string]string{"A": "1"},
+		},
+	}
+	var buf bytes.Buffer
+	globals := &cli.Globals{Output: "raw"}
+	err := cli.RunConfigGet(context.Background(), globals, "", "", "", "shared.variables.A", false, "", true, fetcher, &buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, want := buf.String(), "1\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 func TestRunConfigGet_PathExtractsService(t *testing.T) {
 	var fetchedService string
 	fetcher := &fakeFetcher{

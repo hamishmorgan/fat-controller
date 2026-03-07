@@ -449,46 +449,46 @@ priority).
 | Flag | Default | What it controls |
 |------|---------|-----------------|
 | `--create` / `--no-create` | on | Add entities that exist in source but not target |
-| `--clobber` / `--no-clobber` | on | Overwrite entities that exist in both source and target |
-| `--prune` / `--no-prune` | off | Remove entities that exist in target but not source |
+| `--update` / `--no-update` | on | Overwrite entities that exist in both source and target |
+| `--delete` / `--no-delete` | off | Remove entities that exist in target but not source |
 
 Applied to each command:
 
 | Flag | `apply` (config → Railway) | `adopt` (Railway → config) |
 |------|---------------------------|---------------------------|
 | `--create` | Create Railway entities not in Railway | Add config entries not in config |
-| `--clobber` | Update Railway entities that differ from config | Update config entries that differ from Railway |
-| `--prune` | Delete Railway entities not in config | Remove config entries not in Railway |
+| `--update` | Update Railway entities that differ from config | Update config entries that differ from Railway |
+| `--delete` | Delete Railway entities not in config | Remove config entries not in Railway |
 
 Defaults are configurable at every settings level:
 
 ```toml
 # .fat-controller.toml or $XDG_CONFIG_HOME/fat-controller/config.toml
 create = true
-clobber = true
-prune = false
+update = true
+delete = false
 ```
 
 ```bash
 FAT_CONTROLLER_CREATE=true
-FAT_CONTROLLER_CLOBBER=true
-FAT_CONTROLLER_PRUNE=false
+FAT_CONTROLLER_UPDATE=true
+FAT_CONTROLLER_DELETE=false
 ```
 
 Common patterns:
 
 ```bash
-apply                              # create + clobber (default)
-apply --prune                      # full convergence
-apply --no-clobber                 # create only, don't touch existing
+apply                              # create + update (default)
+apply --delete                     # full convergence
+apply --no-update                  # create only, don't touch existing
 apply --no-create                  # update only, don't add new
-apply --no-create --prune          # update + delete, don't add
-adopt --no-clobber                 # add new entries, don't touch existing
-adopt --prune                      # add + update + remove stale
-adopt --clobber --prune            # make config exactly match Railway
+apply --no-create --delete         # update + delete, don't add
+adopt --no-update                  # add new entries, don't touch existing
+adopt --delete                     # add + update + remove stale
+adopt --no-create --delete         # update + remove stale, don't add
 ```
 
-Without `--prune`, explicit delete markers handle one-off removals:
+Without `--delete`, explicit delete markers handle one-off removals:
 
 ```toml
 # Delete a variable

@@ -84,6 +84,7 @@ not what it manages:
 | Key | Description |
 |-----|-------------|
 | `api_timeout` | Overall time limit per API request (connect through response) |
+| `log_level` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `silent` |
 | `output_format` | Output format: `text`, `json`, `toml` |
 | `output_color` | Color: `auto`, `always`, `never` |
 | `prompt` | Prompting mode: `all`, `default`, `none` |
@@ -255,8 +256,8 @@ Every command accepts these flags.
 | `--timeout` | | `FAT_CONTROLLER_API_TIMEOUT` | `tool.api_timeout` | `30s` | Time limit per API request |
 | `--ask` | `-a` | `FAT_CONTROLLER_PROMPT` | `tool.prompt` | | Set prompt mode to `all` |
 | `--yes` | `-y` | `FAT_CONTROLLER_PROMPT` | `tool.prompt` | | Set prompt mode to `none` |
-| `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
-| `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
+| `--verbose` | `-v` | `FAT_CONTROLLER_LOG_LEVEL` | `tool.log_level` | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
+| `--quiet` | `-q` | `FAT_CONTROLLER_LOG_LEVEL` | `tool.log_level` | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
 Default format is `auto` — the tool picks the best format from
 context (e.g. text for TTY, JSON for piped output). `--json`,
@@ -265,7 +266,10 @@ bare value with no quoting or structure — only valid when the
 result is a single scalar (e.g. `show api.variables.PORT`); errors
 if the result is a table or list.
 
-Default log level is INFO.
+Default log level is `info`. The env var and config key set the
+base level (`trace`, `debug`, `info`, `warn`, `error`, `silent`);
+`--verbose` and `--quiet` adjust it relative to whatever the base
+is.
 
 ### Context flags
 

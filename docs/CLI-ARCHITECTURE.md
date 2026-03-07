@@ -439,10 +439,18 @@ Imperative commands also read the config file for context.
 
 ---
 
-## Ownership and deletion
+## Ownership and pruning
 
-By default, `apply` is additive: it creates and updates but never
-deletes by omission. To delete, you use explicit markers:
+By default, both `apply` and `adopt` are additive merges. `--prune`
+enables full convergence — the target is made to exactly match the
+source:
+
+| Command | Default (additive) | With `--prune` |
+|---------|-------------------|----------------|
+| `apply` | Create/update Railway entities in config. Ignore unmentioned entities. | Also delete Railway entities not in config. |
+| `adopt` | Add/update config entries from Railway. Ignore entries not in Railway. | Also remove config entries not in Railway. |
+
+Without `--prune`, explicit delete markers handle one-off removals:
 
 ```toml
 # Delete a variable
@@ -457,18 +465,14 @@ delete = true
 old-data = { delete = true }
 ```
 
-**Opt-in ownership mode** enables full convergence. When enabled for a
-scope, entities that exist in Railway but aren't in the config are
-deleted. This could be enabled via:
+`--prune` may also be expressible as a config key (`managed = true`)
+at the top level or per-section, e.g. `[api.variables]` with
+`managed = true` means "I own all of api's variables; delete any not
+listed here." The exact granularity needs design, but the principle
+is: additive by default, opt-in to full ownership.
 
-- A flag: `fat-controller apply --prune`
-- A config key: `managed = true` (at top level or per-section)
-- Per-section: `[api.variables] managed = true` means "I own all of
-  api's variables; delete any not listed here"
-
-The exact mechanism needs design, but the principle is: additive by
-default, opt-in to full ownership. The diff output must clearly show
-deletions that would result from prune mode.
+`diff` shows what `--prune` would do: deletions are clearly marked
+in the output.
 
 ### Creation semantics
 

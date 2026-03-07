@@ -161,7 +161,9 @@ func TestRunConfigInit_RefusesToOverwrite(t *testing.T) {
 	}
 }
 
-func TestRunConfigInit_CreatesLocalTOMLWithSecrets(t *testing.T) {
+const envFile = ".env.fat-controller"
+
+func TestRunConfigInit_CreatesEnvFileWithSecrets(t *testing.T) {
 	dir := t.TempDir()
 	resolver := newFakeResolver(&config.LiveConfig{
 		Services: map[string]*config.ServiceConfig{
@@ -169,7 +171,7 @@ func TestRunConfigInit_CreatesLocalTOMLWithSecrets(t *testing.T) {
 				Name: "api",
 				Variables: map[string]string{
 					"PORT":           "8080",
-					"DATABASE_URL":   "postgres://...",
+					"DATABASE_URL":   "postgres://user:pass@host/db",
 					"STRIPE_API_KEY": "sk_live_xxx",
 					"SESSION_SECRET": "abc123",
 					"APP_NAME":       "my-app",
@@ -183,36 +185,44 @@ func TestRunConfigInit_CreatesLocalTOMLWithSecrets(t *testing.T) {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	// Verify .local.toml was created with interpolation refs for secrets.
-	localPath := filepath.Join(dir, "fat-controller.local.toml")
-	content, err := os.ReadFile(localPath)
+	// .env.fat-controller should contain actual secret values.
+	content, err := os.ReadFile(filepath.Join(dir, envFile))
 	if err != nil {
-		t.Fatalf("reading local config: %v", err)
+		t.Fatalf("reading env file: %v", err)
 	}
 	got := string(content)
 
-	// Should contain interpolation refs for sensitive vars.
+	// Should contain actual values for sensitive vars.
 	for _, want := range []string{
-		"[api.variables]",
-		`DATABASE_URL = "${DATABASE_URL}"`,
-		`SESSION_SECRET = "${SESSION_SECRET}"`,
-		`STRIPE_API_KEY = "${STRIPE_API_KEY}"`,
+		"DATABASE_URL=postgres://user:pass@host/db",
+		"SESSION_SECRET=abc123",
+		"STRIPE_API_KEY=sk_live_xxx",
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("expected %q in local config, got:\n%s", want, got)
+			t.Errorf("expected %q in env file, got:\n%s", want, got)
 		}
 	}
 
-	// Should NOT contain non-sensitive vars.
-	if strings.Contains(got, "PORT") {
-		t.Errorf("PORT is not sensitive — should not be in local config:\n%s", got)
+	// Non-sensitive vars should NOT be in the env file.
+	if strings.Contains(got, "PORT=") {
+		t.Errorf("PORT is not sensitive — should not be in env file:\n%s", got)
 	}
-	if strings.Contains(got, "APP_NAME") {
-		t.Errorf("APP_NAME is not sensitive — should not be in local config:\n%s", got)
+	if strings.Contains(got, "APP_NAME=") {
+		t.Errorf("APP_NAME is not sensitive — should not be in env file:\n%s", got)
+	}
+
+	// The base config should have ${VAR} refs, not ******** or literal secrets.
+	base, _ := os.ReadFile(filepath.Join(dir, "fat-controller.toml"))
+	baseStr := string(base)
+	if strings.Contains(baseStr, "sk_live_xxx") {
+		t.Errorf("secret value should not appear in base config:\n%s", baseStr)
+	}
+	if strings.Contains(baseStr, "********") {
+		t.Errorf("masked placeholder should not appear in base config:\n%s", baseStr)
 	}
 }
 
-func TestRunConfigInit_LocalTOMLSharedSecrets(t *testing.T) {
+func TestRunConfigInit_EnvFileSharedSecrets(t *testing.T) {
 	dir := t.TempDir()
 	resolver := newFakeResolver(&config.LiveConfig{
 		Shared: map[string]string{
@@ -229,25 +239,21 @@ func TestRunConfigInit_LocalTOMLSharedSecrets(t *testing.T) {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	localPath := filepath.Join(dir, "fat-controller.local.toml")
-	content, err := os.ReadFile(localPath)
+	content, err := os.ReadFile(filepath.Join(dir, envFile))
 	if err != nil {
-		t.Fatalf("reading local config: %v", err)
+		t.Fatalf("reading env file: %v", err)
 	}
 	got := string(content)
 
-	if !strings.Contains(got, "[shared.variables]") {
-		t.Errorf("expected shared section in local config:\n%s", got)
+	if !strings.Contains(got, "GLOBAL_SECRET=s3cr3t") {
+		t.Errorf("expected GLOBAL_SECRET in env file:\n%s", got)
 	}
-	if !strings.Contains(got, `GLOBAL_SECRET = "${GLOBAL_SECRET}"`) {
-		t.Errorf("expected GLOBAL_SECRET interpolation ref:\n%s", got)
-	}
-	if strings.Contains(got, "APP_MODE") {
-		t.Errorf("APP_MODE is not sensitive — should not be in local config:\n%s", got)
+	if strings.Contains(got, "APP_MODE=") {
+		t.Errorf("APP_MODE is not sensitive — should not be in env file:\n%s", got)
 	}
 }
 
-func TestRunConfigInit_LocalTOMLNoSecretsFallsBack(t *testing.T) {
+func TestRunConfigInit_NoSecretsNoEnvFile(t *testing.T) {
 	dir := t.TempDir()
 	resolver := newFakeResolver(&config.LiveConfig{
 		Services: map[string]*config.ServiceConfig{
@@ -260,19 +266,9 @@ func TestRunConfigInit_LocalTOMLNoSecretsFallsBack(t *testing.T) {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	localPath := filepath.Join(dir, "fat-controller.local.toml")
-	content, err := os.ReadFile(localPath)
-	if err != nil {
-		t.Fatalf("reading local config: %v", err)
-	}
-	got := string(content)
-
-	// No secrets found — should contain the fallback stub.
-	if !strings.Contains(got, "No secrets detected") {
-		t.Errorf("expected fallback stub when no secrets, got:\n%s", got)
-	}
-	if !strings.Contains(got, "STRIPE_KEY") {
-		t.Errorf("expected example in fallback stub:\n%s", got)
+	// No secrets → no .env.fat-controller file.
+	if _, err := os.Stat(filepath.Join(dir, envFile)); !os.IsNotExist(err) {
+		t.Error("should not create .env.fat-controller when no secrets detected")
 	}
 }
 
@@ -398,8 +394,8 @@ func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "fat-controller.toml")); !os.IsNotExist(err) {
 		t.Error("dry-run should not create fat-controller.toml")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "fat-controller.local.toml")); !os.IsNotExist(err) {
-		t.Error("dry-run should not create fat-controller.local.toml")
+	if _, err := os.Stat(filepath.Join(dir, envFile)); !os.IsNotExist(err) {
+		t.Error("dry-run should not create .env.fat-controller")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".gitignore")); !os.IsNotExist(err) {
 		t.Error("dry-run should not create .gitignore")

@@ -377,16 +377,19 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	slog.Debug("rendering config file", "services", len(filtered.Services))
 	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
 
+	// Collect secrets for .env.fat-controller.
+	envContent := renderEnvFile(filtered)
+	envFileName := ".env.fat-controller"
+
 	if dryRun {
-		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
-
-		localPath := filepath.Join(dir, config.LocalConfigFile)
-		if _, statErr := os.Stat(localPath); os.IsNotExist(statErr) {
-			localContent := renderLocalTOML(filtered)
-			_, _ = fmt.Fprintf(out, "\ndry run: would write %s\n\n%s\n", config.LocalConfigFile, localContent)
+		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n",
+			config.BaseConfigFile, len(filtered.Services), content)
+		if envContent != "" {
+			_, _ = fmt.Fprintf(out, "\ndry run: would write %s\n\n%s\n",
+				envFileName, envContent)
+			_, _ = fmt.Fprintf(out, "dry run: would ensure %s is in .gitignore\n",
+				envFileName)
 		}
-
-		_, _ = fmt.Fprintf(out, "dry run: would ensure %s is in .gitignore\n", config.LocalConfigFile)
 		return nil
 	}
 
@@ -402,95 +405,49 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 	_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
 
-	// 7. Create .local.toml with interpolation refs for secrets.
-	localPath := filepath.Join(dir, config.LocalConfigFile)
-	if _, err := os.Stat(localPath); os.IsNotExist(err) {
-		localContent := renderLocalTOML(filtered)
-		if err := os.WriteFile(localPath, []byte(localContent), 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", config.LocalConfigFile, err)
+	// 7. Write .env.fat-controller with actual secret values.
+	if envContent != "" {
+		envPath := filepath.Join(dir, envFileName)
+		if err := os.WriteFile(envPath, []byte(envContent), 0o600); err != nil {
+			return fmt.Errorf("writing %s: %w", envFileName, err)
 		}
-		_, _ = fmt.Fprintf(out, "wrote %s (local overrides, gitignored)\n", config.LocalConfigFile)
-	}
+		_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n",
+			envFileName)
 
-	added, err := ensureGitignoreHasLine(dir, config.LocalConfigFile)
-	if err != nil {
-		return fmt.Errorf("updating .gitignore: %w", err)
-	}
-	slog.Debug("gitignore check", "line", config.LocalConfigFile, "added", added)
-	if added {
-		_, _ = fmt.Fprintf(out, "updated %s (added %s)\n", ".gitignore", config.LocalConfigFile)
+		added, err := ensureGitignoreHasLine(dir, envFileName)
+		if err != nil {
+			return fmt.Errorf("updating .gitignore: %w", err)
+		}
+		slog.Debug("gitignore check", "line", envFileName, "added", added)
+		if added {
+			_, _ = fmt.Fprintf(out, "updated .gitignore (added %s)\n",
+				envFileName)
+		}
 	}
 
 	return nil
 }
 
-// renderLocalTOML generates the contents of the .local.toml file.
-// For each service (and shared), any variable whose name matches sensitive
-// keywords gets a `VAR = "${VAR}"` interpolation reference. If no secrets
-// are found, returns a commented stub.
-func renderLocalTOML(cfg *config.LiveConfig) string {
-	masker := config.NewMasker(nil, nil)
+// renderEnvFile generates a .env file with KEY=VALUE lines for each secret
+// detected in the live config. Returns empty string if no secrets found.
+func renderEnvFile(cfg *config.LiveConfig) string {
+	secrets := config.CollectSecrets(*cfg)
+	if len(secrets) == 0 {
+		return ""
+	}
+
+	keys := make([]string, 0, len(secrets))
+	for k := range secrets {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 
 	var out strings.Builder
-	out.WriteString("# Local overrides (gitignored). Use for secrets and per-developer settings.\n")
-	out.WriteString("# Values use ${VAR} syntax to read from your local environment.\n\n")
-
-	wrote := false
-
-	// Shared variables.
-	if len(cfg.Shared) > 0 {
-		var secrets []string
-		for name := range cfg.Shared {
-			if masker.IsSensitive(name) {
-				secrets = append(secrets, name)
-			}
-		}
-		if len(secrets) > 0 {
-			sort.Strings(secrets)
-			out.WriteString("[shared.variables]\n")
-			for _, name := range secrets {
-				_, _ = fmt.Fprintf(&out, "%s = \"${%s}\"\n", name, name)
-			}
-			out.WriteString("\n")
-			wrote = true
-		}
+	out.WriteString("# Secret values for fat-controller (gitignored).\n")
+	out.WriteString("# Load into your environment before running config apply.\n")
+	out.WriteString("# e.g. source .env.fat-controller\n\n")
+	for _, k := range keys {
+		_, _ = fmt.Fprintf(&out, "%s=%s\n", k, secrets[k])
 	}
-
-	// Per-service variables.
-	serviceNames := make([]string, 0, len(cfg.Services))
-	for name := range cfg.Services {
-		serviceNames = append(serviceNames, name)
-	}
-	sort.Strings(serviceNames)
-
-	for _, svcName := range serviceNames {
-		svc := cfg.Services[svcName]
-		if len(svc.Variables) == 0 {
-			continue
-		}
-		var secrets []string
-		for name := range svc.Variables {
-			if masker.IsSensitive(name) {
-				secrets = append(secrets, name)
-			}
-		}
-		if len(secrets) > 0 {
-			sort.Strings(secrets)
-			_, _ = fmt.Fprintf(&out, "[%s.variables]\n", svcName)
-			for _, name := range secrets {
-				_, _ = fmt.Fprintf(&out, "%s = \"${%s}\"\n", name, name)
-			}
-			out.WriteString("\n")
-			wrote = true
-		}
-	}
-
-	if !wrote {
-		out.WriteString("# No secrets detected. Add overrides here as needed.\n")
-		out.WriteString("# Example:\n")
-		out.WriteString("#   [api.variables]\n")
-		out.WriteString("#   STRIPE_KEY = \"${STRIPE_KEY}\"\n")
-	}
-
 	return out.String()
 }

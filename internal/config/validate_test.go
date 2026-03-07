@@ -485,3 +485,35 @@ func TestValidate_W060_SharedVarUnknownServiceRef(t *testing.T) {
 	warnings := config.Validate(cfg, nil)
 	assertHasWarning(t, warnings, "W060")
 }
+
+func TestValidate_W080_OrphanedEnvFileEntry(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Tool: &config.ToolSettings{EnvFile: ".env"},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
+				"PORT": "8080",
+			}},
+		},
+	}
+
+	warnings := config.ValidateWithOptions(cfg, config.ValidateOptions{
+		EnvFileVars: map[string]string{"UNUSED": "x"},
+	})
+	assertHasWarning(t, warnings, "W080")
+}
+
+func TestValidate_W080_NoWarningWhenReferenced(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Tool: &config.ToolSettings{EnvFile: ".env"},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
+				"TOKEN": "${USED}",
+			}},
+		},
+	}
+
+	warnings := config.ValidateWithOptions(cfg, config.ValidateOptions{
+		EnvFileVars: map[string]string{"USED": "x"},
+	})
+	assertNoWarning(t, warnings, "W080")
+}

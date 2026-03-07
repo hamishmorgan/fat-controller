@@ -110,7 +110,7 @@ func emitWarnings(pair *configPair, quiet bool, configDir string) {
 		liveNames = append(liveNames, name)
 	}
 
-	warnings := config.Validate(pair.Desired, liveNames)
+	warnings := config.ValidateWithOptions(pair.Desired, config.ValidateOptions{LiveServiceNames: liveNames, EnvFileVars: nil})
 	warnings = append(warnings, config.ValidateFiles(configDir)...)
 
 	// Filter suppressed warnings (Validate already filters, but ValidateFiles warnings need it too).

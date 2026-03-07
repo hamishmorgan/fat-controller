@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -34,7 +35,21 @@ var serviceRefRe = regexp.MustCompile(`\$\{\{([a-zA-Z_][a-zA-Z0-9_-]*)\.[a-zA-Z_
 // pass nil to skip W040 checks (e.g. for offline validation).
 // Warnings whose codes appear in tool.suppress_warnings are filtered out.
 func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
-	slog.Debug("validating config", "services", len(cfg.Services), "has_live_names", liveServiceNames != nil)
+	return ValidateWithOptions(cfg, ValidateOptions{LiveServiceNames: liveServiceNames})
+}
+
+// ValidateOptions controls optional validation inputs.
+type ValidateOptions struct {
+	LiveServiceNames []string
+	// EnvFileVars are the merged key/value pairs loaded from tool.env_file.
+	// Used for W080 orphan env-file key warnings.
+	EnvFileVars map[string]string
+}
+
+// ValidateWithOptions runs advisory checks on a DesiredConfig and returns warnings.
+// It is the implementation behind Validate.
+func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
+	slog.Debug("validating config", "services", len(cfg.Services), "has_live_names", opts.LiveServiceNames != nil)
 	var warnings []Warning
 
 	// Extract tool settings.
@@ -136,9 +151,9 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 	}
 
 	// W040: Unknown service name.
-	if liveServiceNames != nil {
-		liveSet := make(map[string]bool, len(liveServiceNames))
-		for _, name := range liveServiceNames {
+	if opts.LiveServiceNames != nil {
+		liveSet := make(map[string]bool, len(opts.LiveServiceNames))
+		for _, name := range opts.LiveServiceNames {
 			liveSet[name] = true
 		}
 		for _, svc := range cfg.Services {
@@ -149,6 +164,29 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 					Path:    svc.Name,
 				})
 			}
+		}
+	}
+
+	// W080: Orphaned env-file key.
+	if cfg.Tool != nil && len(cfg.Tool.EnvFiles()) > 0 && len(opts.EnvFileVars) > 0 {
+		references := collectEnvReferences(cfg)
+		keys := make([]string, 0, len(opts.EnvFileVars))
+		for k := range opts.EnvFileVars {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if !validVarNameRe.MatchString(k) {
+				continue
+			}
+			if references[k] {
+				continue
+			}
+			warnings = append(warnings, Warning{
+				Code:    "W080",
+				Message: fmt.Sprintf("env file key %q is set but not referenced in config (no ${%s})", k, k),
+				Path:    "tool.env_file",
+			})
 		}
 	}
 
@@ -165,6 +203,32 @@ func Validate(cfg *DesiredConfig, liveServiceNames []string) []Warning {
 
 	slog.Debug("validation complete", "warnings", len(warnings))
 	return warnings
+}
+
+func collectEnvReferences(cfg *DesiredConfig) map[string]bool {
+	refs := make(map[string]bool)
+	add := func(value string) {
+		for _, m := range localEnvPattern.FindAllStringSubmatch(value, -1) {
+			if len(m) >= 2 {
+				refs[m[1]] = true
+			}
+		}
+	}
+	for _, v := range cfg.Variables {
+		add(v)
+	}
+	for _, svc := range cfg.Services {
+		if svc == nil {
+			continue
+		}
+		for _, v := range svc.Variables {
+			add(v)
+		}
+		if svc.Deploy != nil && svc.Deploy.RegistryCredentials != nil {
+			add(svc.Deploy.RegistryCredentials.Password)
+		}
+	}
+	return refs
 }
 
 // hasAnythingActionable returns true if the config defines at least one service

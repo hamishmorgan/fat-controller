@@ -10,10 +10,10 @@ tool.
 
 ## Principles
 
-1. **Environment scope.** Every config file has the same schema and
-   manages services within a single project+environment. Top-level
-   keys are tool settings and context. `[[service]]` arrays declare
-   services.
+1. **Environment scope.** Each config file **is** an environment.
+   Top-level keys are the environment's identity, shared variables,
+   and tool settings. `[workspace]` and `[project]` provide parent
+   context. `[[service]]` arrays declare services.
 
 2. **Declarative and imperative are separate.** Declarative commands
    (`new`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
@@ -86,10 +86,14 @@ env vars, or CLI flags — but not managed as desired state.
 
 ## Config file schema
 
-**Top-level keys** are tool settings:
+The file **is** the environment. Top-level keys are the environment's
+identity, state, and tool settings:
 
 | Key | Description |
 |-----|-------------|
+| `name` | Environment name |
+| `id` | Environment ID (optional, populated by `adopt`) |
+| `variables` | Environment-wide shared variables |
 | `timeout` | API request timeout |
 | `format` | Output format: `text`, `json`, `toml` |
 | `color` | Color: `auto`, `always`, `never` |
@@ -101,27 +105,26 @@ env vars, or CLI flags — but not managed as desired state.
 | `update` | Merge flag default |
 | `delete` | Merge flag default |
 
-**`[workspace]`**, **`[project]`**, and **`[environment]`** are
-tables with `name` and optional `id` fields. Every Railway
-resource follows the same pattern — `name` for readability, `id`
-for stable matching. When `id` is present, it is authoritative;
-when absent, the tool falls back to matching by name.
+**`[workspace]`** and **`[project]`** are parent context — the
+workspace and project that own this environment. Each has `name`
+and optional `id`. When `id` is present, it is authoritative for
+matching; when absent, the tool falls back to name.
 
-**`[environment]`** also holds `variables` — the environment-wide
-shared variables that Railway exposes across all services.
-
-**`[[service]]`** arrays declare services. Each entry has `name`
-and optional `id` fields, plus inline tables for variables, deploy
-settings, etc.
+**`[[service]]`** arrays declare services within this environment.
+Each entry has `name` and optional `id` fields, plus inline tables
+for variables, deploy settings, etc.
 
 ### Reserved names
 
-`workspace`, `project`, and `environment` are TOML tables and
-structurally cannot collide with `[[service]]` entries. No
-service name reservation is needed.
+`workspace` and `project` are TOML tables and structurally cannot
+collide with `[[service]]` entries. `variables` is a top-level
+key. No service name reservation is needed.
 
 ```toml
+name = "production"
+id = "env_abc123"
 timeout = "60s"
+variables = { NODE_ENV = "production" }
 
 [workspace]
 name = "Hamish Morgan's Projects"
@@ -130,11 +133,6 @@ id = "ws_abc123"
 [project]
 name = "Life"
 id = "proj_abc123"
-
-[environment]
-name = "production"
-id = "env_abc123"
-variables = { NODE_ENV = "production" }
 
 [[service]]
 name = "api"
@@ -163,9 +161,9 @@ sub-header form also works — the parser treats both identically.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
-A root config might set `workspace`, `project`, and shared service
-definitions; an environment-level file adds `environment` and
-per-service overrides.
+A root config might set `[workspace]`, `[project]`, and shared
+service definitions; an environment-level file adds environment
+identity and per-service overrides.
 
 ---
 
@@ -207,7 +205,7 @@ also resolved from the config file, env vars, and token scope — see
 |------|---------|------------|-------------|
 | `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace.name` | Workspace name or ID |
 | `--project` | `FAT_CONTROLLER_PROJECT` | `project.name` | Project name or ID |
-| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment.name` | Environment name or ID |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `name` | Environment name or ID |
 | `--service` | `FAT_CONTROLLER_SERVICE` | — | Service name or ID |
 
 Each flag accepts either a name or an ID — the tool detects which
@@ -337,7 +335,7 @@ Interactive resolution:
 |-----------|---------|-------------|-----------------|
 | Name | — | Prompt | Error if not specified |
 
-Writes an `[environment]` table to the config file.
+Writes the `name` key to the config file.
 
 #### `new service`
 
@@ -371,7 +369,8 @@ empty — `apply` populates it after creating the service in Railway.
 ### `adopt`
 
 Pull live Railway state into the local config file. Populates `id`
-fields for workspace, project, environment, and services. Sensitive values
+fields — top-level for the environment, in `[workspace]` and
+`[project]` for context, and in each `[[service]]` entry. Sensitive values
 are detected and written to the secrets file as `${VAR}` references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
@@ -917,7 +916,7 @@ Concrete example with this directory structure:
 ```text
 $XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
 repo-root/fat-controller.toml                  # [workspace], [project], [[service]]
-environments/production/fat-controller.toml    # [environment], [[service]] overrides
+environments/production/fat-controller.toml    # name, variables, [[service]] overrides
 environments/production/fat-controller.local.toml  # show_secrets = true
 ```
 
@@ -933,22 +932,20 @@ Running from `environments/production/`, the merge order is:
 
 **Merge rules:**
 
-- **Top-level keys** (tool settings): later values replace earlier
-  ones. If the root config sets `timeout = "60s"` and the environment
-  config sets `timeout = "30s"`, the environment config wins.
-- **`[workspace]`, `[project]`, `[environment]`**: deep merge.
-  A root config sets `[workspace]` and `[project]`; an environment
-  config sets `[environment]`. `environment.variables` merges the
-  same way — individual keys from higher-precedence files override
-  lower-precedence ones.
-- **`[[service]]` entries**: matched by `id` (if present) or `name`.
-  When the same service appears in multiple files, inline tables are
-  deep-merged — a root config can set `deploy` and an environment
-  config can add `resources` or override individual deploy fields.
-  A higher-precedence file's values win.
+- **Top-level scalar keys** (`name`, `id`, `timeout`, etc.): later
+  values replace earlier ones.
+- **Top-level `variables`**: deep merge. Individual keys from
+  higher-precedence files override lower-precedence ones.
+- **`[workspace]`, `[project]`**: deep merge. A root config
+  typically sets these; environment configs inherit them.
+- **`[[service]]` entries**: matched by `id` (if present) or
+  `name`. When the same service appears in multiple files, inline
+  tables are deep-merged — a root config can set `deploy` and an
+  environment config can add `resources` or override individual
+  deploy fields. A higher-precedence file's values win.
 - **Environment variables and CLI flags** only set tool settings
-  and context (workspace/project/environment name). They do not
-  express Railway state.
+  and context (workspace/project/environment). They do not express
+  Railway state.
 
 ---
 
@@ -958,7 +955,7 @@ Running from `environments/production/`, the merge order is:
 
 | Entity | Section | Fields |
 |--------|---------|--------|
-| Variables (shared) | `environment.variables` | key-value pairs |
+| Variables (shared) | `variables` (top-level) | key-value pairs |
 | Variables (per-service) | `[service.variables]` | key-value pairs |
 | Deploy settings | `[service.deploy]` | See below |
 | Resources | `[service.resources]` | `vcpus`, `memory_gb` |
@@ -1023,14 +1020,14 @@ These are actions, not state — no declarative equivalent:
 ```text
 fat-controller.toml                        # workspace, project, shared variables
 environments/
-  production/fat-controller.toml           # environment = "production", overrides
-  staging/fat-controller.toml              # environment = "staging", overrides
+  production/fat-controller.toml           # name = "production", overrides
+  staging/fat-controller.toml              # name = "staging", overrides
 ```
 
-The root config sets `workspace`, `project`, and shared service
-definitions. Each environment directory's config sets `environment`
-and overrides only what differs (e.g. resource limits, replica
-counts).
+The root config sets `[workspace]`, `[project]`, and shared service
+definitions. Each environment directory's config sets the
+environment identity and overrides only what differs (e.g. resource
+limits, replica counts).
 
 ```toml
 # fat-controller.toml (root — shared base)
@@ -1054,7 +1051,6 @@ domains = { "api.example.com" = { port = 8080 } }
 
 ```toml
 # environments/production/fat-controller.toml
-[environment]
 name = "production"
 id = "env_prod123"
 variables = { NODE_ENV = "production" }
@@ -1067,7 +1063,6 @@ resources = { vcpus = 4, memory_gb = 8 }
 
 ```toml
 # environments/staging/fat-controller.toml
-[environment]
 name = "staging"
 id = "env_stg123"
 variables = { NODE_ENV = "staging" }

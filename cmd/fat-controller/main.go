@@ -62,13 +62,6 @@ func main() {
 }
 
 // applyColorMode configures color output before kong.Parse runs.
-//
-// Precedence (highest to lowest):
-//  1. --color=<mode> CLI flag
-//  2. FAT_CONTROLLER_COLOR env var
-//  3. FORCE_COLOR env var (any non-empty value forces color on)
-//  4. NO_COLOR env var (any non-empty value disables color; see https://no-color.org)
-//  5. Auto-detect terminal capabilities
 func applyColorMode() {
 	mode := ""
 
@@ -82,26 +75,54 @@ func applyColorMode() {
 		}
 	}
 
-	// Fall back to env vars if no CLI flag.
 	if mode == "" {
 		mode = os.Getenv("FAT_CONTROLLER_COLOR")
 	}
 
-	switch mode {
+	switch resolveColorMode(mode) {
 	case "never":
 		lipgloss.SetColorProfile(termenv.Ascii)
 	case "always":
 		lipgloss.SetColorProfile(termenv.ANSI)
-	default: // "auto" or unset
-		// Respect FORCE_COLOR convention (used by many CLI tools).
-		if _, ok := os.LookupEnv("FORCE_COLOR"); ok {
-			lipgloss.SetColorProfile(termenv.ANSI)
-			return
-		}
-		// Respect NO_COLOR convention (https://no-color.org).
-		if _, ok := os.LookupEnv("NO_COLOR"); ok {
-			lipgloss.SetColorProfile(termenv.Ascii)
-		}
-		// Otherwise let lipgloss/termenv auto-detect.
+	default:
+		// auto (default): let lipgloss/termenv auto-detect.
 	}
+}
+
+// resolveColorMode determines the effective color mode.
+//
+// Precedence (highest to lowest):
+//  1. Explicit mode from CLI flag or FAT_CONTROLLER_COLOR (auto|always|never)
+//  2. NO_COLOR (any value = never)
+//  3. FORCE_COLOR (non-empty and not "0" = always)
+//  4. CLICOLOR ("0" = never)
+//  5. CLICOLOR_FORCE (non-empty and not "0" = always)
+//  6. TERM=dumb (never)
+//  7. auto
+func resolveColorMode(explicit string) string {
+	switch explicit {
+	case "auto", "always", "never":
+		return explicit
+	case "":
+		// fall through to env-based resolution
+	default:
+		// Unknown values behave like auto.
+	}
+
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return "never"
+	}
+	if v := os.Getenv("FORCE_COLOR"); v != "" && v != "0" {
+		return "always"
+	}
+	if os.Getenv("CLICOLOR") == "0" {
+		return "never"
+	}
+	if v := os.Getenv("CLICOLOR_FORCE"); v != "" && v != "0" {
+		return "always"
+	}
+	if os.Getenv("TERM") == "dumb" {
+		return "never"
+	}
+	return "auto"
 }

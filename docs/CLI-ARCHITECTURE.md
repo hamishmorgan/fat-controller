@@ -439,16 +439,54 @@ Imperative commands also read the config file for context.
 
 ---
 
-## Ownership and pruning
+## Merge behavior
 
-By default, both `apply` and `adopt` are additive merges. `--prune`
-enables full convergence — the target is made to exactly match the
-source:
+`apply` and `adopt` share three boolean flags that control what the
+merge does. Each flag has both `--X` and `--no-X` forms. Defaults are
+configurable via settings file, env vars, or CLI flags (highest
+priority).
 
-| Command | Default (additive) | With `--prune` |
-|---------|-------------------|----------------|
-| `apply` | Create/update Railway entities in config. Ignore unmentioned entities. | Also delete Railway entities not in config. |
-| `adopt` | Add/update config entries from Railway. Ignore entries not in Railway. | Also remove config entries not in Railway. |
+| Flag | Default | What it controls |
+|------|---------|-----------------|
+| `--create` / `--no-create` | on | Add entities that exist in source but not target |
+| `--clobber` / `--no-clobber` | on | Overwrite entities that exist in both source and target |
+| `--prune` / `--no-prune` | off | Remove entities that exist in target but not source |
+
+Applied to each command:
+
+| Flag | `apply` (config → Railway) | `adopt` (Railway → config) |
+|------|---------------------------|---------------------------|
+| `--create` | Create Railway entities not in Railway | Add config entries not in config |
+| `--clobber` | Update Railway entities that differ from config | Update config entries that differ from Railway |
+| `--prune` | Delete Railway entities not in config | Remove config entries not in Railway |
+
+Defaults are configurable at every settings level:
+
+```toml
+# .fat-controller.toml or $XDG_CONFIG_HOME/fat-controller/config.toml
+create = true
+clobber = true
+prune = false
+```
+
+```bash
+FAT_CONTROLLER_CREATE=true
+FAT_CONTROLLER_CLOBBER=true
+FAT_CONTROLLER_PRUNE=false
+```
+
+Common patterns:
+
+```bash
+apply                              # create + clobber (default)
+apply --prune                      # full convergence
+apply --no-clobber                 # create only, don't touch existing
+apply --no-create                  # update only, don't add new
+apply --no-create --prune          # update + delete, don't add
+adopt --no-clobber                 # add new entries, don't touch existing
+adopt --prune                      # add + update + remove stale
+adopt --clobber --prune            # make config exactly match Railway
+```
 
 Without `--prune`, explicit delete markers handle one-off removals:
 
@@ -465,27 +503,8 @@ delete = true
 old-data = { delete = true }
 ```
 
-`--prune` may also be expressible as a config key (`managed = true`)
-at the top level or per-section, e.g. `[api.variables]` with
-`managed = true` means "I own all of api's variables; delete any not
-listed here." The exact granularity needs design, but the principle
-is: additive by default, opt-in to full ownership.
-
-`diff` shows what `--prune` would do: deletions are clearly marked
-in the output.
-
-### Creation semantics
-
-`apply` creates anything declared in the config that doesn't exist:
-
-| Entity | Created by | Notes |
-|--------|-----------|-------|
-| Project | Project-scope `apply` | Requires workspace context |
-| Environment | Environment-scope `apply` | Requires project context |
-| Service | Environment-scope `apply` | Service appears in config but not in Railway |
-| Variable | Any scope `apply` | |
-| Volume | Environment/service-scope `apply` | mount path required |
-| Domain | Environment/service-scope `apply` | DNS verification separate |
+`diff` reflects the active flags: it shows what `apply` would do
+given the current create/clobber/prune settings.
 
 This means `init --new` + `apply` is the full bootstrap path: scaffold
 a config from scratch, then apply it to create everything in Railway.

@@ -473,6 +473,14 @@ Interactive resolution:
 | Environment | From config file | Use default, prompt if missing | Use default |
 | Confirm changes | — | Preview + confirm | Error unless `--yes` |
 
+**Creation ordering.** When bootstrapping from scratch, `apply`
+follows the resource hierarchy: project → environment → services
+→ service sub-resources (variables, domains, volumes, etc.).
+Services within an environment have no ordering dependency on
+each other — Railway resolves `${{service.VAR}}` references at
+deploy time, not at variable-set time. Services can be created
+and configured in parallel.
+
 ### `validate`
 
 Check config file for warnings without making API calls.
@@ -1295,25 +1303,19 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Ordering of creation.** When bootstrapping from scratch, `apply`
-   may need to create the project, then the environment, then services,
-   then configure them. The apply engine needs to handle dependency
-   ordering (e.g. Railway references `${{postgres.VAR}}` require
-   postgres to exist first).
-
-2. **Buckets (S3-compatible object storage).** Railway supports
+1. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[service.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-3. **Functions (serverless).** Railway supports serverless functions
+2. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[[service]]` structure?
 
-4. **`scale` vs `deploy` overlap.** `[service.scale]` handles
+3. **`scale` vs `deploy` overlap.** `[service.scale]` handles
    multi-region instance counts, while `[service.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[service.deploy]` in

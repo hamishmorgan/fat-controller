@@ -1,6 +1,6 @@
 # Config Validation and Warnings
 
-When loading `fat-controller.toml` (and `fat-controller.local.toml`), the
+When loading `fat-controller.toml`, the
 tool runs a series of checks and emits warnings to stderr. These are
 advisory — they never block execution. Warnings appear on `diff`, `apply`,
 and `config validate` (a dedicated command for checking config without
@@ -31,7 +31,7 @@ hitting the API).
 | Code | Warning | When |
 |------|---------|------|
 | `W020` | Variable in both shared and service | Variable appears in `[shared.variables]` and `[X.variables]` — service value wins |
-| `W021` | Variable overridden by local file | Same variable defined in both `fat-controller.toml` and `fat-controller.local.toml` — local wins |
+| `W021` | Variable overridden by local file | Same variable defined in base config and override file — later value wins |
 
 ## Naming warnings
 
@@ -52,7 +52,7 @@ hitting the API).
 | Code | Warning | When |
 |------|---------|------|
 | `W050` | Hardcoded secret in config | A value matches the secret detection heuristics (name + entropy) and is not using `${VAR}` interpolation — likely a plaintext secret in a committed file |
-| `W051` | Local override file not gitignored | `fat-controller.local.toml` exists but is not in `.gitignore` |
+| `W052` | Deprecated local override file | `fat-controller.local.toml` exists — migrate to ${VAR} references |
 
 ## Reference warnings
 

@@ -3,7 +3,7 @@ package config
 // Override records that a variable was overridden by a later config file.
 type Override struct {
 	Path   string // dot-path e.g. "api.variables.PORT"
-	Source string // e.g. "local override"
+	Source string // e.g. "extra.toml"
 }
 
 // DesiredConfig represents the desired state parsed from fat-controller.toml.

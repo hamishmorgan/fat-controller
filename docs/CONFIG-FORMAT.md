@@ -7,8 +7,7 @@ current live state. This means diffs are never stale, and secrets are
 never written to disk.
 
 The only file the user manages is `fat-controller.toml` — the desired
-state. An optional `fat-controller.local.toml` (gitignored) provides
-overrides for secrets or local values.
+state.
 
 `config get` with no arguments outputs the full live config in
 `fat-controller.toml` format — pipe it to a file to bootstrap your
@@ -71,8 +70,6 @@ overrides shared when both define the same key.
 Multiple config files are merged in order (later values override earlier):
 
 - `fat-controller.toml` — base config (committed)
-- `fat-controller.local.toml` — auto-discovered if present (gitignored,
-  for local overrides and secrets)
 - Additional files via `--config` flags
 
 ```bash
@@ -101,7 +98,12 @@ ignored. Three patterns for managing secrets:
    Safe to commit. Railway resolves at runtime.
 3. **Local env interpolation** — `STRIPE_KEY = "${STRIPE_KEY}"`. Resolved
    from local environment at apply time. Config file is safe to commit;
-   actual value comes from CI env vars or a `.env` file.
+   actual value comes from CI env vars or `.env.fat-controller`.
+
+`config init` generates a `.env.fat-controller` file (gitignored) with
+actual secret values pulled from Railway. Load it into your environment
+before running `config apply` (e.g. `source .env.fat-controller`, direnv,
+or CI pipeline secrets).
 
 See also: [SECRET-MASKING.md](SECRET-MASKING.md) for output masking,
 [WARNINGS.md](WARNINGS.md) for config validation warnings.

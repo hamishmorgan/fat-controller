@@ -18,9 +18,9 @@ local env interpolation (`${VAR}`). The `${VAR}` syntax (single braces) is
 deliberately distinct from Railway's `${{}}` (double braces) — Railway
 chose double braces specifically to avoid shell variable collision.
 
-Multi-file merging provides additional flexibility: a gitignored
-`fat-controller.local.toml` is auto-discovered, and `--config` can be
-repeated for explicit layering.
+`config init` generates `.env.fat-controller` (gitignored) with actual
+secret values pulled from Railway. The base config uses `${VAR}` references
+for secrets. `--config` can be repeated for explicit overlay layering.
 
 ## Deletion safety: dry-run default is sufficient
 

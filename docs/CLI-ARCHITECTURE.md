@@ -106,13 +106,15 @@ env vars, or CLI flags — but not managed as desired state.
 | `create` | Merge flag default |
 | `update` | Merge flag default |
 | `delete` | Merge flag default |
+| `variables` | Environment-wide shared variables |
 
 When an `_id` field is present, it is authoritative for matching —
 the tool uses the ID to find the resource and ignores name mismatches
 (handling renames gracefully). When absent, the tool falls back to
 matching by name.
 
-**`[shared]`** holds environment-wide shared variables.
+**`variables`** is a top-level inline table for environment-wide
+shared variables.
 
 **`[[service]]`** arrays declare services. Each entry has `name` and
 optional `id` fields, plus sub-tables for variables, deploy settings,
@@ -136,8 +138,7 @@ environment = "production"
 environment_id = "env_abc123"
 timeout = "60s"
 
-[shared.variables]
-NODE_ENV = "production"
+variables = { NODE_ENV = "production" }
 
 [[service]]
 name = "api"
@@ -914,7 +915,7 @@ Concrete example with this directory structure:
 
 ```text
 $XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
-repo-root/fat-controller.toml                  # workspace, project, [shared.variables]
+repo-root/fat-controller.toml                  # workspace, project, variables
 environments/production/fat-controller.toml    # environment = "production", [[service]] overrides
 environments/production/fat-controller.local.toml  # show_secrets = true
 ```
@@ -934,7 +935,7 @@ Running from `environments/production/`, the merge order is:
 - **Top-level keys** (settings, context): later values replace earlier
   ones. If the root config sets `timeout = "60s"` and the environment
   config sets `timeout = "30s"`, the environment config wins.
-- **`[shared]` tables**: deep merge. Keys within `[shared.variables]`
+- **`variables`** (shared): deep merge. Keys within `variables`
   from a higher-precedence file override the same keys from a
   lower-precedence file. Keys only present in the lower-precedence
   file are preserved.
@@ -954,7 +955,7 @@ Running from `environments/production/`, the merge order is:
 
 | Entity | Section | Fields |
 |--------|---------|--------|
-| Variables (shared) | `[shared.variables]` | key-value pairs |
+| Variables (shared) | `variables` (top-level) | key-value pairs |
 | Variables (per-service) | `[service.variables]` | key-value pairs |
 | Deploy settings | `[service.deploy]` | See below |
 | Resources | `[service.resources]` | `vcpus`, `memory_gb` |
@@ -1017,7 +1018,7 @@ These are actions, not state — no declarative equivalent:
 ### Pattern 1: Shared base with environment overrides (cascade)
 
 ```text
-fat-controller.toml                        # workspace, project, shared services
+fat-controller.toml                        # workspace, project, shared variables
 environments/
   production/fat-controller.toml           # environment = "production", overrides
   staging/fat-controller.toml              # environment = "staging", overrides
@@ -1034,9 +1035,7 @@ workspace = "Hamish Morgan's Projects"
 workspace_id = "ws_abc123"
 project = "Life"
 project_id = "proj_abc123"
-
-[shared.variables]
-NODE_ENV = "production"
+variables = { NODE_ENV = "production" }
 
 [[service]]
 name = "api"
@@ -1064,8 +1063,7 @@ resources = { vcpus = 4, memory_gb = 8 }
 environment = "staging"
 environment_id = "env_stg123"
 
-[shared.variables]
-NODE_ENV = "staging"
+variables = { NODE_ENV = "staging" }
 
 [[service]]
 name = "api"

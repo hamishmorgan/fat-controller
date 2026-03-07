@@ -35,9 +35,9 @@ func (c *ListCmd) Run(globals *Globals) error {
 	case "all":
 		return c.runListAll(globals)
 	case "volumes":
-		return fmt.Errorf("list volumes: not yet implemented")
+		return c.runListVolumes(globals)
 	case "buckets":
-		return fmt.Errorf("list buckets: not yet implemented")
+		return c.runListBuckets(globals)
 	default:
 		return fmt.Errorf("list %s: unknown entity type", c.Type)
 	}
@@ -179,6 +179,95 @@ func (c *ListCmd) runListDomains(globals *Globals) error {
 
 	for _, d := range domains {
 		if _, err := fmt.Fprintf(os.Stdout, "%-30s %-50s %s\n", d.Service, d.Domain, d.Type); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *ListCmd) runListVolumes(globals *Globals) error {
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+
+	projectID, envID, err := resolveProjectEnv(ctx, client, c.Workspace, c.Project, c.Environment)
+	if err != nil {
+		return err
+	}
+
+	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, c.Service)
+	if err != nil {
+		return err
+	}
+
+	type volumeOut struct {
+		Service string `json:"service" toml:"service"`
+		Name    string `json:"name" toml:"name"`
+		Mount   string `json:"mount" toml:"mount"`
+		Region  string `json:"region,omitempty" toml:"region,omitempty"`
+	}
+
+	var volumes []volumeOut
+	for _, svc := range live.Services {
+		for _, v := range svc.Volumes {
+			volumes = append(volumes, volumeOut{
+				Service: svc.Name,
+				Name:    v.Name,
+				Mount:   v.MountPath,
+				Region:  v.Region,
+			})
+		}
+	}
+
+	if isStructuredOutput(globals) {
+		return writeStructured(os.Stdout, globals.Output, volumes)
+	}
+
+	for _, v := range volumes {
+		if _, err := fmt.Fprintf(os.Stdout, "%-30s %-20s %-30s %s\n", v.Service, v.Name, v.Mount, v.Region); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *ListCmd) runListBuckets(globals *Globals) error {
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+
+	projectID, _, err := resolveProjectEnv(ctx, client, c.Workspace, c.Project, c.Environment)
+	if err != nil {
+		return err
+	}
+
+	resp, err := railway.ProjectBuckets(ctx, client.GQL(), projectID)
+	if err != nil {
+		return fmt.Errorf("listing buckets: %w", err)
+	}
+
+	type bucketOut struct {
+		ID   string `json:"id" toml:"id"`
+		Name string `json:"name" toml:"name"`
+	}
+
+	buckets := make([]bucketOut, 0, len(resp.Project.Buckets.Edges))
+	for _, edge := range resp.Project.Buckets.Edges {
+		buckets = append(buckets, bucketOut{ID: edge.Node.Id, Name: edge.Node.Name})
+	}
+
+	if isStructuredOutput(globals) {
+		return writeStructured(os.Stdout, globals.Output, buckets)
+	}
+
+	for _, b := range buckets {
+		if _, err := fmt.Fprintf(os.Stdout, "%-40s %s\n", b.Name, b.ID); err != nil {
 			return err
 		}
 	}

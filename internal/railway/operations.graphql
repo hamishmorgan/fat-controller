@@ -524,6 +524,36 @@ query PrivateNetworkEndpoint(
   }
 }
 
+# Project-level volume listing
+query ProjectVolumes($projectId: String!) {
+  project(id: $projectId) {
+    volumes(first: 200) {
+      edges {
+        node {
+          id
+          name
+          projectId
+        }
+      }
+    }
+  }
+}
+
+# Project-level bucket listing
+query ProjectBuckets($projectId: String!) {
+  project(id: $projectId) {
+    buckets(first: 200) {
+      edges {
+        node {
+          id
+          name
+          projectId
+        }
+      }
+    }
+  }
+}
+
 # Deployment listing
 query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
   deployments(input: $input, first: $first, after: $after) {

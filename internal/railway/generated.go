@@ -1180,6 +1180,67 @@ func (v *PrivateNetworksResponse) GetPrivateNetworks() []PrivateNetworksPrivateN
 	return v.PrivateNetworks
 }
 
+// ProjectBucketsProject includes the requested fields of the GraphQL type Project.
+type ProjectBucketsProject struct {
+	Buckets ProjectBucketsProjectBucketsProjectBucketsConnection `json:"buckets"`
+}
+
+// GetBuckets returns ProjectBucketsProject.Buckets, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProject) GetBuckets() ProjectBucketsProjectBucketsProjectBucketsConnection {
+	return v.Buckets
+}
+
+// ProjectBucketsProjectBucketsProjectBucketsConnection includes the requested fields of the GraphQL type ProjectBucketsConnection.
+type ProjectBucketsProjectBucketsProjectBucketsConnection struct {
+	Edges []ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge `json:"edges"`
+}
+
+// GetEdges returns ProjectBucketsProjectBucketsProjectBucketsConnection.Edges, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProjectBucketsProjectBucketsConnection) GetEdges() []ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge {
+	return v.Edges
+}
+
+// ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge includes the requested fields of the GraphQL type ProjectBucketsConnectionEdge.
+type ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge struct {
+	Node ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket `json:"node"`
+}
+
+// GetNode returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge.Node, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge) GetNode() ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket {
+	return v.Node
+}
+
+// ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket includes the requested fields of the GraphQL type Bucket.
+type ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	ProjectId string `json:"projectId"`
+}
+
+// GetId returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.Id, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetId() string {
+	return v.Id
+}
+
+// GetName returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.Name, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetName() string {
+	return v.Name
+}
+
+// GetProjectId returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.ProjectId, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetProjectId() string {
+	return v.ProjectId
+}
+
+// ProjectBucketsResponse is returned by ProjectBuckets on success.
+type ProjectBucketsResponse struct {
+	// Get a project by ID
+	Project ProjectBucketsProject `json:"project"`
+}
+
+// GetProject returns ProjectBucketsResponse.Project, and is useful for accessing the field via an interface.
+func (v *ProjectBucketsResponse) GetProject() ProjectBucketsProject { return v.Project }
+
 type ProjectCreateInput struct {
 	DefaultEnvironmentName *string            `json:"defaultEnvironmentName"`
 	Description            *string            `json:"description"`
@@ -1345,6 +1406,67 @@ type ProjectTokenResponse struct {
 
 // GetProjectToken returns ProjectTokenResponse.ProjectToken, and is useful for accessing the field via an interface.
 func (v *ProjectTokenResponse) GetProjectToken() ProjectTokenProjectToken { return v.ProjectToken }
+
+// ProjectVolumesProject includes the requested fields of the GraphQL type Project.
+type ProjectVolumesProject struct {
+	Volumes ProjectVolumesProjectVolumesProjectVolumesConnection `json:"volumes"`
+}
+
+// GetVolumes returns ProjectVolumesProject.Volumes, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProject) GetVolumes() ProjectVolumesProjectVolumesProjectVolumesConnection {
+	return v.Volumes
+}
+
+// ProjectVolumesProjectVolumesProjectVolumesConnection includes the requested fields of the GraphQL type ProjectVolumesConnection.
+type ProjectVolumesProjectVolumesProjectVolumesConnection struct {
+	Edges []ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge `json:"edges"`
+}
+
+// GetEdges returns ProjectVolumesProjectVolumesProjectVolumesConnection.Edges, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProjectVolumesProjectVolumesConnection) GetEdges() []ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge {
+	return v.Edges
+}
+
+// ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge includes the requested fields of the GraphQL type ProjectVolumesConnectionEdge.
+type ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge struct {
+	Node ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume `json:"node"`
+}
+
+// GetNode returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge.Node, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge) GetNode() ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume {
+	return v.Node
+}
+
+// ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume includes the requested fields of the GraphQL type Volume.
+type ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	ProjectId string `json:"projectId"`
+}
+
+// GetId returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.Id, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetId() string {
+	return v.Id
+}
+
+// GetName returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.Name, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetName() string {
+	return v.Name
+}
+
+// GetProjectId returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.ProjectId, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetProjectId() string {
+	return v.ProjectId
+}
+
+// ProjectVolumesResponse is returned by ProjectVolumes on success.
+type ProjectVolumesResponse struct {
+	// Get a project by ID
+	Project ProjectVolumesProject `json:"project"`
+}
+
+// GetProject returns ProjectVolumesResponse.Project, and is useful for accessing the field via an interface.
+func (v *ProjectVolumesResponse) GetProject() ProjectVolumesProject { return v.Project }
 
 // ProjectsProjectsQueryProjectsConnection includes the requested fields of the GraphQL type QueryProjectsConnection.
 type ProjectsProjectsQueryProjectsConnection struct {
@@ -2644,6 +2766,14 @@ type __PrivateNetworksInput struct {
 // GetEnvironmentId returns __PrivateNetworksInput.EnvironmentId, and is useful for accessing the field via an interface.
 func (v *__PrivateNetworksInput) GetEnvironmentId() string { return v.EnvironmentId }
 
+// __ProjectBucketsInput is used internally by genqlient
+type __ProjectBucketsInput struct {
+	ProjectId string `json:"projectId"`
+}
+
+// GetProjectId returns __ProjectBucketsInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__ProjectBucketsInput) GetProjectId() string { return v.ProjectId }
+
 // __ProjectCreateInput is used internally by genqlient
 type __ProjectCreateInput struct {
 	Input ProjectCreateInput `json:"input"`
@@ -2667,6 +2797,14 @@ type __ProjectServicesInput struct {
 
 // GetProjectId returns __ProjectServicesInput.ProjectId, and is useful for accessing the field via an interface.
 func (v *__ProjectServicesInput) GetProjectId() string { return v.ProjectId }
+
+// __ProjectVolumesInput is used internally by genqlient
+type __ProjectVolumesInput struct {
+	ProjectId string `json:"projectId"`
+}
+
+// GetProjectId returns __ProjectVolumesInput.ProjectId, and is useful for accessing the field via an interface.
+func (v *__ProjectVolumesInput) GetProjectId() string { return v.ProjectId }
 
 // __ProjectsInput is used internally by genqlient
 type __ProjectsInput struct {
@@ -4024,6 +4162,49 @@ func PrivateNetworks(
 	return data_, err_
 }
 
+// The query executed by ProjectBuckets.
+const ProjectBuckets_Operation = `
+query ProjectBuckets ($projectId: String!) {
+	project(id: $projectId) {
+		buckets(first: 200) {
+			edges {
+				node {
+					id
+					name
+					projectId
+				}
+			}
+		}
+	}
+}
+`
+
+// Project-level bucket listing
+func ProjectBuckets(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	projectId string,
+) (data_ *ProjectBucketsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ProjectBuckets",
+		Query:  ProjectBuckets_Operation,
+		Variables: &__ProjectBucketsInput{
+			ProjectId: projectId,
+		},
+	}
+
+	data_ = &ProjectBucketsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by ProjectCreate.
 const ProjectCreate_Operation = `
 mutation ProjectCreate ($input: ProjectCreateInput!) {
@@ -4156,6 +4337,49 @@ func ProjectToken(
 	}
 
 	data_ = &ProjectTokenResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ProjectVolumes.
+const ProjectVolumes_Operation = `
+query ProjectVolumes ($projectId: String!) {
+	project(id: $projectId) {
+		volumes(first: 200) {
+			edges {
+				node {
+					id
+					name
+					projectId
+				}
+			}
+		}
+	}
+}
+`
+
+// Project-level volume listing
+func ProjectVolumes(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	projectId string,
+) (data_ *ProjectVolumesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ProjectVolumes",
+		Query:  ProjectVolumes_Operation,
+		Variables: &__ProjectVolumesInput{
+			ProjectId: projectId,
+		},
+	}
+
+	data_ = &ProjectVolumesResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

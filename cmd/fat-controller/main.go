@@ -66,8 +66,9 @@ func main() {
 // Precedence (highest to lowest):
 //  1. --color=<mode> CLI flag
 //  2. FAT_CONTROLLER_COLOR env var
-//  3. NO_COLOR env var (any non-empty value disables color; see https://no-color.org)
-//  4. Auto-detect terminal capabilities
+//  3. FORCE_COLOR env var (any non-empty value forces color on)
+//  4. NO_COLOR env var (any non-empty value disables color; see https://no-color.org)
+//  5. Auto-detect terminal capabilities
 func applyColorMode() {
 	mode := ""
 
@@ -92,6 +93,11 @@ func applyColorMode() {
 	case "always":
 		lipgloss.SetColorProfile(termenv.ANSI)
 	default: // "auto" or unset
+		// Respect FORCE_COLOR convention (used by many CLI tools).
+		if _, ok := os.LookupEnv("FORCE_COLOR"); ok {
+			lipgloss.SetColorProfile(termenv.ANSI)
+			return
+		}
 		// Respect NO_COLOR convention (https://no-color.org).
 		if _, ok := os.LookupEnv("NO_COLOR"); ok {
 			lipgloss.SetColorProfile(termenv.Ascii)

@@ -37,6 +37,7 @@ func (c *ConfigGetCmd) SetOutput(w io.Writer) {
 
 // Run implements `config get`.
 func (c *ConfigGetCmd) Run(globals *Globals) error {
+	slog.Warn("'config get' is deprecated; use 'show' instead")
 	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(&c.ApiFlags, globals.BaseCtx)

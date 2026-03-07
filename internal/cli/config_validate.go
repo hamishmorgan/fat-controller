@@ -11,6 +11,7 @@ import (
 
 // Run implements `config validate`.
 func (c *ConfigValidateCmd) Run(globals *Globals) error {
+	slog.Warn("'config validate' is deprecated; use 'validate' instead")
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)

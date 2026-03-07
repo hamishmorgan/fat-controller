@@ -118,6 +118,7 @@ func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, env
 
 // Run implements `config init`.
 func (c *ConfigInitCmd) Run(globals *Globals) error {
+	slog.Warn("'config init' is deprecated; use 'adopt' instead")
 	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(&c.ApiFlags, globals.BaseCtx)

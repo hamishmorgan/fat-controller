@@ -12,6 +12,7 @@ import (
 
 // Run implements `config diff`.
 func (c *ConfigDiffCmd) Run(globals *Globals) error {
+	slog.Warn("'config diff' is deprecated; use 'diff' instead")
 	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(&c.ApiFlags, globals.BaseCtx)

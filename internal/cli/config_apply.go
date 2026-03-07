@@ -17,6 +17,7 @@ import (
 
 // Run implements `config apply`.
 func (c *ConfigApplyCmd) Run(globals *Globals) error {
+	slog.Warn("'config apply' is deprecated; use 'apply' instead")
 	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
 	defer cancel()
 	client, err := newClient(&c.ApiFlags, globals.BaseCtx)

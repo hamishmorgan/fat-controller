@@ -141,3 +141,146 @@ mutation ServiceInstanceLimitsUpdate(
 ) {
   serviceInstanceLimitsUpdate(input: $input)
 }
+
+# Domain operations
+mutation CustomDomainCreate($input: CustomDomainCreateInput!) {
+  customDomainCreate(input: $input) {
+    id
+    domain
+  }
+}
+
+mutation CustomDomainDelete($id: String!) {
+  customDomainDelete(id: $id)
+}
+
+mutation ServiceDomainCreate($input: ServiceDomainCreateInput!) {
+  serviceDomainCreate(input: $input) {
+    id
+    domain
+  }
+}
+
+mutation ServiceDomainDelete($id: String!) {
+  serviceDomainDelete(id: $id)
+}
+
+# Volume operations
+mutation VolumeCreate($input: VolumeCreateInput!) {
+  volumeCreate(input: $input) {
+    id
+    name
+  }
+}
+
+mutation VolumeDelete($volumeId: String!) {
+  volumeDelete(volumeId: $volumeId)
+}
+
+mutation VolumeInstanceUpdate(
+  $environmentId: String
+  $input: VolumeInstanceUpdateInput!
+  $volumeId: String!
+) {
+  volumeInstanceUpdate(
+    environmentId: $environmentId
+    input: $input
+    volumeId: $volumeId
+  )
+}
+
+# TCP proxy operations
+mutation TcpProxyCreate($input: TCPProxyCreateInput!) {
+  tcpProxyCreate(input: $input) {
+    id
+    applicationPort
+    proxyPort
+    domain
+  }
+}
+
+mutation TcpProxyDelete($id: String!) {
+  tcpProxyDelete(id: $id)
+}
+
+# Private network operations
+mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
+  privateNetworkCreateOrGet(input: $input) {
+    dnsName
+    name
+    publicId
+  }
+}
+
+mutation PrivateNetworkEndpointCreateOrGet(
+  $input: PrivateNetworkEndpointCreateOrGetInput!
+) {
+  privateNetworkEndpointCreateOrGet(input: $input) {
+    dnsName
+    publicId
+    serviceInstanceId
+  }
+}
+
+mutation PrivateNetworkEndpointDelete($id: String!) {
+  privateNetworkEndpointDelete(id: $id)
+}
+
+# Egress gateway operations
+mutation EgressGatewayAssociationCreate($input: EgressGatewayCreateInput!) {
+  egressGatewayAssociationCreate(input: $input) {
+    ipv4
+    region
+  }
+}
+
+mutation EgressGatewayAssociationsClear(
+  $input: EgressGatewayServiceTargetInput!
+) {
+  egressGatewayAssociationsClear(input: $input)
+}
+
+# Deployment trigger operations
+mutation DeploymentTriggerCreate($input: DeploymentTriggerCreateInput!) {
+  deploymentTriggerCreate(input: $input) {
+    id
+  }
+}
+
+mutation DeploymentTriggerUpdate(
+  $id: String!
+  $input: DeploymentTriggerUpdateInput!
+) {
+  deploymentTriggerUpdate(id: $id, input: $input) {
+    id
+  }
+}
+
+mutation DeploymentTriggerDelete($id: String!) {
+  deploymentTriggerDelete(id: $id)
+}
+
+# Service CRUD operations
+mutation ServiceCreate($input: ServiceCreateInput!) {
+  serviceCreate(input: $input) {
+    id
+    name
+  }
+}
+
+mutation ServiceDelete($id: String!) {
+  serviceDelete(id: $id)
+}
+
+mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
+  serviceUpdate(id: $id, input: $input) {
+    id
+    name
+  }
+}
+
+mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
+  serviceConnect(id: $id, input: $input) {
+    id
+  }
+}

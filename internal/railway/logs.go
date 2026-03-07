@@ -24,11 +24,7 @@ func GetDeploymentLogs(ctx context.Context, client *Client, deploymentID string,
 	}
 	entries := make([]LogEntry, len(resp.DeploymentLogs))
 	for i, l := range resp.DeploymentLogs {
-		entries[i] = LogEntry{
-			Message:   l.Message,
-			Severity:  l.Severity,
-			Timestamp: l.Timestamp,
-		}
+		entries[i] = LogEntry(l)
 	}
 	return entries, nil
 }
@@ -43,11 +39,7 @@ func GetBuildLogs(ctx context.Context, client *Client, deploymentID string, limi
 	}
 	entries := make([]LogEntry, len(resp.BuildLogs))
 	for i, l := range resp.BuildLogs {
-		entries[i] = LogEntry{
-			Message:   l.Message,
-			Severity:  l.Severity,
-			Timestamp: l.Timestamp,
-		}
+		entries[i] = LogEntry(l)
 	}
 	return entries, nil
 }
@@ -62,11 +54,7 @@ func GetEnvironmentLogs(ctx context.Context, client *Client, environmentID strin
 	}
 	entries := make([]LogEntry, len(resp.EnvironmentLogs))
 	for i, l := range resp.EnvironmentLogs {
-		entries[i] = LogEntry{
-			Message:   l.Message,
-			Severity:  l.Severity,
-			Timestamp: l.Timestamp,
-		}
+		entries[i] = LogEntry(l)
 	}
 	return entries, nil
 }

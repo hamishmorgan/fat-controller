@@ -17,9 +17,10 @@ const (
 
 // LoadConfigs loads and merges config files:
 //  1. fat-controller.toml from dir (required)
-//  2. fat-controller.local.toml from dir (optional, auto-discovered)
-//  3. Extra files from --config flags (in order)
+//  2. Extra files from --config flags (in order)
 //
+// If fat-controller.local.toml exists, a deprecation warning is logged.
+// Migrate secrets to ${VAR} references in the base config file.
 // Returns the merged DesiredConfig. Returns an error if the base file
 // is missing or any explicitly-specified file fails to parse. If you
 // want to support --config without a base file, relax this requirement
@@ -46,13 +47,10 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 
 	localPath := filepath.Join(dir, LocalConfigFile)
 	if _, err := os.Stat(localPath); err == nil {
-		slog.Debug("loading local override", "path", localPath)
-		local, err := ParseFile(localPath)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", localPath, err)
-		}
-		overrides = append(overrides, findOverrides(base, local, "local override")...)
-		configs = append(configs, local)
+		slog.Warn("fat-controller.local.toml is deprecated — move secrets "+
+			"to ${VAR} references in fat-controller.toml and use "+
+			".env.fat-controller for secret values",
+			"path", localPath)
 	}
 
 	for _, path := range extraFiles {

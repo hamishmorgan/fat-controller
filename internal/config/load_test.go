@@ -27,7 +27,7 @@ PORT = "8080"
 	}
 }
 
-func TestLoadConfigs_BaseWithLocal(t *testing.T) {
+func TestLoadConfigs_IgnoresLocalFile(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "fat-controller.toml"), []byte(`
 [api.variables]
@@ -36,6 +36,7 @@ APP_ENV = "staging"
 `), 0o644); err != nil {
 		t.Fatalf("write base: %v", err)
 	}
+	// Create a local file — it should be ignored.
 	if err := os.WriteFile(filepath.Join(dir, "fat-controller.local.toml"), []byte(`
 [api.variables]
 APP_ENV = "production"
@@ -47,11 +48,10 @@ APP_ENV = "production"
 	if err != nil {
 		t.Fatalf("LoadConfigs() error: %v", err)
 	}
-	if cfg.Services["api"].Variables["PORT"] != "8080" {
-		t.Error("expected PORT=8080 from base")
-	}
-	if cfg.Services["api"].Variables["APP_ENV"] != "production" {
-		t.Errorf("APP_ENV = %q, want production (from local override)", cfg.Services["api"].Variables["APP_ENV"])
+	// Local file should NOT be merged — APP_ENV should remain "staging".
+	if cfg.Services["api"].Variables["APP_ENV"] != "staging" {
+		t.Errorf("APP_ENV = %q, want staging (local file should be ignored)",
+			cfg.Services["api"].Variables["APP_ENV"])
 	}
 }
 

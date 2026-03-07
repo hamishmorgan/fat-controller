@@ -181,28 +181,9 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	slog.Debug("starting config init", "dir", dir)
-	// 1. Check for existing config — prompt to overwrite unless --yes.
 	configPath := filepath.Join(dir, config.BaseConfigFile)
-	if _, err := os.Stat(configPath); err == nil {
-		if yes {
-			// --yes: proceed to overwrite without prompting.
-			slog.Debug("overwriting existing config (--yes)", "path", configPath)
-		} else if !interactive {
-			return fmt.Errorf("%s already exists — pass --yes to overwrite", config.BaseConfigFile)
-		} else {
-			ok, confirmErr := prompt.Confirm(config.BaseConfigFile+" already exists — overwrite?", false)
-			if confirmErr != nil {
-				return confirmErr
-			}
-			if !ok {
-				return fmt.Errorf("%s already exists — aborting", config.BaseConfigFile)
-			}
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("checking %s: %w", config.BaseConfigFile, err)
-	}
 
-	// 2. Resolve workspace → project → environment step by step.
+	// 1. Resolve workspace → project → environment step by step.
 	//    Each API call is wrapped in a spinner (interactive only).
 	//    In interactive mode, each picker form includes Note fields
 	//    showing all previous selections for context.
@@ -396,37 +377,77 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 
 	if !yes && !interactive {
 		_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
+		if envContent != "" {
+			_, _ = fmt.Fprintf(out, "\nwould write %s\n\n%s\n", envFileName, envContent)
+		}
 		_, _ = fmt.Fprintf(out, "use --yes to write files\n")
 		return nil
 	}
 
-	// 6. Write the config file.
-	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
+	// 6. Write the config file (prompt to overwrite if it exists).
+	writeConfig, err := confirmWrite(configPath, config.BaseConfigFile, yes, interactive)
+	if err != nil {
+		return err
 	}
-	_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
+	if writeConfig {
+		if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
+		}
+		_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
+	} else {
+		_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", config.BaseConfigFile)
+	}
 
 	// 7. Write .env.fat-controller with actual secret values.
 	if envContent != "" {
 		envPath := filepath.Join(dir, envFileName)
-		if err := os.WriteFile(envPath, []byte(envContent), 0o600); err != nil {
-			return fmt.Errorf("writing %s: %w", envFileName, err)
-		}
-		_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n",
-			envFileName)
-
-		added, err := ensureGitignoreHasLine(dir, envFileName)
+		writeEnv, err := confirmWrite(envPath, envFileName, yes, interactive)
 		if err != nil {
-			return fmt.Errorf("updating .gitignore: %w", err)
+			return err
 		}
-		slog.Debug("gitignore check", "line", envFileName, "added", added)
-		if added {
-			_, _ = fmt.Fprintf(out, "updated .gitignore (added %s)\n",
+		if writeEnv {
+			if err := os.WriteFile(envPath, []byte(envContent), 0o600); err != nil {
+				return fmt.Errorf("writing %s: %w", envFileName, err)
+			}
+			_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n",
 				envFileName)
+
+			added, err := ensureGitignoreHasLine(dir, envFileName)
+			if err != nil {
+				return fmt.Errorf("updating .gitignore: %w", err)
+			}
+			slog.Debug("gitignore check", "line", envFileName, "added", added)
+			if added {
+				_, _ = fmt.Fprintf(out, "updated .gitignore (added %s)\n",
+					envFileName)
+			}
+		} else {
+			_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", envFileName)
 		}
 	}
 
 	return nil
+}
+
+// confirmWrite checks if a file already exists and asks for confirmation
+// to overwrite. Returns true if the file should be written. With --yes the
+// file is always written. In interactive mode the user is prompted. In
+// non-interactive mode without --yes, existing files are skipped.
+func confirmWrite(path, displayName string, yes, interactive bool) (bool, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return true, nil // file doesn't exist, safe to write
+	} else if err != nil {
+		return false, fmt.Errorf("checking %s: %w", displayName, err)
+	}
+	// File exists.
+	if yes {
+		slog.Debug("overwriting existing file (--yes)", "path", path)
+		return true, nil
+	}
+	if !interactive {
+		return false, nil // skip silently in non-interactive mode
+	}
+	return prompt.Confirm(displayName+" already exists — overwrite?", false)
 }
 
 // renderEnvFile generates a .env file with KEY=VALUE lines for each secret

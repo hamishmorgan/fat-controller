@@ -820,20 +820,28 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		}
 	})
 
-	t.Run("config init refuses overwrite of existing file", func(t *testing.T) {
-		// RunConfigInit checks for existing file before calling the resolver,
-		// so no mock server is needed.
+	t.Run("config init non-interactive shows preview when file exists", func(t *testing.T) {
+		_, resolver := newTestInitResolver(t)
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `project = "existing"`)
 
 		var out bytes.Buffer
-		// Non-interactive without --yes should refuse to overwrite.
-		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, nil, false, false, false, &out)
-		if err == nil {
-			t.Fatal("expected error when config file already exists")
+		// Non-interactive without --yes shows preview, does not write.
+		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, false, false, &out)
+		if err != nil {
+			t.Fatalf("RunConfigInit() error: %v", err)
 		}
-		if !strings.Contains(err.Error(), "already exists") {
-			t.Errorf("unexpected error: %v", err)
+		got := out.String()
+		if !strings.Contains(got, "would write") {
+			t.Errorf("expected preview output, got:\n%s", got)
+		}
+		if !strings.Contains(got, "use --yes") {
+			t.Errorf("expected --yes suggestion, got:\n%s", got)
+		}
+		// Original file should be unchanged.
+		content, _ := os.ReadFile(filepath.Join(dir, config.BaseConfigFile))
+		if !strings.Contains(string(content), "existing") {
+			t.Error("config file should not have been overwritten")
 		}
 	})
 

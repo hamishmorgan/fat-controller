@@ -120,9 +120,9 @@ func TestFormat_MasksSecrets(t *testing.T) {
 	if strings.Contains(got, "hunter2") {
 		t.Errorf("live secret should be masked:\n%s", got)
 	}
-	// Desired value (from config file) is shown as-is.
-	if !strings.Contains(got, "newpass") {
-		t.Errorf("desired value should be shown:\n%s", got)
+	// Desired value should be masked too.
+	if strings.Contains(got, "newpass") {
+		t.Errorf("desired secret should be masked:\n%s", got)
 	}
 }
 
@@ -139,6 +139,9 @@ func TestFormat_ShowSecretsRevealsLiveValues(t *testing.T) {
 	got := diff.Format(result, true)
 	if !strings.Contains(got, "hunter2") {
 		t.Errorf("--show-secrets should reveal live value:\n%s", got)
+	}
+	if !strings.Contains(got, "newpass") {
+		t.Errorf("--show-secrets should reveal desired value:\n%s", got)
 	}
 }
 

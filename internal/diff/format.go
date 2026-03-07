@@ -74,9 +74,10 @@ func writeChange(out *strings.Builder, ch Change, masker *config.Masker, isVaria
 	liveDisplay := ch.LiveValue
 	desiredDisplay := ch.DesiredValue
 
-	// Mask live values for sensitive variables.
+	// Mask variable values unless --show-secrets.
 	if masker != nil && isVariable {
 		liveDisplay = masker.MaskValue(ch.Key, liveDisplay)
+		desiredDisplay = masker.MaskValue(ch.Key, desiredDisplay)
 	}
 
 	switch ch.Action {

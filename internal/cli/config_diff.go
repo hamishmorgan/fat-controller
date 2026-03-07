@@ -97,10 +97,12 @@ func renderDiffStructured(result *diff.Result, showSecrets bool) DiffOutput {
 			sec.Variables = make([]DiffChangeOut, 0, len(sd.Variables))
 			for _, ch := range sd.Variables {
 				liveVal := ch.LiveValue
+				desiredVal := ch.DesiredValue
 				if masker != nil {
 					liveVal = masker.MaskValue(ch.Key, liveVal)
+					desiredVal = masker.MaskValue(ch.Key, desiredVal)
 				}
-				sec.Variables = append(sec.Variables, DiffChangeOut{Key: ch.Key, Action: ch.Action.String(), LiveValue: liveVal, DesiredValue: ch.DesiredValue})
+				sec.Variables = append(sec.Variables, DiffChangeOut{Key: ch.Key, Action: ch.Action.String(), LiveValue: liveVal, DesiredValue: desiredVal})
 			}
 		}
 		if len(sd.Settings) > 0 {

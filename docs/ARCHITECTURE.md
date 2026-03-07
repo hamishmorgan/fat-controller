@@ -209,11 +209,11 @@ Every command accepts these flags.
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
 | `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
-| `--json` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output as JSON |
-| `--toml` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output as TOML |
-| `--raw` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output bare value, no formatting |
-| `--color` | | `FAT_CONTROLLER_COLOR` | `tool.output_color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
-| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.api_timeout` | `30s` | Time limit per API request |
+| `--json` | | `FAT_CONTROLLER_OUTPUT_FORMAT` | `tool.output_format` | | Output as JSON |
+| `--toml` | | `FAT_CONTROLLER_OUTPUT_FORMAT` | `tool.output_format` | | Output as TOML |
+| `--raw` | | `FAT_CONTROLLER_OUTPUT_FORMAT` | `tool.output_format` | | Output bare value, no formatting |
+| `--color` | | `FAT_CONTROLLER_OUTPUT_COLOR` | `tool.output_color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
+| `--timeout` | | `FAT_CONTROLLER_API_TIMEOUT` | `tool.api_timeout` | `30s` | Time limit per API request |
 | `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
 | `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
@@ -260,9 +260,9 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `tool.allow_create` | on | Add entities that exist in source but not target |
-| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `tool.allow_update` | on | Overwrite entities that exist in both |
-| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `tool.allow_delete` | off | Remove entities that exist in target but not source |
+| `--create` / `--no-create` | `FAT_CONTROLLER_ALLOW_CREATE` | `tool.allow_create` | on | Add entities that exist in source but not target |
+| `--update` / `--no-update` | `FAT_CONTROLLER_ALLOW_UPDATE` | `tool.allow_update` | on | Overwrite entities that exist in both |
+| `--delete` / `--no-delete` | `FAT_CONTROLLER_ALLOW_DELETE` | `tool.allow_delete` | off | Remove entities that exist in target but not source |
 
 ### Mutation flags
 

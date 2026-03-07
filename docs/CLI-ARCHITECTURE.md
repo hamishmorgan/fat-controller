@@ -15,16 +15,19 @@ tool.
    keys are tool settings and context. TOML tables are services.
 
 2. **Declarative and imperative are separate.** Declarative commands
-   (`adopt`, `diff`, `apply`, `show`, `validate`) manage desired
-   state. Imperative commands (`new`, `deploy`, `restart`, `logs`,
-   etc.) create resources or perform actions on a running system.
-   Both share context resolution but not mechanics.
+   (`new`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
+   desired state — `new` scaffolds it, `adopt` imports it, `apply`
+   converges it. Imperative commands (`deploy`, `restart`, `logs`,
+   etc.) perform actions on a running system. Both share context
+   resolution but not mechanics.
 
-3. **Apply creates everything.** If the config declares a service,
-   environment, volume, or domain that doesn't exist in Railway,
-   `apply` creates it. The config file is the source of truth and
-   `apply` converges reality toward it. Symmetrically, `adopt` adds
-   anything from Railway that isn't in the config.
+3. **Apply creates everything.** If the config declares a project,
+   environment, service, volume, or domain that doesn't exist in
+   Railway, `apply` creates it — from the project level down.
+   The config file is the source of truth and `apply` converges
+   reality toward it. Symmetrically, `adopt` adds anything from
+   Railway that isn't in the config. The only prerequisite is
+   that the workspace must already exist.
 
 4. **Additive by default, opt-in deletion.** Unmentioned entities are
    never touched by default. If your file doesn't mention a service,
@@ -238,36 +241,17 @@ These are set only in the config file, not via flags or env vars.
 
 ### `new`
 
-Create a resource. Takes a noun argument for what to create.
+Scaffold entries in the local config file. Does not call the
+Railway API — use `apply` to create the resources in Railway.
 
 ```text
 fat-controller new <type> [options]
 ```
 
-#### `new config`
-
-Scaffold a config file. No API calls — creates a local file only.
-
-```text
-fat-controller new config [--template <name>]
-```
-
-| Arg/flag | Description |
-|----------|-------------|
-| `--template <name>` | Scaffold from a Railway template |
-
-Flags: global.
-
-Interactive resolution:
-
-| Parameter | Default | Interactive | Non-interactive |
-|-----------|---------|-------------|-----------------|
-| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
-| Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
-
 #### `new project`
 
-Create a Railway project.
+Add project context to the config file. If no config file exists,
+creates one.
 
 ```text
 fat-controller new project [name]
@@ -275,45 +259,46 @@ fat-controller new project [name]
 
 | Arg/flag | Description |
 |----------|-------------|
-| `name` | Project name (random if omitted) |
+| `name` | Project name |
 
-Flags: global, context (`--workspace`), mutation.
+Flags: global, config.
 
 Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
 | Workspace | From config file | Picker (skip if only one) | Use default, error if missing |
-| Name | Random | Prompt | Random |
+| Name | — | Prompt | Error if not specified |
+
+Writes `workspace` and `project` keys to the config file.
 
 #### `new environment`
 
-Create an environment within a project.
+Add environment context to the config file.
 
 ```text
-fat-controller new environment [name] [--duplicate <env>]
+fat-controller new environment [name]
 ```
 
 | Arg/flag | Description |
 |----------|-------------|
 | `name` | Environment name |
-| `--duplicate <env>` | Clone from an existing environment |
 
-Flags: global, context (`--workspace`, `--project`), mutation.
+Flags: global, config.
 
 Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
 | Name | — | Prompt | Error if not specified |
-| Duplicate from | — | Picker (optional) | Only if `--duplicate` set |
+
+Writes the `environment` key to the config file.
 
 #### `new service`
 
-Add a service to a project. Can create databases, link a GitHub
-repo, use a Docker image, or create an empty service.
+Add a service definition to the config file. Pre-fills common
+settings based on the service type.
 
 ```text
 fat-controller new service [name] [--database <type>] [--repo <repo>] [--image <image>]
@@ -322,23 +307,22 @@ fat-controller new service [name] [--database <type>] [--repo <repo>] [--image <
 | Arg/flag | Description |
 |----------|-------------|
 | `name` | Service name |
-| `--database <type>` | Create a database (`postgres`, `mysql`, `redis`, `mongo`) |
-| `--repo <repo>` | Create from a GitHub repo |
-| `--image <image>` | Create from a Docker image |
+| `--database <type>` | Pre-fill for a database (`postgres`, `mysql`, `redis`, `mongo`) |
+| `--repo <repo>` | Pre-fill source repo |
+| `--image <image>` | Pre-fill Docker image |
 
-Flags: global, context, mutation.
+Flags: global, config.
 
 Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Workspace | From config file | Prompt with default | Use default, error if missing |
-| Project | From config file | Prompt with default | Use default, error if missing |
 | Type | Empty service | Picker: empty, database, repo, image | Empty unless flag set |
 | Name | — | Prompt (auto-suggested for databases) | Error if not specified |
 
-After creating a service, run `adopt` to pull its configuration
-into the local config file.
+Writes a `[name.*]` table to the config file with appropriate
+defaults for the service type. Run `apply` to create the service
+in Railway.
 
 ### `adopt`
 

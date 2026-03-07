@@ -323,6 +323,47 @@ func TestRenderInitTOML_PreservesRailwayRefs(t *testing.T) {
 	}
 }
 
+func TestCollectSecrets(t *testing.T) {
+	cfg := config.LiveConfig{
+		Shared: map[string]string{
+			"SHARED_KEY": "shared-secret",
+			"APP_MODE":   "production",
+		},
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"PORT":              "8080",
+					"DATABASE_PASSWORD": "hunter2",
+					"DATABASE_URL":      "postgresql://${{postgres.PGUSER}}:${{postgres.PGPASSWORD}}@host/db",
+				},
+			},
+		},
+	}
+	secrets := config.CollectSecrets(cfg)
+
+	// DATABASE_PASSWORD should be collected (sensitive name, literal value).
+	if secrets["DATABASE_PASSWORD"] != "hunter2" {
+		t.Errorf("DATABASE_PASSWORD = %q, want %q", secrets["DATABASE_PASSWORD"], "hunter2")
+	}
+	// SHARED_KEY should be collected (sensitive name).
+	if secrets["SHARED_KEY"] != "shared-secret" {
+		t.Errorf("SHARED_KEY = %q, want %q", secrets["SHARED_KEY"], "shared-secret")
+	}
+	// PORT should not be collected (not sensitive).
+	if _, ok := secrets["PORT"]; ok {
+		t.Error("PORT should not be in secrets")
+	}
+	// DATABASE_URL with Railway refs should not be collected.
+	if _, ok := secrets["DATABASE_URL"]; ok {
+		t.Error("DATABASE_URL with Railway refs should not be in secrets")
+	}
+	// APP_MODE should not be collected.
+	if _, ok := secrets["APP_MODE"]; ok {
+		t.Error("APP_MODE should not be in secrets")
+	}
+}
+
 func TestRenderTOML_QuotesSpecialKeys(t *testing.T) {
 	cfg := config.LiveConfig{
 		Services: map[string]*config.ServiceConfig{

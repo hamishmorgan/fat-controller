@@ -195,6 +195,30 @@ func envRefVars(vars map[string]string, masker *Masker) map[string]string {
 	return out
 }
 
+// CollectSecrets returns a map of variable names to their actual values for
+// all variables classified as secrets. A variable is a secret if MaskValue
+// would mask it (sensitive name or high entropy) AND the value is not a
+// Railway reference. The returned map is flat — shared and per-service
+// variables are merged (last wins if duplicated, which matches the env var
+// namespace).
+func CollectSecrets(cfg LiveConfig) map[string]string {
+	masker := NewMasker(nil, nil)
+	secrets := make(map[string]string)
+	for k, v := range cfg.Shared {
+		if masker.MaskValue(k, v) == MaskedValue {
+			secrets[k] = v
+		}
+	}
+	for _, svc := range cfg.Services {
+		for k, v := range svc.Variables {
+			if masker.MaskValue(k, v) == MaskedValue {
+				secrets[k] = v
+			}
+		}
+	}
+	return secrets
+}
+
 // RenderInitTOML generates a fat-controller.toml for the init command.
 // It includes a workspace/project/environment header (when provided), uses
 // ${VAR} env references for secrets, and excludes deploy settings and IDs

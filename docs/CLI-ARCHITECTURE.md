@@ -15,10 +15,10 @@ tool.
    keys are tool settings and context. TOML tables are services.
 
 2. **Declarative and imperative are separate.** Declarative commands
-   (`init`, `adopt`, `diff`, `apply`, `show`, `validate`) manage
-   desired state. Imperative commands (`deploy`, `restart`, `logs`)
-   perform actions on a running system. They share context resolution
-   (project/env/service) but not mechanics.
+   (`adopt`, `diff`, `apply`, `show`, `validate`) manage desired
+   state. Imperative commands (`new`, `deploy`, `restart`, `logs`,
+   etc.) create resources or perform actions on a running system.
+   Both share context resolution but not mechanics.
 
 3. **Apply creates everything.** If the config declares a service,
    environment, volume, or domain that doesn't exist in Railway,
@@ -231,48 +231,120 @@ These are set only in the config file, not via flags or env vars.
 
 ## Commands
 
-### `init`
+### `new`
 
-First-time setup. In "from remote" mode, resolves context (workspace,
-project, environment, services) and then runs `adopt` to pull live
-state. In `--new` mode, scaffolds an empty config file.
+Create a resource. Takes a noun argument for what to create.
 
 ```text
-fat-controller init [--new] [--template <name>]
+fat-controller new <type> [options]
+```
+
+#### `new config`
+
+Scaffold a config file. No API calls — creates a local file only.
+
+```text
+fat-controller new config [--template <name>]
 ```
 
 | Arg/flag | Description |
 |----------|-------------|
-| `--new` | Scaffold from scratch instead of importing from remote |
 | `--template <name>` | Scaffold from a Railway template |
 
-After the initial bootstrap, use `adopt` to bring additional resources
-into an existing config (e.g. `adopt redis` after adding a service in
-the dashboard).
-
-Flags: global, context, config, mutation (`--yes`, `--dry-run`).
+Flags: global.
 
 Interactive resolution:
 
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
-| Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
 | Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
 | Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
-| Workspace (`--workspace`) | — | Picker (skip if only one) | Error if ambiguous |
-| Project (`--project`) | — | Picker | Error if not specified |
-| Environment (`--environment`) | — | Picker | Error if not specified |
-| Services | All | Checkbox list, all selected | All |
 
-In `--new` mode, only config file path and secrets file path are
-resolved — no API calls, no context needed.
+#### `new project`
+
+Create a Railway project.
+
+```text
+fat-controller new project [name]
+```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `name` | Project name (random if omitted) |
+
+Flags: global, context (`--workspace`), mutation.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Picker (skip if only one) | Use default, error if missing |
+| Name | Random | Prompt | Random |
+
+#### `new environment`
+
+Create an environment within a project.
+
+```text
+fat-controller new environment [name] [--duplicate <env>]
+```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `name` | Environment name |
+| `--duplicate <env>` | Clone from an existing environment |
+
+Flags: global, context (`--workspace`, `--project`), mutation.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Name | — | Prompt | Error if not specified |
+| Duplicate from | — | Picker (optional) | Only if `--duplicate` set |
+
+#### `new service`
+
+Add a service to a project. Can create databases, link a GitHub
+repo, use a Docker image, or create an empty service.
+
+```text
+fat-controller new service [name] [--database <type>] [--repo <repo>] [--image <image>]
+```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `name` | Service name |
+| `--database <type>` | Create a database (`postgres`, `mysql`, `redis`, `mongo`) |
+| `--repo <repo>` | Create from a GitHub repo |
+| `--image <image>` | Create from a Docker image |
+
+Flags: global, context, mutation.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Type | Empty service | Picker: empty, database, repo, image | Empty unless flag set |
+| Name | — | Prompt (auto-suggested for databases) | Error if not specified |
+
+After creating a service, run `adopt` to pull its configuration
+into the local config file.
 
 ### `adopt`
 
-Merge live Railway state into the local config file. Sensitive values
+Pull live Railway state into the local config file. Sensitive values
 are detected and written to the secrets file as `${VAR}` references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
+
+Works for both first-time bootstrap (no config file yet — resolves
+context interactively, creates the file) and ongoing sync (config
+file exists — pulls new or changed resources into it).
 
 ```text
 fat-controller adopt [path]
@@ -290,10 +362,15 @@ Interactive resolution:
 |-----------|---------|-------------|-----------------|
 | Config file (`--config`) | Auto-discover | Prompt with default | Use default |
 | Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
-| Workspace | From config file | Prompt with default | Use default |
-| Project | From config file | Prompt with default | Use default |
-| Environment | From config file | Prompt with default | Use default |
+| Workspace | From config file | Picker if no config file | Use default, error if missing |
+| Project | From config file | Picker if no config file | Use default, error if missing |
+| Environment | From config file | Picker if no config file | Use default, error if missing |
+| Services | All | Checkbox list (first time only) | All |
 | Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
+
+When no config file exists, `adopt` behaves like a first-time setup:
+it prompts for workspace, project, and environment, then writes a
+new config file with the adopted state.
 
 ### `diff`
 
@@ -590,7 +667,7 @@ Merge order: repo-root config, then environments/production config
 on top.
 
 The **primary config file** is the deepest one found — this is where
-`adopt` and `init` write, and where the local override is resolved.
+`adopt` writes, and where the local override is resolved.
 
 The secrets file is co-located with the primary (deepest) config file:
 
@@ -872,7 +949,7 @@ This means you can run any command with zero flags in interactive mode
 and the tool walks you through every decision:
 
 ```text
-$ fat-controller init
+$ fat-controller adopt
 
   Config file: fat-controller.toml
   Secrets file: .env.fat-controller
@@ -889,7 +966,7 @@ $ fat-controller init
 Or pin specific values and only be prompted for the rest:
 
 ```text
-$ fat-controller init --project Life --environment production
+$ fat-controller adopt --project Life --environment production
 
   Config file: fat-controller.toml
   Secrets file: .env.fat-controller

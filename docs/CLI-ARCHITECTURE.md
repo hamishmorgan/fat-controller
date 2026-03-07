@@ -164,7 +164,7 @@ base_environment = "production"
 
 [project.environments]
 production = {}
-staging = { source = "production" }   # cloned from production
+staging = {}
 ```
 
 ### Workspace scope

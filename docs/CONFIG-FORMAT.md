@@ -98,7 +98,7 @@ ignored. Three patterns for managing secrets:
    Safe to commit. Railway resolves at runtime.
 3. **Local env interpolation** — `STRIPE_KEY = "${STRIPE_KEY}"`. Resolved
    from local environment at apply time. Config file is safe to commit;
-   actual value comes from CI env vars or `.env.fat-controller`.
+   actual value comes from `.env.fat-controller` or CI env vars.
 
 `config init` generates a `.env.fat-controller` file (gitignored) with
 actual secret values pulled from Railway. Load it into your environment

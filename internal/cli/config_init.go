@@ -377,9 +377,10 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	slog.Debug("rendering config file", "services", len(filtered.Services))
 	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
 
+	const envFileName = ".env.fat-controller"
+
 	// Collect secrets for .env.fat-controller.
 	envContent := renderEnvFile(filtered)
-	envFileName := ".env.fat-controller"
 
 	if dryRun {
 		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n",

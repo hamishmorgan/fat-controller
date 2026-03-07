@@ -90,7 +90,8 @@ env vars, or CLI flags — but not managed as desired state.
 | `project` | Project name or ID |
 | `environment` | Environment name |
 | `timeout` | API request timeout |
-| `output` | Output format: `text`, `json`, `toml` |
+| `json` | Always output as JSON |
+| `toml` | Always output as TOML |
 | `color` | Color: `auto`, `always`, `never` |
 | `show_secrets` | Show secret values instead of masking |
 | `sensitive_keywords` | Keywords for detecting sensitive variable names |
@@ -150,11 +151,15 @@ Every command accepts these flags.
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
 | `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
-| `--output` | `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml` |
+| `--json` | | `FAT_CONTROLLER_JSON` | `json` | `false` | Output as JSON |
+| `--toml` | | `FAT_CONTROLLER_TOML` | `toml` | `false` | Output as TOML |
 | `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
 | `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
+
+Default output is human-readable text. `--json` and `--toml` are
+mutually exclusive; specifying both is an error.
 
 Default log level is INFO.
 
@@ -780,7 +785,7 @@ lowest priority first:
 
 1. **Compiled-in defaults** — built into the binary.
 2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`.
-   Always at this fixed path. Useful for setting `output`, `color`,
+   Always at this fixed path. Useful for setting `json`, `color`,
    `timeout`, or a default `workspace` across all projects.
 3. **Discovered config files** — all config files found by walking
    upward from the working directory to the git root (see

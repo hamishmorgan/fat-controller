@@ -614,32 +614,53 @@ Flags: global, context.
 
 ### `list`
 
-List entities. Takes a noun argument for the entity type.
+List entities. Takes an optional noun argument for the entity type.
 
 ```text
-fat-controller list <type>
+fat-controller list [type]
 ```
 
-| Type | Context required |
-|------|-----------------|
-| `workspaces` | None |
-| `projects` | Workspace |
-| `environments` | Workspace + project |
-| `services` | Workspace + project |
-| `deployments` | Workspace + project + environment |
-| `volumes` | Workspace + project |
-| `domains` | Workspace + project + environment |
+| Type | Context required | Description |
+|------|-----------------|-------------|
+| `all` | None | Full hierarchy: workspaces → projects → environments → services |
+| `workspaces` | None | |
+| `projects` | Workspace | |
+| `environments` | Workspace + project | |
+| `services` | Workspace + project | |
+| `deployments` | Workspace + project + environment | |
+| `volumes` | Workspace + project | |
+| `domains` | Workspace + project + environment | |
 
 Flags: global, context.
 
-Interactive resolution: context flags follow the standard pattern —
-prompt with default if interactive, use default or error if
-non-interactive. Only the context required for the entity type is
-resolved. `list workspaces` needs no context. `list projects` needs
-a workspace. `list services` needs a workspace and project.
+**No argument behavior:**
 
-In interactive mode with no `<type>` argument, prompt with a picker
-for the entity type. In non-interactive mode, error.
+| | Interactive | Non-interactive |
+|---|---|---|
+| Type | Picker: all, workspaces, projects, ... | `all` |
+| Format | Formatted tree | JSON |
+
+`list all` outputs the full hierarchy from workspaces down to
+services. Interactive mode renders a tree:
+
+```text
+Hamish Morgan's Projects
+  Life
+    production
+      api, worker, postgres
+    staging
+      api, worker, postgres
+  Other Project
+    production
+      web
+```
+
+Non-interactive mode defaults to JSON for reliable parsing.
+
+For other types, context flags follow the standard pattern —
+prompt with default if interactive, use default or error if
+non-interactive. Only the context required for the entity type
+is resolved.
 
 ### `auth login`
 

@@ -109,7 +109,7 @@ func (c *NewServiceCmd) Run(globals *Globals) error {
 	}
 
 	if !globals.Quiet {
-		fmt.Fprintf(os.Stdout, "Added service %q to %s\n", c.Name, configPath)
+		_, _ = fmt.Fprintf(os.Stdout, "Added service %q to %s\n", c.Name, configPath)
 	}
 	return nil
 }

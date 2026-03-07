@@ -279,13 +279,16 @@ also resolved from the config file, env vars, and token scope — see
 
 | Flag | Env var | Config key | Description |
 |------|---------|------------|-------------|
-| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace.name` | Workspace name or ID |
-| `--project` | `FAT_CONTROLLER_PROJECT` | `project.name` | Project name or ID |
-| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `name` | Environment name or ID |
+| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace.id` / `workspace.name` | Workspace name or ID |
+| `--project` | `FAT_CONTROLLER_PROJECT` | `project.id` / `project.name` | Project name or ID |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `id` / `name` | Environment name or ID |
 | `--service` | `FAT_CONTROLLER_SERVICE` | — | Service name or ID |
 
-Each flag accepts either a name or an ID — the tool detects which
-based on format and matches accordingly.
+Flags and env vars accept either a name or an ID — the tool
+detects which based on format. Config files have separate `id` and
+`name` fields; `id` is authoritative when present, `name` is the
+fallback. IDs are stable across renames — prefer `id` in any
+long-lived config.
 
 ### Config flags
 

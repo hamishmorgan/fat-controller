@@ -560,19 +560,39 @@ Read-only — no interactive resolution needed.
 
 ### Config file discovery
 
-When `--config` is not specified, the config file is found by
-searching from the working directory upward to the git root (or
-current directory only if not in a git repo). At each directory, three
-locations are checked in order — first match wins:
+When `--config` is not specified, config files are found by walking
+from the working directory upward to the git root (or current
+directory only if not in a git repo). At each directory, three
+locations are checked in order — first match at that level wins:
 
 1. `[path]/fat-controller.toml`
 2. `[path]/.config/fat-controller.toml`
 3. `[path]/.config/fat-controller/config.toml`
 
-Visible beats hidden. Simple beats nested.
+Visible beats hidden. Simple beats nested. At most one config file
+is found per directory level.
 
-The secrets file is searched for in the same directory as the resolved
-config file:
+**All config files found in the walk are collected and merged,
+shallowest first.** The deepest file (closest to the working
+directory) has the highest priority. This enables inheritance:
+a root-level config sets shared values, and a subdirectory config
+overrides only what differs.
+
+Example walk from `environments/production/`:
+
+```text
+environments/production/fat-controller.toml  → found (deepest)
+environments/                                → no config file
+repo-root/fat-controller.toml                → found (shallowest)
+```
+
+Merge order: repo-root config, then environments/production config
+on top.
+
+The **primary config file** is the deepest one found — this is where
+`adopt` and `init` write, and where the local override is resolved.
+
+The secrets file is co-located with the primary (deepest) config file:
 
 | Config location | Secrets location |
 |----------------|-----------------|
@@ -580,7 +600,8 @@ config file:
 | `[path]/.config/fat-controller.toml` | `[path]/.config/.env.fat-controller` |
 | `[path]/.config/fat-controller/config.toml` | `[path]/.config/fat-controller/.env` |
 
-Both are overridable with `--config` and `--secrets`.
+Both are overridable with `--config` and `--secrets`. When `--config`
+is specified, only that single file is loaded — no upward walk.
 
 ### File locations summary
 
@@ -638,16 +659,58 @@ output = "json"
 show_secrets = true
 ```
 
-### Precedence
+### File cascade
 
-Settings are resolved in order, highest priority last:
+Multiple config files are loaded and merged in precedence order,
+lowest priority first:
 
-1. Compiled-in defaults
-2. Global config (`$XDG_CONFIG_HOME/fat-controller/config.toml`)
-3. Project config (`fat-controller.toml`)
-4. Local override (`fat-controller.local.toml`, gitignored)
-5. Environment variables
-6. CLI flags
+1. **Compiled-in defaults** — built into the binary.
+2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`.
+   Always at this fixed path. Useful for setting `output`, `color`,
+   `timeout`, or a default `workspace` across all projects.
+3. **Discovered config files** — all config files found by walking
+   upward from the working directory to the git root (see
+   [Config file discovery](#config-file-discovery)). Merged
+   shallowest first, so deeper (more specific) files win.
+4. **Local override** — co-located with the primary (deepest) config
+   file, with `.local` inserted before the extension (e.g.
+   `fat-controller.local.toml`). Gitignored. Personal preferences
+   or environment-specific overrides.
+5. **Environment variables** — `FAT_CONTROLLER_*` and `RAILWAY_*`.
+6. **CLI flags** — highest priority, always wins.
+
+Concrete example with this directory structure:
+
+```text
+$XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
+repo-root/fat-controller.toml                  # workspace, project, [shared.variables]
+environments/production/fat-controller.toml    # environment = "production", [api.resources]
+environments/production/fat-controller.local.toml  # show_secrets = true
+```
+
+Running from `environments/production/`, the merge order is:
+
+1. Compiled defaults
+2. `$XDG_CONFIG_HOME/fat-controller/config.toml`
+3. `repo-root/fat-controller.toml`
+4. `environments/production/fat-controller.toml`
+5. `environments/production/fat-controller.local.toml`
+6. Environment variables
+7. CLI flags
+
+**Merge rules:**
+
+- **Top-level keys** (settings, context): later values replace earlier
+  ones. If the root config sets `timeout = "60s"` and the environment
+  config sets `timeout = "30s"`, the environment config wins.
+- **TOML tables** (Railway state): deep merge. Keys within a table
+  from a higher-precedence file override the same keys from a
+  lower-precedence file. Keys only present in the lower-precedence
+  file are preserved. This means a root config can set
+  `[shared.variables]` and an environment config can add to or
+  override individual variables without replacing the entire table.
+- **Environment variables and CLI flags** only set top-level keys
+  (settings, context). They do not express Railway state.
 
 ---
 
@@ -682,7 +745,76 @@ These are actions, not state — no declarative equivalent:
 
 ## Multi-environment patterns
 
-### Pattern 1: Directory per environment
+### Pattern 1: Shared base with environment overrides (cascade)
+
+```text
+fat-controller.toml                        # workspace, project, shared services
+environments/
+  production/fat-controller.toml           # environment = "production", overrides
+  staging/fat-controller.toml              # environment = "staging", overrides
+```
+
+The root config sets `workspace`, `project`, and shared service
+definitions. Each environment directory's config sets `environment`
+and overrides only what differs (e.g. resource limits, replica
+counts).
+
+```toml
+# fat-controller.toml (root — shared base)
+workspace = "Hamish Morgan's Projects"
+project = "Life"
+
+[shared.variables]
+NODE_ENV = "production"
+
+[api.deploy]
+builder = "NIXPACKS"
+start_command = "node dist/server.js"
+
+[api.domains]
+"api.example.com" = { port = 8080 }
+```
+
+```toml
+# environments/production/fat-controller.toml
+environment = "production"
+
+[api.resources]
+vcpus = 4
+memory_gb = 8
+```
+
+```toml
+# environments/staging/fat-controller.toml
+environment = "staging"
+
+[shared.variables]
+NODE_ENV = "staging"
+
+[api.resources]
+vcpus = 1
+memory_gb = 2
+```
+
+Running `fat-controller apply` from `environments/production/`
+discovers both files via the upward walk and merges them — root
+first, then the environment override on top.
+
+```bash
+# From environments/production/:
+fat-controller apply
+# Or from anywhere, using --config (skips walk, loads only this file):
+fat-controller apply --config environments/production/fat-controller.toml
+```
+
+Note: `--config` loads a single file with no upward walk. For CI
+pipelines that need the cascade, run from the environment directory
+rather than using `--config`.
+
+Best for: most projects. Keeps shared config DRY, with per-environment
+differences clearly separated.
+
+### Pattern 2: Self-contained files per environment
 
 ```text
 environments/
@@ -690,15 +822,18 @@ environments/
   staging/fat-controller.toml
 ```
 
-Each file is self-contained. Values that differ between environments
-use `${VAR}` interpolation or are set directly.
+Each file is fully self-contained with all settings and service
+definitions. No cascade — use `--config` to target a specific file.
 
 ```bash
 fat-controller apply --config environments/production/fat-controller.toml
 fat-controller apply --config environments/staging/fat-controller.toml
 ```
 
-### Pattern 2: Per-service files (monorepo)
+Best for: projects where environments differ substantially, or teams
+that prefer explicit duplication over inheritance.
+
+### Pattern 3: Per-service files (monorepo)
 
 ```text
 services/
@@ -709,8 +844,10 @@ services/
 Each file is environment-scoped but only declares one service's
 tables. Because `apply` is additive by default, each file only
 touches the services it mentions. A CI pipeline applies each file
-independently. Shared variables live in a root-level config or are
-duplicated across files.
+independently. Shared variables live in a root-level config (picked
+up via cascade) or are duplicated across files.
+
+Best for: large teams where each service team owns their config.
 
 ---
 

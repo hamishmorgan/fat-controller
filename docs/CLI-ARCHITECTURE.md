@@ -37,8 +37,8 @@ tool.
    Diffs are never stale.
 
 6. **Files cascade.** Multiple config files merge in precedence order
-   (global → project → directory → local). Later files override
-   earlier ones. Multi-environment setups use one file per environment.
+   (global config → discovered configs shallowest-first → local
+   override → env vars → CLI flags). See [File cascade](#file-cascade).
 
 ---
 
@@ -81,10 +81,6 @@ env vars, or CLI flags — but not managed as desired state.
 ---
 
 ## Config file schema
-
-Every config file has the same schema. There is one scope:
-environment. A file manages services within a single
-project+environment.
 
 **Top-level keys** are tool settings and context:
 
@@ -137,10 +133,11 @@ memory_gb = 4
 data = { mount = "/data", size_gb = 10 }
 ```
 
-A file doesn't need to include everything. A global config might only
-set `timeout` and `output`. A project-level file might set `workspace`,
-`project`, and `[shared.variables]`. An environment-level file sets
-`environment` and per-service config. The cascade merges them all.
+A file doesn't need to include everything — the
+[cascade](#file-cascade) merges files at different directory levels.
+A root config might set `workspace`, `project`, and shared service
+definitions; an environment-level file adds `environment` and
+per-service overrides.
 
 ---
 
@@ -232,9 +229,9 @@ These are set only in the config file, not via flags or env vars.
 
 ---
 
-### Commands
+## Commands
 
-#### `init`
+### `init`
 
 First-time setup. In "from remote" mode, resolves context (workspace,
 project, environment, services) and then runs `adopt` to pull live
@@ -260,7 +257,7 @@ Interactive resolution:
 | Parameter | Default | Interactive | Non-interactive |
 |-----------|---------|-------------|-----------------|
 | Mode (`--new`) | From remote | Prompt: import or scaffold | From remote |
-| Config file (`--config`) | Auto-discover | Prompt with default | Use default |
+| Config file (`--config`) | `fat-controller.toml` | Prompt with default | Use default |
 | Secrets file (`--secrets`) | `.env.fat-controller` | Prompt with default | Use default |
 | Workspace (`--workspace`) | — | Picker (skip if only one) | Error if ambiguous |
 | Project (`--project`) | — | Picker | Error if not specified |
@@ -270,12 +267,12 @@ Interactive resolution:
 In `--new` mode, only config file path and secrets file path are
 resolved — no API calls, no context needed.
 
-#### `adopt`
+### `adopt`
 
-Merge live Railway state into the local config file. Detects sensitive
-values and writes them to the secrets file as `${VAR}` references.
-Additive by default — adds missing entries, updates changed entries,
-does not remove entries unless `--delete` is set.
+Merge live Railway state into the local config file. Sensitive values
+are detected and written to the secrets file as `${VAR}` references.
+See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
+and `--delete` control the merge.
 
 ```text
 fat-controller adopt [path]
@@ -283,7 +280,7 @@ fat-controller adopt [path]
 
 | Arg/flag | Description |
 |----------|-------------|
-| `path` | Optional dot-path to narrow scope (e.g. `redis`, `api.variables`) |
+| `path` | Optional dot-path to limit what is adopted (e.g. `redis`, `api.variables`) |
 
 Flags: global, context, config, merge, mutation, display.
 
@@ -298,7 +295,7 @@ Interactive resolution:
 | Environment | From config file | Prompt with default | Use default |
 | Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
 
-#### `diff`
+### `diff`
 
 Compare local config against live Railway state. Read-only — no
 changes are made. Output reflects what `apply` would do given the
@@ -321,11 +318,11 @@ Interactive resolution:
 
 Read-only — no confirmation needed.
 
-#### `apply`
+### `apply`
 
-Merge local config into live Railway state. Additive by default —
-creates missing entities, updates changed entities, does not delete
-unless `--delete` is set.
+Merge local config into live Railway state. See
+[Merge behavior](#merge-behavior) for how `--create`, `--update`,
+and `--delete` control the merge.
 
 ```text
 fat-controller apply
@@ -343,7 +340,7 @@ Interactive resolution:
 | Environment | From config file | Prompt with default | Use default |
 | Confirm changes | Yes | Preview + confirm | Error unless `--yes` |
 
-#### `validate`
+### `validate`
 
 Check config file for warnings without making API calls.
 
@@ -361,7 +358,7 @@ Interactive resolution:
 
 No API calls, no context flags needed.
 
-#### `show`
+### `show`
 
 Display live Railway state. Read-only. No path = full overview.
 Dot-path = narrow to a specific section or value.
@@ -386,7 +383,7 @@ Interactive resolution:
 
 Read-only — no confirmation needed.
 
-#### `deploy`
+### `deploy`
 
 Trigger a deployment. No arguments = all services in the environment.
 
@@ -406,7 +403,7 @@ Interactive resolution:
 | Services | All | Checkbox list, all selected | All |
 | Confirm | Yes | "Deploy N services? [Y/n]" | Error unless `--yes` |
 
-#### `redeploy`
+### `redeploy`
 
 Redeploy the current image.
 
@@ -418,7 +415,7 @@ Flags: global, context, mutation.
 
 Interactive resolution: same as `deploy`.
 
-#### `restart`
+### `restart`
 
 Restart running deployments.
 
@@ -430,7 +427,7 @@ Flags: global, context, mutation.
 
 Interactive resolution: same as `deploy`.
 
-#### `rollback`
+### `rollback`
 
 Rollback to the previous deployment.
 
@@ -442,7 +439,7 @@ Flags: global, context, mutation.
 
 Interactive resolution: same as `deploy`.
 
-#### `stop`
+### `stop`
 
 Stop running deployments.
 
@@ -454,7 +451,7 @@ Flags: global, context, mutation.
 
 Interactive resolution: same as `deploy`.
 
-#### `logs`
+### `logs`
 
 Tail logs. No arguments = all services in the environment.
 
@@ -475,7 +472,7 @@ Interactive resolution:
 
 Read-only — no confirmation needed.
 
-#### `status`
+### `status`
 
 Show deployment status. No arguments = all services in the
 environment.
@@ -488,7 +485,7 @@ Flags: global, context.
 
 Interactive resolution: same as `logs`.
 
-#### `list`
+### `list`
 
 List entities. Takes a noun argument for the entity type.
 
@@ -517,7 +514,7 @@ a workspace. `list services` needs a workspace and project.
 In interactive mode with no `<type>` argument, prompt with a picker
 for the entity type. In non-interactive mode, error.
 
-#### `auth login`
+### `auth login`
 
 Authenticate via browser-based OAuth. Opens a browser.
 
@@ -529,7 +526,7 @@ Flags: global.
 
 No interactive resolution — the OAuth flow is always browser-based.
 
-#### `auth logout`
+### `auth logout`
 
 Clear stored credentials.
 
@@ -545,7 +542,7 @@ Interactive resolution:
 |-----------|---------|-------------|-----------------|
 | Confirm | Yes | "Clear credentials? [Y/n]" | Error unless `--yes` |
 
-#### `auth status`
+### `auth status`
 
 Show current authentication state.
 
@@ -622,34 +619,6 @@ When using the `.config/fat-controller/` directory form:
 | `.config/fat-controller/config.local.toml` | Personal overrides | No (gitignored) |
 | `.config/fat-controller/.env` | Secret values for `${VAR}` interpolation | No (gitignored) |
 
-### Settings in the config file
-
-Tool settings are top-level keys in the same file as desired state.
-There is no separate settings file — settings and state live together.
-
-```toml
-# Scope
-workspace = "Hamish Morgan's Projects"
-project = "Life"
-environment = "production"
-
-# Tool settings
-timeout = "60s"
-output = "text"
-show_secrets = false
-
-# Railway desired state
-[shared.variables]
-NODE_ENV = "production"
-
-[api.variables]
-PORT = "8080"
-```
-
-Top-level keys are always tool configuration (scope, settings).
-TOML tables (`[api]`, `[shared]`, etc.) are always Railway state.
-No collision is possible.
-
 ### Local overrides
 
 The `.local` file has the same schema as the main config file. It
@@ -725,7 +694,7 @@ Running from `environments/production/`, the merge order is:
 |--------|---------|--------|
 | Variables (shared) | `[shared.variables]` | key-value pairs |
 | Variables (per-service) | `[svc.variables]` | key-value pairs |
-| Deploy settings | `[svc.deploy]` | `builder`, `build_command`, `start_command`, `dockerfile_path`, `root_directory`, `healthcheck_path`, `healthcheck_timeout`, `cron_schedule`, `draining_seconds`, `num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`, `restart_policy`, `restart_policy_max_retries`, `sleep_application`, `watch_patterns` |
+| Deploy settings | `[svc.deploy]` | See below |
 | Resources | `[svc.resources]` | `vcpus`, `memory_gb` |
 | Custom domains | `[svc.domains]` | hostname, target port |
 | Service domains | `[svc.domains]` | railway.app subdomain, target port |
@@ -734,6 +703,13 @@ Running from `environments/production/`, the merge order is:
 | Private network endpoints | `[svc.network]` | DNS name |
 | Deployment triggers | `[svc.triggers]` | branch, repo, check suites |
 | Egress gateways | `[svc.egress]` | service association |
+
+`[svc.deploy]` fields: `builder`, `build_command`, `start_command`,
+`dockerfile_path`, `root_directory`, `healthcheck_path`,
+`healthcheck_timeout`, `cron_schedule`, `draining_seconds`,
+`num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`,
+`restart_policy`, `restart_policy_max_retries`, `sleep_application`,
+`watch_patterns`.
 
 ### What stays imperative-only
 
@@ -856,17 +832,16 @@ Best for: large teams where each service team owns their config.
 
 ## Context resolution
 
-All commands need to know which project/environment/service to target.
-Context keys (`workspace`, `project`, `environment`, `service`) are
-resolved using the same precedence as all settings (see
-[File cascade](#file-cascade)), plus two additional sources:
+Commands that target Railway resources need `workspace`, `project`,
+`environment`, and optionally `service`. These are resolved using the
+[file cascade](#file-cascade) — CLI flags, then env vars, then config
+files — with two additional fallback sources:
 
-1. CLI flags (`--project`, `--environment`, `--service`)
-2. Environment variables (`FAT_CONTROLLER_PROJECT`, etc.)
-3. Config file cascade (local override → discovered configs → global)
-4. Token scope (project-scoped `RAILWAY_TOKEN` implies project + env)
-5. Interactive picker (if TTY) — see below
-6. Error with available options
+- **Token scope.** A project-scoped `RAILWAY_TOKEN` implies a
+  specific project and environment.
+- **Interactive picker.** If a value is still missing and stdin is a
+  TTY, the user picks from a list of available options. Otherwise,
+  the command errors with available options listed.
 
 ---
 
@@ -925,9 +900,10 @@ $ fat-controller init --project Life --environment production
 
 **`--yes` and `--dry-run`:**
 
-`--yes` accepts the default for every prompt. It makes interactive
-mode behave like non-interactive: use defaults, error on missing
-required values with no default.
+`--yes` accepts the default for every prompt — it makes interactive
+mode behave like non-interactive. `--dry-run` prevents all mutations.
+When both are set, `--dry-run` wins: defaults are used, but nothing
+is written.
 
 | Flags | Interactive | Non-interactive |
 |-------|-------------|-----------------|
@@ -974,14 +950,12 @@ adopt --no-create --delete         # update + remove stale, don't add
 Without `--delete`, explicit delete markers handle one-off removals:
 
 ```toml
-# Delete a variable
-OLD_VAR = ""
+[api.variables]
+OLD_VAR = { delete = true }
 
-# Delete a service (environment-scope file)
 [old-service]
 delete = true
 
-# Delete a volume
 [api.volumes]
 old-data = { delete = true }
 ```

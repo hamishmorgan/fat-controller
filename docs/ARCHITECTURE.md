@@ -250,8 +250,8 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config` | `FAT_CONTROLLER_CONFIG` | `tool.config` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
-| `--secrets` | `FAT_CONTROLLER_SECRETS` | `tool.secrets` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
+| `--config` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
+| `--secrets` | `FAT_CONTROLLER_SECRETS_FILE` | `tool.secrets_file` | *(co-located)* | Secrets file path for `${VAR}` interpolation |
 
 ### Merge flags
 

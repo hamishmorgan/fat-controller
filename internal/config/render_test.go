@@ -13,7 +13,7 @@ func sampleConfig() config.LiveConfig {
 	return config.LiveConfig{
 		ProjectID:     "proj-1",
 		EnvironmentID: "env-1",
-		Shared:        map[string]string{"SHARED": "1"},
+		Variables:     map[string]string{"SHARED": "1"},
 		Services: map[string]*config.ServiceConfig{
 			"api": {
 				ID:        "svc-1",
@@ -118,7 +118,7 @@ func TestRender_JSONFullIncludesIDsAndDeploy(t *testing.T) {
 
 func TestRender_TOMLQuotesValues(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
+		Variables: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
 	}
 	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
 	if err != nil {
@@ -162,7 +162,7 @@ func TestRender_EmptyConfig(t *testing.T) {
 
 func TestRender_MasksSecretsByDefault(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"DATABASE_PASSWORD": "hunter2"},
+		Variables: map[string]string{"DATABASE_PASSWORD": "hunter2"},
 		Services: map[string]*config.ServiceConfig{
 			"api": {Name: "api", Variables: map[string]string{
 				"AUTH_TOKEN": "secret123",
@@ -190,7 +190,7 @@ func TestRender_MasksSecretsByDefault(t *testing.T) {
 
 func TestRender_ShowSecretsOverridesMasking(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"DATABASE_PASSWORD": "hunter2"},
+		Variables: map[string]string{"DATABASE_PASSWORD": "hunter2"},
 	}
 	got, err := config.Render(cfg, config.RenderOptions{
 		Format:      "text",
@@ -206,7 +206,7 @@ func TestRender_ShowSecretsOverridesMasking(t *testing.T) {
 
 func TestRender_MaskingWorksInJSON(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
+		Variables: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
 	}
 	got, err := config.Render(cfg, config.RenderOptions{Format: "json"})
 	if err != nil {
@@ -219,7 +219,7 @@ func TestRender_MaskingWorksInJSON(t *testing.T) {
 
 func TestRender_MaskingWorksInTOML(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
+		Variables: map[string]string{"API_KEY": "fakekeyfakekeyfakekey"},
 	}
 	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
 	if err != nil {
@@ -232,7 +232,7 @@ func TestRender_MaskingWorksInTOML(t *testing.T) {
 
 func TestRender_ReferenceTemplateNotMasked(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{
+		Variables: map[string]string{
 			"DATABASE_URL": "${{postgres.DATABASE_URL}}",
 		},
 	}
@@ -325,7 +325,7 @@ func TestRenderInitTOML_PreservesRailwayRefs(t *testing.T) {
 
 func TestCollectSecrets(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared: map[string]string{
+		Variables: map[string]string{
 			"SHARED_KEY": "shared-secret",
 			"APP_MODE":   "production",
 		},
@@ -394,8 +394,8 @@ func TestRenderTOML_QuotesSpecialKeys(t *testing.T) {
 
 func TestRenderInitTOML_SharedVariables(t *testing.T) {
 	cfg := config.LiveConfig{
-		Shared:   map[string]string{"GLOBAL": "value"},
-		Services: map[string]*config.ServiceConfig{},
+		Variables: map[string]string{"GLOBAL": "value"},
+		Services:  map[string]*config.ServiceConfig{},
 	}
 	got := config.RenderInitTOML("ws", "proj", "env", cfg)
 	if !strings.Contains(got, `workspace = "ws"`) {

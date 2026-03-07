@@ -4,7 +4,7 @@ package config
 type LiveConfig struct {
 	ProjectID     string
 	EnvironmentID string
-	Shared        map[string]string
+	Variables     map[string]string
 	Services      map[string]*ServiceConfig
 }
 

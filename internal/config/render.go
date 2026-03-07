@@ -51,7 +51,7 @@ func maskConfig(cfg LiveConfig, masker *Masker) LiveConfig {
 	out := LiveConfig{
 		ProjectID:     cfg.ProjectID,
 		EnvironmentID: cfg.EnvironmentID,
-		Shared:        maskVars(cfg.Shared, masker),
+		Variables:     maskVars(cfg.Variables, masker),
 		Services:      make(map[string]*ServiceConfig, len(cfg.Services)),
 	}
 	for name, svc := range cfg.Services {
@@ -85,8 +85,8 @@ func toJSONMap(cfg LiveConfig, full bool) map[string]any {
 		m["project_id"] = cfg.ProjectID
 		m["environment_id"] = cfg.EnvironmentID
 	}
-	if len(cfg.Shared) > 0 {
-		m["shared"] = map[string]any{"variables": cfg.Shared}
+	if len(cfg.Variables) > 0 {
+		m["shared"] = map[string]any{"variables": cfg.Variables}
 	}
 	for name, svc := range cfg.Services {
 		svcMap := map[string]any{"variables": svc.Variables}
@@ -127,11 +127,11 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		out.WriteString("project_id = " + tomlQuote(cfg.ProjectID) + "\n")
 		out.WriteString("environment_id = " + tomlQuote(cfg.EnvironmentID) + "\n\n")
 	}
-	if len(cfg.Shared) > 0 {
+	if len(cfg.Variables) > 0 {
 		out.WriteString("[shared.variables]\n")
-		keys := sortedKeys(cfg.Shared)
+		keys := sortedKeys(cfg.Variables)
 		for _, k := range keys {
-			out.WriteString(tomlKey(k) + " = " + tomlQuote(cfg.Shared[k]) + "\n")
+			out.WriteString(tomlKey(k) + " = " + tomlQuote(cfg.Variables[k]) + "\n")
 		}
 		out.WriteString("\n")
 	}
@@ -165,7 +165,7 @@ func envRefConfig(cfg LiveConfig) LiveConfig {
 	out := LiveConfig{
 		ProjectID:     cfg.ProjectID,
 		EnvironmentID: cfg.EnvironmentID,
-		Shared:        envRefVars(cfg.Shared, masker),
+		Variables:     envRefVars(cfg.Variables, masker),
 		Services:      make(map[string]*ServiceConfig, len(cfg.Services)),
 	}
 	for name, svc := range cfg.Services {
@@ -204,7 +204,7 @@ func envRefVars(vars map[string]string, masker *Masker) map[string]string {
 func CollectSecrets(cfg LiveConfig) map[string]string {
 	masker := NewMasker(nil, nil)
 	secrets := make(map[string]string)
-	for k, v := range cfg.Shared {
+	for k, v := range cfg.Variables {
 		if masker.MaskValue(k, v) == MaskedValue {
 			secrets[k] = v
 		}
@@ -327,11 +327,11 @@ func renderText(cfg LiveConfig, full bool) string {
 		out.WriteString("environment_id: " + cfg.EnvironmentID + "\n\n")
 	}
 
-	if len(cfg.Shared) > 0 {
+	if len(cfg.Variables) > 0 {
 		out.WriteString("[shared.variables]\n")
-		keys := sortedKeys(cfg.Shared)
+		keys := sortedKeys(cfg.Variables)
 		for _, k := range keys {
-			out.WriteString(k + " = " + cfg.Shared[k] + "\n")
+			out.WriteString(k + " = " + cfg.Variables[k] + "\n")
 		}
 		out.WriteString("\n")
 	}

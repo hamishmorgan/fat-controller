@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"os"
+
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
 // AdoptCmd implements the `adopt` command.
@@ -18,12 +19,26 @@ type AdoptCmd struct {
 
 // Run implements `adopt`.
 func (c *AdoptCmd) Run(globals *Globals) error {
-	_ = globals
-	_ = c.Path
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+	resolver := &railwayInitResolver{client: client}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
-	_ = wd
-	return errors.New("adopt: not implemented")
+
+	interactive := prompt.StdinIsInteractive()
+	if c.PromptMode() == "all" {
+		interactive = true
+	} else if c.PromptMode() == "none" {
+		interactive = false
+	}
+
+	// TODO: Wire MergeFlags, Path scoping, and ID bookkeeping.
+	return RunConfigInit(ctx, wd, c.Workspace, c.Project, c.Environment, resolver, interactive, c.DryRun, c.Yes, os.Stdout)
 }

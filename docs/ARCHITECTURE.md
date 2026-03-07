@@ -81,22 +81,23 @@ environment's identity and state:
 **`[tool]`** holds tool settings — how fat-controller behaves,
 not what it manages:
 
-| Key | Description |
-|-----|-------------|
-| `api_timeout` | Overall time limit per API request (connect through response) |
-| `log_level` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `silent` |
-| `output_format` | Output format: `auto`, `text`, `json`, `toml`, `raw` |
-| `output_color` | Color: `auto`, `always`, `never` |
-| `prompt` | Prompting mode: `all`, `default`, `none` |
-| `show_secrets` | Show secret values instead of masking |
-| `sensitive_keywords` | Keywords for detecting sensitive variable names |
-| `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
-| `suppress_warnings` | Warning codes to suppress |
-| `fail_fast` | Stop on first error instead of trying all operations |
-| `deploy` | Deploy after apply: `run`, `skip` |
-| `allow_create` | Merge flag default: add entities that exist in source but not target |
-| `allow_update` | Merge flag default: overwrite entities that exist in both |
-| `allow_delete` | Merge flag default: remove entities that exist in target but not source |
+| Key | Default | Values | Env var | CLI flag | Description |
+|-----|---------|--------|---------|----------|-------------|
+| `api_timeout` | `30s` | Duration string | `FAT_CONTROLLER_API_TIMEOUT` | `--timeout` | Time limit per API request |
+| `log_level` | `info` | `trace`, `debug`, `info`, `warn`, `error`, `silent` | `FAT_CONTROLLER_LOG_LEVEL` | `--verbose` / `--quiet` | Base log level. Flags adjust relative to it |
+| `output_format` | `auto` | `auto`, `text`, `json`, `toml`, `raw` | `FAT_CONTROLLER_OUTPUT_FORMAT` | `--json` / `--toml` / `--raw` | Output format |
+| `output_color` | `auto` | `auto`, `always`, `never` | `FAT_CONTROLLER_OUTPUT_COLOR` | `--color` | Color mode. Respects `NO_COLOR` |
+| `prompt` | `default` | `all`, `default`, `none` | `FAT_CONTROLLER_PROMPT` | `--ask` / `--yes` | How aggressively to prompt |
+| `deploy` | `run` | `run`, `skip` | `FAT_CONTROLLER_DEPLOY` | `--skip-deploys` | Deploy after apply |
+| `show_secrets` | `false` | Boolean | `FAT_CONTROLLER_SHOW_SECRETS` | `--show-secrets` | Show secret values instead of masking |
+| `fail_fast` | `false` | Boolean | — | `--fail-fast` | Stop on first error |
+| `allow_create` | `true` | Boolean | `FAT_CONTROLLER_ALLOW_CREATE` | `--create` / `--no-create` | Merge: add entities in source but not target |
+| `allow_update` | `true` | Boolean | `FAT_CONTROLLER_ALLOW_UPDATE` | `--update` / `--no-update` | Merge: overwrite where both exist |
+| `allow_delete` | `false` | Boolean | `FAT_CONTROLLER_ALLOW_DELETE` | `--delete` / `--no-delete` | Merge: remove entities in target but not source |
+| `env_file` | *(none)* | String or list of strings | `FAT_CONTROLLER_ENV_FILE` | `--env-file` | Env file path(s) for `${VAR}` interpolation |
+| `sensitive_keywords` | *(built-in list)* | List of strings | — | — | Keywords for detecting sensitive variable names |
+| `sensitive_allowlist` | *(built-in list)* | List of strings | — | — | Keywords that suppress false-positive secret matches |
+| `suppress_warnings` | `[]` | List of strings | — | — | Warning codes to suppress (e.g. `["W012"]`) |
 
 **`[workspace]`** and **`[project]`** are parent context — the
 workspace and project that own this environment. Each has `name`
@@ -336,17 +337,6 @@ these flags.
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
 | `--show-secrets` | `FAT_CONTROLLER_SHOW_SECRETS` | `tool.show_secrets` | `false` | Show secret values instead of masking |
-
-### Config-only keys
-
-These are set only in the config file (`[tool]`), not via flags
-or env vars.
-
-| Config key | Default | Description |
-|------------|---------|-------------|
-| `tool.sensitive_keywords` | *(built-in list)* | Keywords for detecting sensitive variable names |
-| `tool.sensitive_allowlist` | *(built-in list)* | Keywords that suppress false-positive secret matches |
-| `tool.suppress_warnings` | `[]` | Warning codes to suppress (e.g. `["W012"]`) |
 
 ### Environment variables
 

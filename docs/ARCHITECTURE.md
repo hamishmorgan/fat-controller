@@ -83,16 +83,16 @@ not what it manages:
 
 | Key | Description |
 |-----|-------------|
-| `timeout` | API request timeout |
-| `format` | Output format: `text`, `json`, `toml` |
-| `color` | Color: `auto`, `always`, `never` |
+| `api_timeout` | API request timeout |
+| `output_format` | Output format: `text`, `json`, `toml` |
+| `output_color` | Color: `auto`, `always`, `never` |
 | `show_secrets` | Show secret values instead of masking |
 | `sensitive_keywords` | Keywords for detecting sensitive variable names |
 | `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
 | `suppress_warnings` | Warning codes to suppress |
-| `create` | Merge flag default |
-| `update` | Merge flag default |
-| `delete` | Merge flag default |
+| `allow_create` | Merge flag default: add entities that exist in source but not target |
+| `allow_update` | Merge flag default: overwrite entities that exist in both |
+| `allow_delete` | Merge flag default: remove entities that exist in target but not source |
 
 **`[workspace]`** and **`[project]`** are parent context — the
 workspace and project that own this environment. Each has `name`
@@ -115,7 +115,7 @@ id = "env_abc123"
 variables = { NODE_ENV = "production" }
 
 [tool]
-timeout = "60s"
+api_timeout = "60s"
 
 [workspace]
 name = "Hamish Morgan's Projects"
@@ -209,11 +209,11 @@ Every command accepts these flags.
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
 | `--token` | | `RAILWAY_TOKEN` / `RAILWAY_API_TOKEN` | — | — | Auth token |
-| `--json` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output as JSON |
-| `--toml` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output as TOML |
-| `--raw` | | `FAT_CONTROLLER_FORMAT` | `tool.format` | | Output bare value, no formatting |
-| `--color` | | `FAT_CONTROLLER_COLOR` | `tool.color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
-| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.timeout` | `30s` | API request timeout |
+| `--json` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output as JSON |
+| `--toml` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output as TOML |
+| `--raw` | | `FAT_CONTROLLER_FORMAT` | `tool.output_format` | | Output bare value, no formatting |
+| `--color` | | `FAT_CONTROLLER_COLOR` | `tool.output_color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
+| `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `tool.api_timeout` | `30s` | API request timeout |
 | `--ask` | `-a` | — | — | | Prompt for all parameters, even those with defaults |
 | `--yes` | `-y` | `FAT_CONTROLLER_YES` | — | `false` | Accept all defaults without prompting |
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
@@ -260,9 +260,9 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `tool.create` | on | Add entities that exist in source but not target |
-| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `tool.update` | on | Overwrite entities that exist in both |
-| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `tool.delete` | off | Remove entities that exist in target but not source |
+| `--create` / `--no-create` | `FAT_CONTROLLER_CREATE` | `tool.allow_create` | on | Add entities that exist in source but not target |
+| `--update` / `--no-update` | `FAT_CONTROLLER_UPDATE` | `tool.allow_update` | on | Overwrite entities that exist in both |
+| `--delete` / `--no-delete` | `FAT_CONTROLLER_DELETE` | `tool.allow_delete` | off | Remove entities that exist in target but not source |
 
 ### Mutation flags
 
@@ -936,7 +936,7 @@ preferences that shouldn't be committed:
 ```toml
 # fat-controller.local.toml
 [tool]
-format = "json"
+output_format = "json"
 show_secrets = true
 ```
 
@@ -948,7 +948,7 @@ lowest priority first:
 1. **Compiled-in defaults** — built into the binary.
 2. **Global config** — `$XDG_CONFIG_HOME/fat-controller/config.toml`.
    Always at this fixed path. Useful for setting `[tool]` preferences
-   (`format`, `color`, `timeout`) or a default `[workspace]` across
+   (`output_format`, `output_color`, `api_timeout`) or a default `[workspace]` across
    all projects.
 3. **Discovered config files** — all config files found by walking
    upward from the working directory to the git root (see
@@ -964,7 +964,7 @@ lowest priority first:
 Concrete example with this directory structure:
 
 ```text
-$XDG_CONFIG_HOME/fat-controller/config.toml   # [tool] timeout = "60s"
+$XDG_CONFIG_HOME/fat-controller/config.toml   # [tool] api_timeout = "60s"
 repo-root/fat-controller.toml                  # [workspace], [project], [[service]]
 environments/production/fat-controller.toml    # name, variables, [[service]] overrides
 environments/production/fat-controller.local.toml  # [tool] show_secrets = true
@@ -986,7 +986,7 @@ Running from `environments/production/`, the merge order is:
   earlier ones.
 - **Top-level `variables`**: deep merge. Individual keys from
   higher-precedence files override lower-precedence ones.
-- **`[tool]`**: deep merge. A global config can set `timeout` and
+- **`[tool]`**: deep merge. A global config can set `api_timeout` and
   a project config can override it.
 - **`[workspace]`, `[project]`**: deep merge. A root config
   typically sets these; environment configs inherit them.

@@ -104,9 +104,19 @@ env vars, or CLI flags — but not managed as desired state.
 | `delete` | Merge flag default |
 
 **TOML tables** are Railway state — services and their entities.
-`shared` is a reserved table name for environment-wide shared
-variables (`[shared.variables]`). A Railway service cannot be named
-"shared". All other table names are treated as service names.
+
+### Reserved names
+
+The following table names are reserved and cannot be used as service
+names:
+
+| Name | Purpose |
+|------|---------|
+| `shared` | Environment-wide shared variables (`[shared.variables]`) |
+| `workspace` | Reserved for `show workspace` path |
+| `project` | Reserved for `show project` path |
+
+All other table names are treated as service names.
 
 ```toml
 workspace = "Hamish Morgan's Projects"
@@ -436,16 +446,24 @@ No API calls, no context flags needed.
 
 ### `show`
 
-Display live Railway state. Read-only. No path = full overview.
-Dot-path = narrow to a specific section or value.
+Display live Railway state for a resource. Read-only.
 
 ```text
 fat-controller show [path]
 ```
 
-| Arg/flag | Description |
-|----------|-------------|
-| `path` | Optional dot-path (e.g. `api`, `api.variables.PORT`) |
+| Path | What it shows |
+|------|---------------|
+| *(none)* | Full environment state (all services, variables, domains, etc.) |
+| `workspace` | Workspace metadata (name, ID, members, settings) |
+| `project` | Project metadata (name, ID, settings, tokens) |
+| `api` | Everything about the `api` service |
+| `api.variables` | Just `api`'s variables |
+| `api.variables.PORT` | Single value |
+
+`workspace` and `project` are reserved keywords — see
+[reserved names](#reserved-names). All other top-level paths
+are treated as service names.
 
 Flags: global, context, display.
 
@@ -456,6 +474,9 @@ Interactive resolution:
 | Workspace | From config file | Prompt with default | Use default, error if missing |
 | Project | From config file | Prompt with default | Use default, error if missing |
 | Environment | From config file | Prompt with default | Use default, error if missing |
+
+`show workspace` only needs workspace context. `show project` needs
+workspace + project. All other paths need the full context.
 
 Read-only — no confirmation needed.
 

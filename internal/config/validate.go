@@ -290,34 +290,18 @@ func hasLowercase(s string) bool {
 }
 
 // ValidateFiles checks filesystem conditions that can't be detected from
-// the parsed config alone. Call from the CLI layer alongside Validate().
+// the parsed config alone.
 func ValidateFiles(dir string) []Warning {
 	var warnings []Warning
 	localPath := filepath.Join(dir, LocalConfigFile)
-	if _, err := os.Stat(localPath); err != nil {
-		return warnings // no local file, nothing to check
-	}
-	gitignorePath := filepath.Join(dir, ".gitignore")
-	data, err := os.ReadFile(gitignorePath)
-	if err != nil {
-		// No .gitignore — warn.
+	if _, err := os.Stat(localPath); err == nil {
 		warnings = append(warnings, Warning{
-			Code:    "W051",
-			Message: fmt.Sprintf("%s exists but is not in .gitignore — secrets may be committed", LocalConfigFile),
-			Path:    LocalConfigFile,
+			Code: "W052",
+			Message: fmt.Sprintf("%s is deprecated — move secrets to ${VAR} "+
+				"references in %s and use .env.fat-controller for secret values",
+				LocalConfigFile, BaseConfigFile),
+			Path: LocalConfigFile,
 		})
-		return warnings
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == LocalConfigFile || line == "**/"+LocalConfigFile {
-			return warnings // found, no warning
-		}
-	}
-	warnings = append(warnings, Warning{
-		Code:    "W051",
-		Message: fmt.Sprintf("%s exists but is not in .gitignore — secrets may be committed", LocalConfigFile),
-		Path:    LocalConfigFile,
-	})
 	return warnings
 }

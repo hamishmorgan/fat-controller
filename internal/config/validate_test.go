@@ -464,46 +464,21 @@ func TestValidate_W050_NonSensitiveNameNoWarning(t *testing.T) {
 	assertNoWarning(t, warnings, "W050")
 }
 
-// --- W051: Local override file not gitignored ---
+// --- W051: Deprecated — removed (local file no longer auto-discovered) ---
 
-func TestValidateFiles_W051_LocalNotGitignored(t *testing.T) {
-	dir := t.TempDir()
-	// Create local config file but no .gitignore.
-	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	warnings := config.ValidateFiles(dir)
-	assertHasWarning(t, warnings, "W051")
-}
-
-func TestValidateFiles_W051_GitignoreContainsLocal(t *testing.T) {
+func TestValidateFiles_DeprecationWarning_LocalFileExists(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(config.LocalConfigFile+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	warnings := config.ValidateFiles(dir)
-	assertNoWarning(t, warnings, "W051")
+	assertHasWarning(t, warnings, "W052")
 }
 
-func TestValidateFiles_W051_NoLocalFile(t *testing.T) {
+func TestValidateFiles_NoWarning_NoLocalFile(t *testing.T) {
 	dir := t.TempDir()
 	warnings := config.ValidateFiles(dir)
-	assertNoWarning(t, warnings, "W051")
-}
-
-func TestValidateFiles_W051_GitignoreWithoutLocal(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, config.LocalConfigFile), []byte("# local"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("node_modules\n.env\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	warnings := config.ValidateFiles(dir)
-	assertHasWarning(t, warnings, "W051")
+	assertNoWarning(t, warnings, "W052")
 }
 
 // --- W060: Reference to unknown service ---

@@ -107,16 +107,6 @@ func findLiveService(live *config.LiveConfig, name string) *config.ServiceConfig
 	return live.Services[name]
 }
 
-// findServiceByName looks up a service in the desired services slice by name.
-func findServiceByName(services []*config.DesiredService, name string) *config.DesiredService {
-	for _, svc := range services {
-		if svc.Name == name {
-			return svc
-		}
-	}
-	return nil
-}
-
 // diffVariables computes additive-only variable diffs.
 func diffVariables(desired, live map[string]string) []Change {
 	var changes []Change

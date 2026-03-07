@@ -1020,9 +1020,17 @@ name = "api"
 scale = { us-west1 = 3, europe-west4 = 2 }
 ```
 
-This replaces `num_replicas` and `region` in `deploy` for
-services that scale across multiple regions. Single-region
-services can use either `deploy.region` or `scale`.
+`deploy.num_replicas` and `deploy.region` handle the common
+single-region case. `service.scale` handles multi-region. When
+`scale` is present, it takes precedence over `deploy.num_replicas`
+and `deploy.region` — the tool errors if both are set with
+conflicting values. Single-region services can use either form:
+
+```toml
+# These are equivalent:
+deploy = { region = "us-west1", num_replicas = 2 }
+scale = { us-west1 = 2 }
+```
 
 ### What stays imperative-only
 
@@ -1335,9 +1343,3 @@ given the current create/update/delete settings.
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[[service]]` structure?
-
-3. **`scale` vs `deploy` overlap.** `[service.scale]` handles
-   multi-region instance counts, while `[service.deploy]` has
-   `num_replicas` and `region` for single-region. Should
-   `num_replicas`/`region` be removed from `[service.deploy]` in
-   favor of always using `[service.scale]`?

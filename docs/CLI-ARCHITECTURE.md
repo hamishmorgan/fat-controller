@@ -142,29 +142,28 @@ NODE_ENV = "production"
 [[service]]
 name = "api"
 id = "srv_abc123"
-
-[service.variables]
-PORT = "8080"
-DATABASE_URL = "${{postgres.DATABASE_URL}}"
-
-[service.deploy]
-builder = "NIXPACKS"
-start_command = "node dist/server.js"
-
-[service.resources]
-vcpus = 2
-memory_gb = 4
-
-[service.domains]
-"api.example.com" = { port = 8080 }
-
-[service.volumes]
-data = { mount = "/data" }
+variables = {
+    PORT = "8080",
+    DATABASE_URL = "${{postgres.DATABASE_URL}}",
+}
+deploy = {
+    builder = "NIXPACKS",
+    start_command = "node dist/server.js",
+}
+resources = { vcpus = 2, memory_gb = 4 }
+domains = { "api.example.com" = { port = 8080 } }
+volumes = { data = { mount = "/data" } }
 ```
 
 The `_id` fields and service `id` fields are optional. When
 absent, the tool matches by name. `adopt` and `apply` populate
 IDs automatically after resolving resources.
+
+Service sub-tables use TOML v1.1 multiline inline tables
+(supported by BurntSushi/toml v1.6.0+). This keeps all fields
+visually grouped under their `[[service]]` entry. The equivalent
+`[service.variables]` sub-header form also works — the parser
+treats both identically.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -987,16 +986,12 @@ instance count pairs:
 ```toml
 [[service]]
 name = "api"
-
-[service.scale]
-us-west1 = 3
-europe-west4 = 2
+scale = { us-west1 = 3, europe-west4 = 2 }
 ```
 
-This replaces `num_replicas` and `region` in `[service.deploy]`
-for services that scale across multiple regions. Single-region
-services can use either `[service.deploy] region` or
-`[service.scale]`.
+This replaces `num_replicas` and `region` in `deploy` for
+services that scale across multiple regions. Single-region
+services can use either `deploy.region` or `scale`.
 
 ### What stays imperative-only
 
@@ -1038,13 +1033,11 @@ NODE_ENV = "production"
 [[service]]
 name = "api"
 id = "srv_abc123"
-
-[service.deploy]
-builder = "NIXPACKS"
-start_command = "node dist/server.js"
-
-[service.domains]
-"api.example.com" = { port = 8080 }
+deploy = {
+    builder = "NIXPACKS",
+    start_command = "node dist/server.js",
+}
+domains = { "api.example.com" = { port = 8080 } }
 ```
 
 ```toml
@@ -1055,10 +1048,7 @@ environment_id = "env_prod123"
 [[service]]
 name = "api"
 id = "srv_abc123"
-
-[service.resources]
-vcpus = 4
-memory_gb = 8
+resources = { vcpus = 4, memory_gb = 8 }
 ```
 
 ```toml
@@ -1072,10 +1062,7 @@ NODE_ENV = "staging"
 [[service]]
 name = "api"
 id = "srv_xyz789"
-
-[service.resources]
-vcpus = 1
-memory_gb = 2
+resources = { vcpus = 1, memory_gb = 2 }
 ```
 
 Running `fat-controller apply` from `environments/production/`
@@ -1292,12 +1279,8 @@ Without `--delete`, explicit delete markers handle one-off removals:
 [[service]]
 name = "api"
 id = "srv_abc123"
-
-[service.variables]
-OLD_VAR = { delete = true }
-
-[service.volumes]
-old-data = { delete = true }
+variables = { OLD_VAR = { delete = true } }
+volumes = { old-data = { delete = true } }
 
 [[service]]
 name = "old-service"

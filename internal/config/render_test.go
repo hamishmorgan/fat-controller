@@ -285,11 +285,41 @@ func TestRenderInitTOML_MasksSecrets(t *testing.T) {
 		},
 	}
 	got := config.RenderInitTOML("", "proj", "env", cfg)
+	// Secret value should not appear in output.
 	if strings.Contains(got, "hunter2") {
-		t.Errorf("secret should be masked:\n%s", got)
+		t.Errorf("secret value should not appear in output:\n%s", got)
 	}
-	if !strings.Contains(got, "PORT") {
-		t.Errorf("expected PORT variable:\n%s", got)
+	// Secret should be rendered as ${VAR} reference, not "********".
+	if !strings.Contains(got, `"${DATABASE_PASSWORD}"`) {
+		t.Errorf("expected ${DATABASE_PASSWORD} env reference:\n%s", got)
+	}
+	if strings.Contains(got, "********") {
+		t.Errorf("should not contain masked placeholder:\n%s", got)
+	}
+	// Non-secret should be literal.
+	if !strings.Contains(got, `PORT = "8080"`) {
+		t.Errorf("expected literal PORT value:\n%s", got)
+	}
+}
+
+func TestRenderInitTOML_PreservesRailwayRefs(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"DATABASE_URL": "postgresql://${{postgres.PGUSER}}:${{postgres.PGPASSWORD}}@host:5432/db",
+				},
+			},
+		},
+	}
+	got := config.RenderInitTOML("", "proj", "env", cfg)
+	// Railway references should be preserved as-is, not turned into ${VAR}.
+	if !strings.Contains(got, "${{postgres.PGUSER}}") {
+		t.Errorf("expected Railway reference preserved:\n%s", got)
+	}
+	if strings.Contains(got, "${DATABASE_URL}") {
+		t.Errorf("Railway ref variable should not become env ref:\n%s", got)
 	}
 }
 

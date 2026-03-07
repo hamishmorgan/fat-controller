@@ -157,12 +157,50 @@ func renderTOML(cfg LiveConfig, full bool) string {
 	return strings.TrimRight(out.String(), "\n")
 }
 
-// RenderInitTOML generates a fat-controller.toml for the init command.
-// It includes a workspace/project/environment header (when provided), masks
-// secrets, and excludes deploy settings and IDs (those are operational, not config).
-func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
+// envRefConfig returns a copy of cfg with sensitive variable values replaced
+// by ${VAR_NAME} environment references. Railway references (${{...}}) are
+// preserved. Non-sensitive values are left as-is.
+func envRefConfig(cfg LiveConfig) LiveConfig {
 	masker := NewMasker(nil, nil)
-	masked := maskConfig(cfg, masker)
+	out := LiveConfig{
+		ProjectID:     cfg.ProjectID,
+		EnvironmentID: cfg.EnvironmentID,
+		Shared:        envRefVars(cfg.Shared, masker),
+		Services:      make(map[string]*ServiceConfig, len(cfg.Services)),
+	}
+	for name, svc := range cfg.Services {
+		out.Services[name] = &ServiceConfig{
+			ID:        svc.ID,
+			Name:      svc.Name,
+			Variables: envRefVars(svc.Variables, masker),
+			Deploy:    svc.Deploy,
+		}
+	}
+	return out
+}
+
+// envRefVars replaces sensitive values with ${VAR_NAME} references.
+func envRefVars(vars map[string]string, masker *Masker) map[string]string {
+	if len(vars) == 0 {
+		return vars
+	}
+	out := make(map[string]string, len(vars))
+	for k, v := range vars {
+		if masker.MaskValue(k, v) == MaskedValue {
+			out[k] = "${" + k + "}"
+		} else {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// RenderInitTOML generates a fat-controller.toml for the init command.
+// It includes a workspace/project/environment header (when provided), uses
+// ${VAR} env references for secrets, and excludes deploy settings and IDs
+// (those are operational, not config).
+func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
+	replaced := envRefConfig(cfg)
 
 	var out strings.Builder
 	if workspace != "" {
@@ -173,7 +211,7 @@ func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) stri
 
 	// Render service sections using the existing TOML renderer (without
 	// IDs or deploy settings — those are fetched live, not managed in config).
-	body := renderTOML(masked, false)
+	body := renderTOML(replaced, false)
 	if body != "" {
 		out.WriteString("\n")
 		out.WriteString(body)

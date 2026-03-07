@@ -9,8 +9,8 @@ import (
 
 func TestComputeDiff_CreateVariable(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"NEW_VAR": "value"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"NEW_VAR": "value"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -37,8 +37,8 @@ func TestComputeDiff_CreateVariable(t *testing.T) {
 
 func TestComputeDiff_UpdateVariable(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "9090"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "9090"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -58,8 +58,8 @@ func TestComputeDiff_UpdateVariable(t *testing.T) {
 
 func TestComputeDiff_DeleteVariable(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"OLD": ""}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"OLD": ""}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -76,8 +76,8 @@ func TestComputeDiff_DeleteVariable(t *testing.T) {
 
 func TestComputeDiff_NoOp(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -94,8 +94,8 @@ func TestComputeDiff_NoOp(t *testing.T) {
 
 func TestComputeDiff_IgnoresUnmentioned(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"PORT": "8080"}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"PORT": "8080"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -115,13 +115,13 @@ func TestComputeDiff_IgnoresUnmentioned(t *testing.T) {
 
 func TestComputeDiff_SharedVariables(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Shared: &config.DesiredVariables{Vars: map[string]string{
+		Variables: config.Variables{
 			"SHARED_NEW": "value",
 			"SHARED_UPD": "new",
-		}},
+		},
 	}
 	live := &config.LiveConfig{
-		Shared: map[string]string{
+		Variables: map[string]string{
 			"SHARED_UPD":  "old",
 			"SHARED_KEEP": "keep",
 		},
@@ -152,8 +152,8 @@ func TestComputeDiff_DeleteEmptyStringNotInLive(t *testing.T) {
 	// If config says KEY="" but KEY doesn't exist in live, it's a no-op
 	// (can't delete what doesn't exist).
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {Variables: map[string]string{"GONE": ""}},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"GONE": ""}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -170,8 +170,8 @@ func TestComputeDiff_DeleteEmptyStringNotInLive(t *testing.T) {
 
 func TestComputeDiff_NewServiceNotInLive(t *testing.T) {
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"new-svc": {Variables: map[string]string{"X": "1"}},
+		Services: []*config.DesiredService{
+			{Name: "new-svc", Variables: config.Variables{"X": "1"}},
 		},
 	}
 	live := &config.LiveConfig{
@@ -191,8 +191,9 @@ func TestComputeDiff_DeploySettingsChange(t *testing.T) {
 	builder := "RAILPACK"
 	startCmd := "npm start"
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name: "api",
 				Deploy: &config.DesiredDeploy{
 					Builder:      &builder,
 					StartCommand: &startCmd,
@@ -228,8 +229,9 @@ func TestComputeDiff_DeploySettingsChange(t *testing.T) {
 func TestComputeDiff_ResourcesChange_NoLive(t *testing.T) {
 	vcpus := 4.0
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Resources: &config.DesiredResources{VCPUs: &vcpus},
 			},
 		},
@@ -257,8 +259,9 @@ func TestComputeDiff_ResourcesNoChange(t *testing.T) {
 	vcpus := 2.0
 	liveVcpus := 2.0
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Resources: &config.DesiredResources{VCPUs: &vcpus},
 			},
 		},
@@ -278,8 +281,9 @@ func TestComputeDiff_ResourcesUpdate(t *testing.T) {
 	vcpus := 4.0
 	liveVcpus := 2.0
 	desired := &config.DesiredConfig{
-		Services: map[string]*config.DesiredService{
-			"api": {
+		Services: []*config.DesiredService{
+			{
+				Name:      "api",
 				Resources: &config.DesiredResources{VCPUs: &vcpus},
 			},
 		},

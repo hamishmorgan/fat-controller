@@ -73,22 +73,23 @@ func Compute(desired *config.DesiredConfig, live *config.LiveConfig) *Result {
 	}
 
 	// Diff shared variables.
-	if desired.Shared != nil {
+	if len(desired.Variables) > 0 {
 		var liveShared map[string]string
 		if live != nil {
-			liveShared = live.Shared
+			liveShared = live.Variables
 		}
 		if liveShared == nil {
 			liveShared = map[string]string{}
 		}
-		changes := diffVariables(desired.Shared.Vars, liveShared)
+		changes := diffVariables(map[string]string(desired.Variables), liveShared)
 		if len(changes) > 0 {
 			result.Shared = &SectionDiff{Variables: changes}
 		}
 	}
 
 	// Diff per-service.
-	for svcName, desiredSvc := range desired.Services {
+	for _, desiredSvc := range desired.Services {
+		svcName := desiredSvc.Name
 		liveSvc := findLiveService(live, svcName)
 		sectionDiff := diffService(desiredSvc, liveSvc)
 		if len(sectionDiff.Variables) > 0 || len(sectionDiff.Settings) > 0 {
@@ -104,6 +105,16 @@ func findLiveService(live *config.LiveConfig, name string) *config.ServiceConfig
 		return nil
 	}
 	return live.Services[name]
+}
+
+// findServiceByName looks up a service in the desired services slice by name.
+func findServiceByName(services []*config.DesiredService, name string) *config.DesiredService {
+	for _, svc := range services {
+		if svc.Name == name {
+			return svc
+		}
+	}
+	return nil
 }
 
 // diffVariables computes additive-only variable diffs.

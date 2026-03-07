@@ -205,8 +205,10 @@ Every command accepts these flags.
 | `--output` | `-o` | `FAT_CONTROLLER_OUTPUT` | `output` | `text` | Output format: `text`, `json`, `toml` |
 | `--color` | | `FAT_CONTROLLER_COLOR` | `color` | `auto` | Color: `auto`, `always`, `never`. Respects `NO_COLOR` |
 | `--timeout` | | `FAT_CONTROLLER_TIMEOUT` | `timeout` | `30s` | API request timeout |
-| `--verbose` | `-v` | — | — | `false` | Debug output |
-| `--quiet` | `-q` | — | — | `false` | Suppress informational output |
+| `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
+| `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
+
+Default log level is INFO.
 
 ### Context flags
 

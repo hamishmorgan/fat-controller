@@ -92,6 +92,7 @@ not what it manages:
 | `sensitive_keywords` | Keywords for detecting sensitive variable names |
 | `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
 | `suppress_warnings` | Warning codes to suppress |
+| `stop_on` | Stop condition: `error`, `warning`, `never` |
 | `allow_create` | Merge flag default: add entities that exist in source but not target |
 | `allow_update` | Merge flag default: overwrite entities that exist in both |
 | `allow_delete` | Merge flag default: remove entities that exist in target but not source |
@@ -318,7 +319,7 @@ Commands that modify state (`adopt`, `apply`, `deploy`, `redeploy`,
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
 | `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `tool.dry_run` | `false` | Preview changes without executing |
-| `--fail-fast` | | `FAT_CONTROLLER_FAIL_FAST` | `tool.fail_fast` | `false` | Stop on first error |
+| `--fail-fast` | | `FAT_CONTROLLER_STOP_ON` | `tool.stop_on` | | Set stop condition to `error` |
 
 ### Apply-specific flags
 

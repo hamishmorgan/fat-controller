@@ -952,41 +952,66 @@ Running from `environments/production/`, the merge order is:
 | Entity | Section | Fields |
 |--------|---------|--------|
 | Variables (shared) | `variables` (top-level) | key-value pairs |
-| Variables (per-service) | `[service.variables]` | key-value pairs |
-| Deploy settings | `[service.deploy]` | See below |
-| Resources | `[service.resources]` | `vcpus`, `memory_gb` |
-| Scaling | `[service.scale]` | Per-region instance counts |
-| Custom domains | `[service.domains]` | hostname, target port |
-| Service domains | `[service.domains]` | railway.app subdomain, target port |
-| Volumes (attached) | `service.volumes` | name, mount path (size is read-only, visible via `show`) |
-| Volumes (unattached) | `volumes` (top-level) | name, mount path |
-| TCP proxies | `[service.tcp_proxies]` | application port |
-| Private network endpoints | `[service.network]` | DNS name |
-| Deployment triggers | `[service.triggers]` | branch, repo, check suites |
-| Egress gateways | `[service.egress]` | service association |
+| Variables (per-service) | `service.variables` | key-value pairs |
+| Deploy settings | `service.deploy` | See below |
+| Resources | `service.resources` | `vcpus`, `memory_gb` |
+| Scaling | `service.scale` | Per-region instance counts |
+| Custom domains | `service.domains` | hostname → target port |
+| Service domains | `service.domains` | enabled (boolean), target port. Subdomain is assigned by Railway (read-only via `show`) |
+| Volumes (attached) | `service.volumes` | name, mount path, optional region (size is read-only, visible via `show`) |
+| Volumes (unattached) | `volumes` (top-level) | name, mount path, optional region |
+| TCP proxies | `service.tcp_proxies` | application port. Proxy port and domain are assigned by Railway (read-only via `show`) |
+| Private network endpoints | `service.network` | enabled (boolean). DNS name is assigned by Railway (read-only via `show`) |
+| Deployment triggers | `service.triggers` | branch, repository, provider, check suites, root directory |
+| Egress gateways | `service.egress` | region (Railway assigns the static IPv4, read-only via `show`) |
 
-Each `[[service]]` entry has `name` (required) and `id` (optional,
-populated by `adopt`/`apply`). Sub-tables use `[service.X]` and
-attach to the preceding `[[service]]` entry.
+Each `[[service]]` entry has `name` (required), `id` (optional,
+populated by `adopt`/`apply`), and `icon` (optional — the service's
+icon identifier in the Railway dashboard). Sub-tables use
+`service.X` keys and attach to the preceding `[[service]]` entry.
 
-`[service.deploy]` fields: `repo`, `image`, `builder`,
-`build_command`, `start_command`, `dockerfile_path`,
-`root_directory`, `healthcheck_path`, `healthcheck_timeout`,
-`cron_schedule`, `draining_seconds`, `num_replicas`,
-`overlap_seconds`, `pre_deploy_command`, `region`,
-`restart_policy`, `restart_policy_max_retries`,
-`sleep_application`, `watch_patterns`.
+`service.deploy` fields:
+
+- **Source:** `repo`, `image`, `branch`, `registry_credentials`
+- **Build:** `builder`, `build_command`, `dockerfile_path`,
+  `root_directory`, `nixpacks_plan`, `watch_patterns`
+- **Run:** `start_command`, `pre_deploy_command`, `cron_schedule`
+- **Health:** `healthcheck_path`, `healthcheck_timeout`,
+  `restart_policy`, `restart_policy_max_retries`
+- **Deploy strategy:** `draining_seconds`, `overlap_seconds`,
+  `sleep_application`
+- **Placement:** `num_replicas`, `region`
+- **Networking:** `ipv6_egress`
 
 `repo` and `image` are mutually exclusive source types. `repo` is
 a GitHub repo (e.g. `"railwayapp/starters"`); `image` is a Docker
-image (e.g. `"postgres:16"`). If neither is specified, `apply`
-creates the service with no source.
+image (e.g. `"postgres:16"`). `branch` sets the Git branch for
+repo-sourced services (e.g. `"main"`). If neither `repo` nor
+`image` is specified, `apply` creates the service with no source.
+
+`registry_credentials` authenticates to a private Docker registry.
+It takes `username` and `password` — passwords should use `${VAR}`
+interpolation to avoid storing secrets in the config file:
+
+```toml
+deploy = {
+    image = "registry.example.com/app:latest",
+    registry_credentials = {
+        username = "deploy",
+        password = "${REGISTRY_PASSWORD}",
+    },
+}
+```
+
+`nixpacks_plan` is a TOML inline table matching the Nixpacks plan
+schema — custom providers, phases, and build settings for
+Nixpacks-built services.
 
 The minimal service definition is just a `[[service]]` entry with
 a `name` — no sub-tables required. The service is created empty
 in Railway; sub-tables are applied after creation.
 
-`[service.scale]` expresses multi-region scaling as region =
+`service.scale` expresses multi-region scaling as region =
 instance count pairs:
 
 ```toml

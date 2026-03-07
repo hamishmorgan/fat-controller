@@ -54,6 +54,11 @@ func TestMaskValue_AllowlistSuppressesFalsePositive(t *testing.T) {
 	if got != "id" {
 		t.Errorf("PRIMARY_KEY should be allowlisted, got %q", got)
 	}
+	// SSL_CERT_DAYS contains CERT at a boundary, but CERT_DAYS is allowlisted.
+	got = m.MaskValue("SSL_CERT_DAYS", "365")
+	if got != "365" {
+		t.Errorf("SSL_CERT_DAYS should be allowlisted, got %q", got)
+	}
 }
 
 func TestMaskValue_RailwayReferenceShownAsIs(t *testing.T) {

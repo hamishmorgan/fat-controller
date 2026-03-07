@@ -52,6 +52,9 @@ var DefaultAllowlist = []string{
 	"SECRET_NAME", "SECRET_LENGTH", "SECRET_VERSION",
 	// SEED — data seeding, not cryptographic seeds
 	"SEED_DATA", "SEED_FILE",
+	// CERT — certificate metadata, not certificate content
+	"CERT_DAYS", "CERT_FILE", "CERT_PATH", "CERT_DIR", "CERT_EXPIRY",
+	"CERT_NAME",
 }
 
 // Masker determines whether variable values should be masked in output.

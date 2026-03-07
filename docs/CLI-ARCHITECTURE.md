@@ -251,8 +251,12 @@ config already has a `project` key, `new project` errors. If a
 entries, edit the file directly or use `adopt`.
 
 ```text
-fat-controller new <type> [options]
+fat-controller new [type] [options]
 ```
+
+With no arguments in interactive mode, prompts for everything:
+type, then all parameters for that type. In non-interactive mode,
+`type` is required.
 
 #### `new project`
 

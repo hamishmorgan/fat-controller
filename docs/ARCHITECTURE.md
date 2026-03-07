@@ -143,8 +143,9 @@ volumes = { data = { mount = "/data" } }
 ```
 
 The `id` fields are optional everywhere. When absent, the tool
-matches by name. `adopt` and `apply` populate IDs automatically
-after resolving resources.
+matches by name. Any command that resolves a resource records its
+ID in the config file as bookkeeping — this is not a merge
+direction, just pinning the match for future operations.
 
 Sub-tables use TOML v1.1 multiline inline tables (supported by
 BurntSushi/toml v1.6.0+). This keeps all fields visually grouped
@@ -399,14 +400,14 @@ Interactive resolution:
 
 Writes a `[[service]]` entry to the config file with `name` and
 appropriate defaults for the service type. The `id` field is left
-empty — `apply` populates it after creating the service in Railway.
+empty — once the service is created in Railway, the resolved ID
+is recorded as bookkeeping.
 
 ### `adopt`
 
-Pull live Railway state into the local config file. Populates `id`
-fields — top-level for the environment, in `[workspace]` and
-`[project]` for context, and in each `[[service]]` entry. Sensitive values
-are detected and written to the secrets file as `${VAR}` references.
+Pull live Railway state into the local config file. Sensitive
+values are detected and written to the secrets file as `${VAR}`
+references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
 
@@ -898,8 +899,9 @@ repo-root/fat-controller.toml                → found (shallowest)
 Merge order: repo-root config, then environments/production config
 on top.
 
-The **primary config file** is the deepest one found — this is where
-`adopt` writes, and where the local override is resolved.
+The **primary config file** is the deepest one found — this is
+where `adopt` writes state, where ID bookkeeping is recorded, and
+where the local override is resolved.
 
 The secrets file is co-located with the primary (deepest) config file:
 
@@ -1389,8 +1391,10 @@ present**, falling back to **name when not**. This means:
 - A resource with an `id` field matches the Railway resource with
   that ID, regardless of name changes on either side.
 - A resource with only `name` (no `id`) matches by name.
-- After `adopt` or `apply` resolves a resource, it writes the `id`
-  back to the config file so subsequent operations are ID-based.
+- When any command resolves a resource, it records the `id` in the
+  config file as bookkeeping — pinning the match so subsequent
+  operations are ID-based. This is not a merge direction; it's the
+  same kind of side effect as `git commit` updating `HEAD`.
 
 If a resource has an `id` but that ID doesn't exist in Railway,
 the tool errors — the ID is stale. Use `adopt` to re-sync, or

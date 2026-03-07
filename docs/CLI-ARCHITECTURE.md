@@ -1,10 +1,7 @@
 # CLI Architecture Design
 
-**Goal:** Define the end-state command structure, config file format, and
-interaction model for fat-controller as a comprehensive Railway management
-tool.
-
-**Status:** Draft.
+Command structure, config file format, and interaction model for
+fat-controller.
 
 ---
 

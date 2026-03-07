@@ -530,11 +530,23 @@ Interactive resolution: same as `deploy`.
 
 ### `logs`
 
-Tail logs. No arguments = all services in the environment.
+View or stream logs. No service arguments = all services in the
+environment. Streams by default; switches to fetch mode when
+`--lines`, `--since`, or `--until` is set.
 
 ```text
-fat-controller logs [service...]
+fat-controller logs [service...] [--build | --deploy] [--lines N]
+                    [--since <time>] [--until <time>] [--filter <query>]
 ```
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--build` | `-b` | | Show build logs |
+| `--deploy` | `-d` | | Show deploy logs (default) |
+| `--lines` | `-n` | | Fetch N lines (disables streaming) |
+| `--since` | `-S` | | Start time: relative (`5m`, `2h`, `1d`) or ISO 8601 |
+| `--until` | `-U` | | End time: same formats as `--since` |
+| `--filter` | `-f` | | Filter expression (e.g. `@level:error`) |
 
 Flags: global, context.
 
@@ -561,6 +573,45 @@ fat-controller status [service...]
 Flags: global, context.
 
 Interactive resolution: same as `logs`.
+
+### `ssh`
+
+Open an interactive shell inside a running service container.
+WebSocket-based — does not support SCP, SFTP, or port forwarding.
+
+```text
+fat-controller ssh [service] [command...]
+```
+
+| Arg/flag | Description |
+|----------|-------------|
+| `service` | Service to connect to (prompted if omitted) |
+| `command...` | Optional command to run instead of interactive shell |
+
+Flags: global, context.
+
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Prompt with default | Use default, error if missing |
+| Project | From config file | Prompt with default | Use default, error if missing |
+| Environment | From config file | Prompt with default | Use default, error if missing |
+| Service | — | Picker | Error if not specified |
+
+### `open`
+
+Open the Railway dashboard in the browser for the current context.
+
+```text
+fat-controller open [--print]
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--print` | `-p` | Print URL instead of opening browser |
+
+Flags: global, context.
 
 ### `list`
 
@@ -593,15 +644,19 @@ for the entity type. In non-interactive mode, error.
 
 ### `auth login`
 
-Authenticate via browser-based OAuth. Opens a browser.
+Authenticate via browser-based OAuth. Opens a browser by default.
+Use `--browserless` for headless environments (SSH sessions, CI
+containers) — displays a pairing code to enter at a URL.
 
 ```text
-fat-controller auth login
+fat-controller auth login [--browserless]
 ```
 
-Flags: global.
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--browserless` | `-b` | Login via pairing code instead of opening a browser |
 
-No interactive resolution — the OAuth flow is always browser-based.
+Flags: global.
 
 ### `auth logout`
 
@@ -630,6 +685,16 @@ fat-controller auth status
 Flags: global.
 
 Read-only — no interactive resolution needed.
+
+### `completion`
+
+Generate shell completion scripts.
+
+```text
+fat-controller completion <shell>
+```
+
+Supported shells: `bash`, `zsh`, `fish`, `powershell`.
 
 ---
 
@@ -773,6 +838,7 @@ Running from `environments/production/`, the merge order is:
 | Variables (per-service) | `[svc.variables]` | key-value pairs |
 | Deploy settings | `[svc.deploy]` | See below |
 | Resources | `[svc.resources]` | `vcpus`, `memory_gb` |
+| Scaling | `[svc.scale]` | Per-region instance counts |
 | Custom domains | `[svc.domains]` | hostname, target port |
 | Service domains | `[svc.domains]` | railway.app subdomain, target port |
 | Volumes | `[svc.volumes]` | name, mount path |
@@ -787,6 +853,19 @@ Running from `environments/production/`, the merge order is:
 `num_replicas`, `overlap_seconds`, `pre_deploy_command`, `region`,
 `restart_policy`, `restart_policy_max_retries`, `sleep_application`,
 `watch_patterns`.
+
+`[svc.scale]` expresses multi-region scaling as region = instance
+count pairs:
+
+```toml
+[api.scale]
+us-west1 = 3
+europe-west4 = 2
+```
+
+This replaces `num_replicas` and `region` in `[svc.deploy]` for
+services that scale across multiple regions. Single-region services
+can use either `[svc.deploy] region` or `[svc.scale]`.
 
 ### What stays imperative-only
 
@@ -1072,3 +1151,21 @@ given the current create/update/delete settings.
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
+
+7. **Buckets (S3-compatible object storage).** Railway supports
+   managed S3-compatible buckets with their own lifecycle (create,
+   delete, rename, credentials). Should these be declarative
+   (`[svc.buckets]`) or imperative-only? They have state (name,
+   region) but also credentials that are more like secrets.
+
+8. **Functions (serverless).** Railway supports serverless functions
+   with their own deploy/push model. These are a different resource
+   type from services. Should they be a new table type
+   (`[fn.name]` or `[functions.name]`)? Or are they similar enough
+   to services to use the same `[svc.*]` tables?
+
+9. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+   multi-region instance counts, while `[svc.deploy]` has
+   `num_replicas` and `region` for single-region. Should
+   `num_replicas`/`region` be removed from `[svc.deploy]` in
+   favor of always using `[svc.scale]`?

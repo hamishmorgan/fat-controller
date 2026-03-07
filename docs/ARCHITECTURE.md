@@ -93,6 +93,7 @@ not what it manages:
 | `sensitive_allowlist` | Keywords that suppress false-positive secret matches |
 | `suppress_warnings` | Warning codes to suppress |
 | `fail_fast` | Stop on first error instead of trying all operations |
+| `deploy` | Deploy after apply: `run`, `skip` |
 | `allow_create` | Merge flag default: add entities that exist in source but not target |
 | `allow_update` | Merge flag default: overwrite entities that exist in both |
 | `allow_delete` | Merge flag default: remove entities that exist in target but not source |
@@ -325,7 +326,7 @@ Commands that modify state (`adopt`, `apply`, `deploy`, `redeploy`,
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--skip-deploys` | `FAT_CONTROLLER_SKIP_DEPLOYS` | `tool.skip_deploys` | `false` | Don't trigger redeployments after variable changes |
+| `--skip-deploys` | `FAT_CONTROLLER_DEPLOY` | `tool.deploy` | `run` | Set deploy mode to `skip` — don't trigger redeployments after changes |
 
 ### Display flags
 

@@ -1333,13 +1333,3 @@ delete = true
 
 `diff` reflects the active flags: it shows what `apply` would do
 given the current create/update/delete settings.
-
----
-
-## Open questions
-
-1. **Functions (serverless).** Railway supports serverless functions
-   with their own deploy/push model. These are a different resource
-   type from services. Should they be a new table type
-   (`[fn.name]` or `[functions.name]`)? Or are they similar enough
-   to services to use the same `[[service]]` structure?

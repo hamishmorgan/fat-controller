@@ -194,29 +194,56 @@ dashboard.
 
 ## Command structure
 
-### Top-level declarative commands
+### Declarative commands
 
-These are the primary workflow. They operate on whatever scope the
-config file declares.
+The primary workflow. These operate on whatever scope the config file
+declares.
 
 ```text
-fat-controller init              Bootstrap a config file
+fat-controller init              Guided first-time config bootstrap
+fat-controller adopt [path]      Merge live Railway state into config
 fat-controller diff              Compare config against live state
-fat-controller apply             Push config changes to Railway
+fat-controller apply             Merge config into live Railway state
 fat-controller validate          Check config for warnings (no API)
+fat-controller show [path]       Display live state (read-only)
 ```
 
-### Top-level convenience commands
+`apply` and `adopt` are symmetric:
 
-Quick imperative reads/writes against live Railway. These use the
-config file (or flags) for context resolution but don't use the
-declarative model.
+| Command | Direction | Behavior |
+|---------|-----------|----------|
+| `apply` | local config → Railway | Additive merge of config into live state. Only touches what's declared. |
+| `adopt` | Railway → local config | Additive merge of live state into config. Only adds what's missing or changed. |
 
-```text
-fat-controller get [path]        Read live state
-fat-controller set <path> <val>  Set a single value
-fat-controller delete <path>     Delete a single value
-```
+Neither overwrites the target wholesale. Both are additive merges in
+their respective directions.
+
+`show` is the read-only counterpart — display live state without
+modifying the config file. `show` with no path gives an overview.
+`show api.variables.PORT` gives a single value.
+
+### Init
+
+`fat-controller init` creates a config file for the first time. It is
+a guided version of `adopt` — interactive prompts to select
+workspace/project/environment/services, plus secret extraction into
+`.env.fat-controller`.
+
+After the initial bootstrap, use `adopt` to bring additional resources
+into an existing config (e.g. `adopt redis` after adding a service in
+the dashboard).
+
+`init` modes:
+
+- **From remote (default when remote exists):** Guided `adopt` with
+  interactive selection and secret extraction.
+
+- **From scratch (`--new`):** Scaffolds a minimal config file. Prompts
+  for project name, environment name, service names. Writes a skeleton
+  that you then `apply` to create resources in Railway.
+
+- **From template:** `init --template <name>` scaffolds from a Railway
+  template definition.
 
 ### Imperative action commands
 
@@ -251,23 +278,6 @@ fat-controller auth login
 fat-controller auth logout
 fat-controller auth status
 ```
-
-### Init modes
-
-`fat-controller init` creates a config file. The source of data is a
-sub-choice:
-
-- **From remote (default when remote exists):** Interactive prompts to
-  select workspace/project/environment/services, pulls live state,
-  writes config + `.env.fat-controller`.
-
-- **From scratch (when no remote exists, or `--new`):** Scaffolds a
-  minimal config file. Prompts for project name, environment name,
-  service names. Writes a skeleton that you then `apply` to create
-  resources upstream.
-
-- **From template:** `init --template <name>` scaffolds from a Railway
-  template definition.
 
 ---
 

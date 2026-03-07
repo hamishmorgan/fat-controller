@@ -86,16 +86,10 @@ env vars, or CLI flags — but not managed as desired state.
 
 ## Config file schema
 
-**Top-level keys** are tool settings and context:
+**Top-level keys** are tool settings:
 
 | Key | Description |
 |-----|-------------|
-| `workspace` | Workspace name |
-| `workspace_id` | Workspace ID (optional, populated by `adopt`) |
-| `project` | Project name |
-| `project_id` | Project ID (optional, populated by `adopt`) |
-| `environment` | Environment name |
-| `environment_id` | Environment ID (optional, populated by `adopt`) |
 | `timeout` | API request timeout |
 | `format` | Output format: `text`, `json`, `toml` |
 | `color` | Color: `auto`, `always`, `never` |
@@ -106,38 +100,40 @@ env vars, or CLI flags — but not managed as desired state.
 | `create` | Merge flag default |
 | `update` | Merge flag default |
 | `delete` | Merge flag default |
-| `variables` | Environment-wide shared variables |
 
-When an `_id` field is present, it is authoritative for matching —
-the tool uses the ID to find the resource and ignores name mismatches
-(handling renames gracefully). When absent, the tool falls back to
-matching by name.
+**`[workspace]`**, **`[project]`**, and **`[environment]`** are
+tables with `name` and optional `id` fields. Every Railway
+resource follows the same pattern — `name` for readability, `id`
+for stable matching. When `id` is present, it is authoritative;
+when absent, the tool falls back to matching by name.
 
-**`variables`** is a top-level inline table for environment-wide
-shared variables.
+**`[environment]`** also holds `variables` — the environment-wide
+shared variables that Railway exposes across all services.
 
-**`[[service]]`** arrays declare services. Each entry has `name` and
-optional `id` fields, plus sub-tables for variables, deploy settings,
-etc.
+**`[[service]]`** arrays declare services. Each entry has `name`
+and optional `id` fields, plus inline tables for variables, deploy
+settings, etc.
 
 ### Reserved names
 
-The following names are reserved and cannot be used as service names:
-
-| Name | Purpose |
-|------|---------|
-| `workspace` | Reserved for `show workspace` path |
-| `project` | Reserved for `show project` path |
+`workspace`, `project`, and `environment` are TOML tables and
+structurally cannot collide with `[[service]]` entries. No
+service name reservation is needed.
 
 ```toml
-workspace = "Hamish Morgan's Projects"
-workspace_id = "ws_abc123"
-project = "Life"
-project_id = "proj_abc123"
-environment = "production"
-environment_id = "env_abc123"
 timeout = "60s"
 
+[workspace]
+name = "Hamish Morgan's Projects"
+id = "ws_abc123"
+
+[project]
+name = "Life"
+id = "proj_abc123"
+
+[environment]
+name = "production"
+id = "env_abc123"
 variables = { NODE_ENV = "production" }
 
 [[service]]
@@ -156,15 +152,14 @@ domains = { "api.example.com" = { port = 8080 } }
 volumes = { data = { mount = "/data" } }
 ```
 
-The `_id` fields and service `id` fields are optional. When
-absent, the tool matches by name. `adopt` and `apply` populate
-IDs automatically after resolving resources.
+The `id` fields are optional everywhere. When absent, the tool
+matches by name. `adopt` and `apply` populate IDs automatically
+after resolving resources.
 
-Service sub-tables use TOML v1.1 multiline inline tables
-(supported by BurntSushi/toml v1.6.0+). This keeps all fields
-visually grouped under their `[[service]]` entry. The equivalent
-`[service.variables]` sub-header form also works — the parser
-treats both identically.
+Sub-tables use TOML v1.1 multiline inline tables (supported by
+BurntSushi/toml v1.6.0+). This keeps all fields visually grouped
+under their parent entry. The equivalent `[service.variables]`
+sub-header form also works — the parser treats both identically.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -210,10 +205,13 @@ also resolved from the config file, env vars, and token scope — see
 
 | Flag | Env var | Config key | Description |
 |------|---------|------------|-------------|
-| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace` | Workspace name (resolved by ID if `workspace_id` is set in config) |
-| `--project` | `FAT_CONTROLLER_PROJECT` | `project` | Project name (resolved by ID if `project_id` is set in config) |
-| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment` | Environment name (resolved by ID if `environment_id` is set in config) |
-| `--service` | `FAT_CONTROLLER_SERVICE` | — | Service name (resolved by ID if service has `id` in config) |
+| `--workspace` | `FAT_CONTROLLER_WORKSPACE` | `workspace.name` | Workspace name or ID |
+| `--project` | `FAT_CONTROLLER_PROJECT` | `project.name` | Project name or ID |
+| `--environment` | `FAT_CONTROLLER_ENVIRONMENT` | `environment.name` | Environment name or ID |
+| `--service` | `FAT_CONTROLLER_SERVICE` | — | Service name or ID |
+
+Each flag accepts either a name or an ID — the tool detects which
+based on format and matches accordingly.
 
 ### Config flags
 
@@ -281,7 +279,7 @@ doesn't exist, appends to it if it does. Never calls the Railway
 API — use `apply` to create the resources in Railway.
 
 **Non-destructive:** refuses to overwrite existing entries. If the
-config already has a `project` key, `new project` errors. If a
+config already has a `[project]` table, `new project` errors. If a
 `[[service]]` entry with `name = "api"` exists, `new service api`
 errors. To modify existing entries, edit the file directly or use
 `adopt`.
@@ -317,7 +315,7 @@ Interactive resolution:
 | Workspace | From config file | Use default, picker if missing | Use default, error if missing |
 | Name | — | Prompt | Error if not specified |
 
-Writes `workspace` and `project` keys to the config file.
+Writes `[workspace]` and `[project]` tables to the config file.
 
 #### `new environment`
 
@@ -339,7 +337,7 @@ Interactive resolution:
 |-----------|---------|-------------|-----------------|
 | Name | — | Prompt | Error if not specified |
 
-Writes the `environment` key to the config file.
+Writes an `[environment]` table to the config file.
 
 #### `new service`
 
@@ -372,8 +370,8 @@ empty — `apply` populates it after creating the service in Railway.
 
 ### `adopt`
 
-Pull live Railway state into the local config file. Populates `_id`
-fields for context and `id` fields for services. Sensitive values
+Pull live Railway state into the local config file. Populates `id`
+fields for workspace, project, environment, and services. Sensitive values
 are detected and written to the secrets file as `${VAR}` references.
 See [Merge behavior](#merge-behavior) for how `--create`, `--update`,
 and `--delete` control the merge.
@@ -523,8 +521,8 @@ fat-controller show [path]
 
 Paths use service **names** (not IDs). The tool resolves the name
 to the matching `[[service]]` entry, using its `id` if present.
-`workspace` and `project` are reserved keywords — see
-[reserved names](#reserved-names).
+`workspace`, `project`, and `environment` map to their
+corresponding config tables.
 
 Flags: global, context, display.
 
@@ -915,8 +913,8 @@ Concrete example with this directory structure:
 
 ```text
 $XDG_CONFIG_HOME/fat-controller/config.toml   # timeout = "60s"
-repo-root/fat-controller.toml                  # workspace, project, variables
-environments/production/fat-controller.toml    # environment = "production", [[service]] overrides
+repo-root/fat-controller.toml                  # [workspace], [project], [[service]]
+environments/production/fat-controller.toml    # [environment], [[service]] overrides
 environments/production/fat-controller.local.toml  # show_secrets = true
 ```
 
@@ -932,20 +930,22 @@ Running from `environments/production/`, the merge order is:
 
 **Merge rules:**
 
-- **Top-level keys** (settings, context): later values replace earlier
+- **Top-level keys** (tool settings): later values replace earlier
   ones. If the root config sets `timeout = "60s"` and the environment
   config sets `timeout = "30s"`, the environment config wins.
-- **`variables`** (shared): deep merge. Keys within `variables`
-  from a higher-precedence file override the same keys from a
-  lower-precedence file. Keys only present in the lower-precedence
-  file are preserved.
+- **`[workspace]`, `[project]`, `[environment]`**: deep merge.
+  A root config sets `[workspace]` and `[project]`; an environment
+  config sets `[environment]`. `environment.variables` merges the
+  same way — individual keys from higher-precedence files override
+  lower-precedence ones.
 - **`[[service]]` entries**: matched by `id` (if present) or `name`.
-  When the same service appears in multiple files, sub-tables are
-  deep-merged — a root config can set `[service.deploy]` and an
-  environment config can add `[service.resources]` or override
-  individual deploy fields. A higher-precedence file's values win.
-- **Environment variables and CLI flags** only set top-level keys
-  (settings, context). They do not express Railway state.
+  When the same service appears in multiple files, inline tables are
+  deep-merged — a root config can set `deploy` and an environment
+  config can add `resources` or override individual deploy fields.
+  A higher-precedence file's values win.
+- **Environment variables and CLI flags** only set tool settings
+  and context (workspace/project/environment name). They do not
+  express Railway state.
 
 ---
 
@@ -955,7 +955,7 @@ Running from `environments/production/`, the merge order is:
 
 | Entity | Section | Fields |
 |--------|---------|--------|
-| Variables (shared) | `variables` (top-level) | key-value pairs |
+| Variables (shared) | `environment.variables` | key-value pairs |
 | Variables (per-service) | `[service.variables]` | key-value pairs |
 | Deploy settings | `[service.deploy]` | See below |
 | Resources | `[service.resources]` | `vcpus`, `memory_gb` |
@@ -1031,11 +1031,13 @@ counts).
 
 ```toml
 # fat-controller.toml (root — shared base)
-workspace = "Hamish Morgan's Projects"
-workspace_id = "ws_abc123"
-project = "Life"
-project_id = "proj_abc123"
-variables = { NODE_ENV = "production" }
+[workspace]
+name = "Hamish Morgan's Projects"
+id = "ws_abc123"
+
+[project]
+name = "Life"
+id = "proj_abc123"
 
 [[service]]
 name = "api"
@@ -1049,8 +1051,10 @@ domains = { "api.example.com" = { port = 8080 } }
 
 ```toml
 # environments/production/fat-controller.toml
-environment = "production"
-environment_id = "env_prod123"
+[environment]
+name = "production"
+id = "env_prod123"
+variables = { NODE_ENV = "production" }
 
 [[service]]
 name = "api"
@@ -1060,9 +1064,9 @@ resources = { vcpus = 4, memory_gb = 8 }
 
 ```toml
 # environments/staging/fat-controller.toml
-environment = "staging"
-environment_id = "env_stg123"
-
+[environment]
+name = "staging"
+id = "env_stg123"
 variables = { NODE_ENV = "staging" }
 
 [[service]]
@@ -1235,18 +1239,17 @@ fails loudly on missing values.
 
 ### Identity matching
 
-Services are matched between config and Railway by **ID when
+All Railway resources — workspace, project, environment, and
+services — are matched between config and Railway by **ID when
 present**, falling back to **name when not**. This means:
 
-- A service with `id = "srv_abc123"` matches the Railway service
-  with that ID, regardless of name changes on either side.
-- A service with only `name = "api"` (no `id`) matches by name.
-- After `adopt` or `apply` resolves a service, it writes the `id`
+- A resource with an `id` field matches the Railway resource with
+  that ID, regardless of name changes on either side.
+- A resource with only `name` (no `id`) matches by name.
+- After `adopt` or `apply` resolves a resource, it writes the `id`
   back to the config file so subsequent operations are ID-based.
-- Context keys (`workspace_id`, `project_id`, `environment_id`)
-  follow the same pattern.
 
-If a service has an `id` but that ID doesn't exist in Railway,
+If a resource has an `id` but that ID doesn't exist in Railway,
 the tool errors — the ID is stale. Use `adopt` to re-sync, or
 remove the `id` to fall back to name matching.
 

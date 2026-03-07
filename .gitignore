@@ -35,4 +35,4 @@ go.work
 .config/mise/.env.local
 auth.json
 fat-controller
-fat-controller.local.toml
+.env.fat-controller

@@ -627,12 +627,17 @@ Read-only — no confirmation needed.
 
 ### `status`
 
-Show deployment status. No arguments = all services in the
-environment.
+Show operational health for services. No arguments = all services
+in the environment.
 
 ```text
 fat-controller status [service...]
 ```
+
+Includes deployment state, domain verification and certificate
+status, volume state, and healthcheck results. Surfaces
+actionable problems — for example, a custom domain with
+`DNS not propagated` and the required CNAME record.
 
 Flags: global, context.
 
@@ -1222,34 +1227,30 @@ given the current create/update/delete settings.
 
 ## Open questions
 
-1. **Domain verification.** Custom domains require DNS verification.
-   `apply` can create the domain record in Railway, but the user still
-   needs to set up DNS. Should `status` show verification state?
-
-2. **Service creation defaults.** When `apply` creates a new service,
+1. **Service creation defaults.** When `apply` creates a new service,
    what source does it use? Empty service (no repo)? The config would
    need to specify source (repo URL + branch, or Docker image) for
    new services. What's the minimal viable service definition?
 
-3. **Ordering of creation.** When bootstrapping from scratch, `apply`
+2. **Ordering of creation.** When bootstrapping from scratch, `apply`
    may need to create the project, then the environment, then services,
    then configure them. The apply engine needs to handle dependency
    ordering (e.g. Railway references `${{postgres.VAR}}` require
    postgres to exist first).
 
-4. **Buckets (S3-compatible object storage).** Railway supports
+3. **Buckets (S3-compatible object storage).** Railway supports
    managed S3-compatible buckets with their own lifecycle (create,
    delete, rename, credentials). Should these be declarative
    (`[svc.buckets]`) or imperative-only? They have state (name,
    region) but also credentials that are more like secrets.
 
-5. **Functions (serverless).** Railway supports serverless functions
+4. **Functions (serverless).** Railway supports serverless functions
    with their own deploy/push model. These are a different resource
    type from services. Should they be a new table type
    (`[fn.name]` or `[functions.name]`)? Or are they similar enough
    to services to use the same `[svc.*]` tables?
 
-6. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
+5. **`scale` vs `deploy` overlap.** `[svc.scale]` handles
    multi-region instance counts, while `[svc.deploy]` has
    `num_replicas` and `region` for single-region. Should
    `num_replicas`/`region` be removed from `[svc.deploy]` in

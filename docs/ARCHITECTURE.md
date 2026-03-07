@@ -230,9 +230,9 @@ relative to the working directory.
 
 During `adopt`, sensitive values are detected and written as
 `${VAR}` references in the config. The actual values are written
-to the last env file in the list. If no env file is declared,
-`adopt` prompts for where to write them — or errors in
-non-interactive mode.
+to the last env file in the list — the file is created if it
+doesn't exist. If no env file is declared, `adopt` prompts for
+a path — or errors in non-interactive mode.
 
 A file doesn't need to include everything — the
 [cascade](#file-cascade) merges files at different directory levels.
@@ -463,6 +463,14 @@ sync (config file exists). Follows the standard prompting model —
 uses defaults silently, prompts only when a value is missing, and
 confirms before writing.
 
+**Env file interaction.** When `adopt` writes sensitive values, it
+adds `${VAR}` references to the config and appends the actual
+values to the env file. When `adopt --delete` removes a variable
+from the config, the corresponding env file entry is left intact
+— env files are user-managed. `validate` warns about env file
+entries that are no longer referenced by any config file in the
+cascade.
+
 ```text
 fat-controller adopt [path]
 ```
@@ -565,6 +573,14 @@ each other — Railway resolves `${{service.VAR}}` references at
 deploy time, not at variable-set time. Services can be created
 and configured in parallel.
 
+**Concurrent runs.** There is no local lock file. Two `apply`
+runs against the same environment race at the API level —
+last write wins per resource, same as two users editing the
+Railway dashboard simultaneously. `diff` before `apply` to
+check for unexpected drift. CI pipelines should serialize
+`apply` runs per environment (e.g. via job-level concurrency
+controls).
+
 ### `validate`
 
 Check config files for errors and warnings without making API
@@ -620,13 +636,10 @@ fat-controller show [path]
 | `workspace` | Peek up: workspace metadata (name, ID, members, settings) |
 | `project` | Peek up: project metadata (name, ID, settings, tokens) |
 
-The environment is the implicit scope — the tool always operates
-within one environment. Paths without a qualifier refer to things
-*in* the environment: `variables` for shared variables, `volumes`
-for unattached volumes, `buckets` for object storage, and service
-names for services. `workspace` and `project` navigate upward to
-parent resources. All other top-level paths are resolved as service
-names, matched to `[[service]]` entries by `id` or `name`.
+The environment is the implicit scope. Unqualified paths refer to
+things *in* the environment; `workspace` and `project` navigate
+upward to parent resources. All other top-level paths are resolved
+as service names, matched by `id` or `name`.
 
 Flags: global, context, config, display.
 
@@ -815,6 +828,14 @@ fat-controller open [--print]
 
 Flags: global, context, config.
 
+Interactive resolution:
+
+| Parameter | Default | Interactive | Non-interactive |
+|-----------|---------|-------------|-----------------|
+| Workspace | From config file | Use default, prompt if missing | Use default, error if missing |
+| Project | From config file | Use default, prompt if missing | Use default, error if missing |
+| Environment | From config file | Use default, prompt if missing | Use default, error if missing |
+
 ### `list`
 
 List entities. Takes an optional noun argument for the entity type.
@@ -830,7 +851,7 @@ fat-controller list [type]
 | `projects` | Workspace | |
 | `environments` | Workspace + project | |
 | `services` | Workspace + project + environment | |
-| `deployments` | Workspace + project + environment | |
+| `deployments` | Workspace + project + environment | Recent deployments across all services. Use `--service` to narrow to one |
 | `volumes` | Workspace + project | |
 | `buckets` | Workspace + project | |
 | `domains` | Workspace + project + environment | |

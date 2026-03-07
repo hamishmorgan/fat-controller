@@ -75,7 +75,7 @@ environment's identity and state:
 | `name` | Environment name |
 | `id` | Environment ID (optional, populated by `adopt`) |
 | `variables` | Environment-wide shared variables |
-| `volumes` | Unattached volumes (name → mount path) |
+| `volumes` | Unattached volumes (name → mount path, optional region) |
 | `buckets` | S3-compatible object storage buckets |
 
 **`[tool]`** holds tool settings — how fat-controller behaves,
@@ -85,7 +85,7 @@ not what it manages:
 |-----|-------------|
 | `api_timeout` | Overall time limit per API request (connect through response) |
 | `log_level` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `silent` |
-| `output_format` | Output format: `text`, `json`, `toml` |
+| `output_format` | Output format: `auto`, `text`, `json`, `toml`, `raw` |
 | `output_color` | Color: `auto`, `always`, `never` |
 | `prompt` | Prompting mode: `all`, `default`, `none` |
 | `show_secrets` | Show secret values instead of masking |
@@ -298,7 +298,7 @@ Commands that read or write config files accept these flags.
 
 | Flag | Env var | Config key | Default | Description |
 |------|---------|------------|---------|-------------|
-| `--config-file` | `FAT_CONTROLLER_CONFIG_FILE` | `tool.config_file` | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
+| `--config-file` | `FAT_CONTROLLER_CONFIG_FILE` | — | *(auto-discover)* | Config file path. Disables upward walk — loads only this file |
 | `--env-file` | `FAT_CONTROLLER_ENV_FILE` | `tool.env_file` | *(none)* | Env file path(s) for `${VAR}` interpolation |
 
 ### Merge flags
@@ -319,7 +319,7 @@ Commands that modify state (`adopt`, `apply`, `deploy`, `redeploy`,
 
 | Flag | Short | Env var | Config key | Default | Description |
 |------|-------|---------|------------|---------|-------------|
-| `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | `tool.dry_run` | `false` | Preview changes without executing |
+| `--dry-run` | | `FAT_CONTROLLER_DRY_RUN` | — | `false` | Preview changes without executing |
 | `--fail-fast` | | — | `tool.fail_fast` | `false` | Stop on first error |
 
 ### Apply-specific flags
@@ -469,7 +469,7 @@ fat-controller adopt [path]
 
 | Arg/flag | Description |
 |----------|-------------|
-| `path` | Optional dot-path to limit what is adopted (e.g. `redis`, `api.variables`). Uses service names |
+| `path` | Optional dot-path to limit what is adopted (e.g. `redis`, `api.variables`). Matches against config-file service names |
 
 Flags: global, context, config, merge, mutation, display.
 
@@ -554,9 +554,12 @@ Interactive resolution:
 | Environment | From config file | Use default, prompt if missing | Use default |
 | Confirm changes | — | Preview + confirm | Error unless `--yes` |
 
-**Creation ordering.** When bootstrapping from scratch, `apply`
-follows the resource hierarchy: project → environment → services
-→ service sub-resources (variables, domains, volumes, etc.).
+**Creation ordering.** `apply` can create projects, environments,
+services, and service sub-resources. It cannot create workspaces
+— the workspace must already exist. When bootstrapping from
+scratch, `apply` follows the resource hierarchy: project →
+environment → services → service sub-resources (variables,
+domains, volumes, etc.).
 Services within an environment have no ordering dependency on
 each other — Railway resolves `${{service.VAR}}` references at
 deploy time, not at variable-set time. Services can be created
@@ -564,8 +567,10 @@ and configured in parallel.
 
 ### `validate`
 
-Check config file for errors and warnings without making API
-calls. Catches problems before `apply`:
+Check config files for errors and warnings without making API
+calls. Operates on the merged cascade — all discovered config
+files are loaded and merged before validation. Catches problems
+before `apply`:
 
 - TOML syntax and schema errors
 - Unknown keys or invalid value types
@@ -623,7 +628,7 @@ names for services. `workspace` and `project` navigate upward to
 parent resources. All other top-level paths are resolved as service
 names, matched to `[[service]]` entries by `id` or `name`.
 
-Flags: global, context, display.
+Flags: global, context, config, display.
 
 Interactive resolution:
 
@@ -660,7 +665,7 @@ Trigger a deployment. No arguments = all services in the environment.
 fat-controller deploy [service...]
 ```
 
-Flags: global, context, mutation.
+Flags: global, context, config, mutation.
 
 Interactive resolution:
 
@@ -680,7 +685,7 @@ Redeploy the current image.
 fat-controller redeploy [service...]
 ```
 
-Flags: global, context, mutation.
+Flags: global, context, config, mutation.
 
 Interactive resolution: same as `deploy`.
 
@@ -692,7 +697,7 @@ Restart running deployments.
 fat-controller restart [service...]
 ```
 
-Flags: global, context, mutation.
+Flags: global, context, config, mutation.
 
 Interactive resolution: same as `deploy`.
 
@@ -704,7 +709,7 @@ Rollback to the previous deployment.
 fat-controller rollback [service...]
 ```
 
-Flags: global, context, mutation.
+Flags: global, context, config, mutation.
 
 Interactive resolution: same as `deploy`.
 
@@ -716,7 +721,7 @@ Stop running deployments.
 fat-controller stop [service...]
 ```
 
-Flags: global, context, mutation.
+Flags: global, context, config, mutation.
 
 Interactive resolution: same as `deploy`.
 
@@ -740,7 +745,7 @@ fat-controller logs [service...] [--build | --deploy] [--lines N]
 | `--until` | `-U` | | End time: same formats as `--since` |
 | `--filter` | `-f` | | Filter expression (e.g. `@level:error`) |
 
-Flags: global, context.
+Flags: global, context, config.
 
 Interactive resolution:
 
@@ -767,7 +772,7 @@ status, volume state, and healthcheck results. Surfaces
 actionable problems — for example, a custom domain with
 `DNS not propagated` and the required CNAME record.
 
-Flags: global, context.
+Flags: global, context, config.
 
 Interactive resolution: same as `logs`.
 
@@ -785,7 +790,7 @@ fat-controller ssh [service] [command...]
 | `service` | Service to connect to (prompted if omitted) |
 | `command...` | Optional command to run instead of interactive shell |
 
-Flags: global, context.
+Flags: global, context, config.
 
 Interactive resolution:
 
@@ -808,7 +813,7 @@ fat-controller open [--print]
 |------|-------|-------------|
 | `--print` | `-p` | Print URL instead of opening browser |
 
-Flags: global, context.
+Flags: global, context, config.
 
 ### `list`
 
@@ -830,11 +835,15 @@ fat-controller list [type]
 | `buckets` | Workspace + project | |
 | `domains` | Workspace + project + environment | |
 
-Flags: global, context.
+Flags: global, context, config.
 
 **No argument behavior:** lists services in the current environment
-(same as `list services`). Both `list` and `show` are
-environment-scoped by default.
+(same as `list services`).
+
+`show` is always environment-scoped — it shows what's in your
+environment. `list` is broader — `list volumes` and `list buckets`
+are project-scoped (across all environments), useful for seeing
+the full inventory. Most `list` types are environment-scoped.
 
 `list all` outputs the full hierarchy from workspaces down to
 services as a tree:
@@ -863,6 +872,8 @@ workspace + project + environment.
 Authenticate via browser-based OAuth. Opens a browser by default.
 Use `--browserless` for headless environments (SSH sessions, CI
 containers) — displays a pairing code to enter at a URL.
+Credentials are stored in
+`$XDG_DATA_HOME/fat-controller/credentials.json`.
 
 ```text
 fat-controller auth login [--browserless]
@@ -1042,6 +1053,21 @@ Running from `environments/production/`, the merge order is:
 - **Environment variables and CLI flags** only set tool settings
   and context (workspace/project/environment). They do not express
   Railway state.
+
+**Cascade edge cases:**
+
+- **Mutually exclusive fields** (`repo`/`image`). If a root config
+  sets `image` and an environment config sets `repo`, the deep
+  merge produces both — `validate` catches this as an error on the
+  merged result. To switch source type in an override, explicitly
+  clear the other: `image = ""`.
+- **`delete = true` in cascade.** A `delete = true` marker in a
+  higher-precedence file wins. If a root config defines a service
+  and an environment config marks it `delete = true`, the service
+  is deleted in that environment.
+- **`--config-file` and local overrides.** `--config-file` disables
+  the upward walk (cascade items 3) *and* skips the local override
+  (item 4). Only the specified file is loaded.
 
 ---
 
@@ -1448,9 +1474,9 @@ meaning in opposite directions:
 
 | Flag | `apply` (config → Railway) | `adopt` (Railway → config) |
 |------|---------------------------|---------------------------|
-| `--create` | Create Railway entities not in Railway | Add config entries not in config |
-| `--update` | Update Railway entities that differ from config | Update config entries that differ from Railway |
-| `--delete` | Delete Railway entities not in config | Remove config entries not in Railway |
+| `--create` | Create in Railway what exists in config but not Railway | Add to config what exists in Railway but not config |
+| `--update` | Update Railway to match config where both exist | Update config to match Railway where both exist |
+| `--delete` | Delete from Railway what exists in Railway but not config | Remove from config what exists in config but not Railway |
 
 **Path scoping.** Both `apply` and `adopt` accept an optional
 dot-path that narrows the operation. Merge flags apply only within

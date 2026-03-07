@@ -157,8 +157,9 @@ Every command accepts these flags.
 | `--verbose` | `-v` | — | — | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | — | — | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
 
-Default output is human-readable text. `--json` and `--toml` are
-mutually exclusive; specifying both is an error.
+Default format is `auto` — the tool infers the best format from
+context (e.g. file extension, whether stdout is a TTY). `--json`
+and `--toml` are mutually exclusive; specifying both is an error.
 
 Default log level is INFO.
 

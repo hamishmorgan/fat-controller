@@ -44,8 +44,9 @@ func (c *countingApplier) UpdateServiceResources(_ context.Context, _ string, _ 
 func TestRunConfigApply_DryRunByDefault(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -75,9 +76,9 @@ PORT = "9090"
 func TestRunConfigApply_YesExecutes(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
-NEW = "hello"
+[[service]]
+name = "api"
+variables = { PORT = "9090", NEW = "hello" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -107,8 +108,9 @@ NEW = "hello"
 func TestRunConfigApply_DryRunOverridesYes(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -134,8 +136,9 @@ PORT = "9090"
 func TestRunConfigApply_NoChanges(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "8080"
+[[service]]
+name = "api"
+variables = { PORT = "8080" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -162,11 +165,13 @@ PORT = "8080"
 func TestRunConfigApply_ServiceFilter(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 
-[worker.variables]
-QUEUE = "high"
+[[service]]
+name = "worker"
+variables = { QUEUE = "high" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -194,11 +199,14 @@ QUEUE = "high"
 func TestRunConfigApply_UsesConfigFileProject(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-project = "my-app"
-environment = "production"
+name = "production"
 
-[api.variables]
-PORT = "9090"
+[project]
+name = "my-app"
+
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	captureFetcher := &capturingFetcher{
 		cfg: &config.LiveConfig{
@@ -228,11 +236,14 @@ PORT = "9090"
 func TestRunConfigApply_FlagOverridesConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-project = "my-app"
-environment = "production"
+name = "production"
 
-[api.variables]
-PORT = "9090"
+[project]
+name = "my-app"
+
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	captureFetcher := &capturingFetcher{
 		cfg: &config.LiveConfig{

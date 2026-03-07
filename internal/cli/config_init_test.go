@@ -302,7 +302,7 @@ func TestRunConfigInit_CreatesEnvFileWithSecrets(t *testing.T) {
 func TestRunConfigInit_EnvFileSharedSecrets(t *testing.T) {
 	dir := t.TempDir()
 	resolver := newFakeResolver(&config.LiveConfig{
-		Shared: map[string]string{
+		Variables: map[string]string{
 			"GLOBAL_SECRET": "s3cr3t",
 			"APP_MODE":      "production",
 		},

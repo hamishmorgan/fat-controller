@@ -12,8 +12,9 @@ func TestRunConfigValidate_ShowsWarnings(t *testing.T) {
 	dir := t.TempDir()
 	// Config with a lowercase var name (W030) and empty string delete (W012).
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-myVar = ""
+[[service]]
+name = "api"
+variables = { myVar = "" }
 `)
 
 	var buf bytes.Buffer
@@ -35,8 +36,9 @@ myVar = ""
 func TestRunConfigValidate_NoWarnings(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "8080"
+[[service]]
+name = "api"
+variables = { PORT = "8080" }
 `)
 
 	var buf bytes.Buffer
@@ -66,7 +68,8 @@ func TestRunConfigValidate_ExitCleanlyWithWarnings(t *testing.T) {
 	dir := t.TempDir()
 	// Empty service block triggers W003.
 	writeTOML(t, dir, "fat-controller.toml", `
-[api]
+[[service]]
+name = "api"
 `)
 
 	var buf bytes.Buffer

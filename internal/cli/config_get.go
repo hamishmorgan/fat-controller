@@ -113,7 +113,7 @@ func lookupKey(cfg config.LiveConfig, p config.Path) (string, bool) {
 	switch p.Section {
 	case "variables":
 		if p.Service == "shared" {
-			val, found := cfg.Shared[p.Key]
+			val, found := cfg.Variables[p.Key]
 			return val, found
 		}
 		svc, ok := cfg.Services[p.Service]
@@ -136,7 +136,7 @@ func filterSection(cfg config.LiveConfig, p config.Path) config.LiveConfig {
 	switch p.Section {
 	case "variables":
 		if p.Service == "shared" {
-			filtered.Shared = cfg.Shared
+			filtered.Variables = cfg.Variables
 			return filtered
 		}
 		svc, ok := cfg.Services[p.Service]

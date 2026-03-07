@@ -343,7 +343,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	filtered := &config.LiveConfig{
 		ProjectID:     live.ProjectID,
 		EnvironmentID: live.EnvironmentID,
-		Shared:        live.Shared,
+		Variables:     live.Variables,
 		Services:      make(map[string]*config.ServiceConfig, len(selected)),
 	}
 	for name, svc := range live.Services {

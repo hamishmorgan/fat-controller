@@ -64,8 +64,8 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchLiveConfig() error: %v", err)
 	}
-	if cfg.Shared["FOO"] != "bar" {
-		t.Fatalf("shared FOO = %q", cfg.Shared["FOO"])
+	if cfg.Variables["FOO"] != "bar" {
+		t.Fatalf("shared FOO = %q", cfg.Variables["FOO"])
 	}
 	if cfg.Services["api"].Variables["FOO"] != "bar" {
 		t.Fatalf("service FOO = %q", cfg.Services["api"].Variables["FOO"])

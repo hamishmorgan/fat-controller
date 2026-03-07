@@ -15,7 +15,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	cfg := &config.LiveConfig{
 		ProjectID:     projectID,
 		EnvironmentID: environmentID,
-		Shared:        map[string]string{},
+		Variables:     map[string]string{},
 		Services:      map[string]*config.ServiceConfig{},
 	}
 
@@ -26,9 +26,9 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	// Variables returns EnvironmentVariables which genqlient maps to
 	// map[string]interface{} — convert values to strings.
 	for k, v := range shared.Variables {
-		cfg.Shared[k] = fmt.Sprint(v)
+		cfg.Variables[k] = fmt.Sprint(v)
 	}
-	slog.Debug("fetched shared variables", "count", len(cfg.Shared))
+	slog.Debug("fetched shared variables", "count", len(cfg.Variables))
 
 	services, err := ProjectServices(ctx, client.GQL(), projectID)
 	if err != nil {

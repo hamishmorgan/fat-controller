@@ -29,7 +29,7 @@ func TestRunConfigGet_RendersText(t *testing.T) {
 		cfg: &config.LiveConfig{
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
-			Shared:        map[string]string{"FOO": "bar"},
+			Variables:     map[string]string{"FOO": "bar"},
 			Services: map[string]*config.ServiceConfig{
 				"api": {
 					ID:        "svc-1",
@@ -61,7 +61,7 @@ func TestRunConfigGet_RendersJSON(t *testing.T) {
 		cfg: &config.LiveConfig{
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
-			Shared:        map[string]string{"DB": "postgres"},
+			Variables:     map[string]string{"DB": "postgres"},
 			Services:      map[string]*config.ServiceConfig{},
 		},
 	}
@@ -85,7 +85,7 @@ func TestRunConfigGet_PathExtractsService(t *testing.T) {
 		cfg: &config.LiveConfig{
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
-			Shared:        map[string]string{},
+			Variables:     map[string]string{},
 			Services: map[string]*config.ServiceConfig{
 				"api": {
 					Name:      "api",
@@ -185,7 +185,7 @@ func TestRunConfigGet_FiltersByPathSectionAndKey(t *testing.T) {
 func TestRunConfigGet_FiltersByPathSection(t *testing.T) {
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
-			Shared: map[string]string{"GLOBAL": "yes"},
+			Variables: map[string]string{"GLOBAL": "yes"},
 			Services: map[string]*config.ServiceConfig{
 				"api": {
 					Name: "api",
@@ -218,7 +218,7 @@ func TestRunConfigGet_FiltersByPathSection(t *testing.T) {
 func TestRunConfigGet_SharedVariablesKeyLookup(t *testing.T) {
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
-			Shared: map[string]string{
+			Variables: map[string]string{
 				"GLOBAL": "yes",
 			},
 			Services: map[string]*config.ServiceConfig{},
@@ -238,7 +238,7 @@ func TestRunConfigGet_SharedVariablesKeyLookup(t *testing.T) {
 func TestRunConfigGet_SharedVariablesSectionLookup(t *testing.T) {
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
-			Shared: map[string]string{
+			Variables: map[string]string{
 				"A": "1",
 				"B": "2",
 			},
@@ -267,7 +267,7 @@ func TestRunConfigGet_MasksSecretsByDefault(t *testing.T) {
 		cfg: &config.LiveConfig{
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
-			Shared:        map[string]string{"DATABASE_PASSWORD": "hunter2"},
+			Variables:     map[string]string{"DATABASE_PASSWORD": "hunter2"},
 			Services:      map[string]*config.ServiceConfig{},
 		},
 	}
@@ -291,7 +291,7 @@ func TestRunConfigGet_ShowSecretsRevealsValues(t *testing.T) {
 		cfg: &config.LiveConfig{
 			ProjectID:     "proj-1",
 			EnvironmentID: "env-1",
-			Shared:        map[string]string{"DATABASE_PASSWORD": "hunter2"},
+			Variables:     map[string]string{"DATABASE_PASSWORD": "hunter2"},
 			Services:      map[string]*config.ServiceConfig{},
 		},
 	}

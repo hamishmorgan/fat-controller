@@ -16,9 +16,9 @@ import (
 func TestRunConfigDiff_ShowsChanges(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
-NEW_VAR = "hello"
+[[service]]
+name = "api"
+variables = { PORT = "9090", NEW_VAR = "hello" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -50,8 +50,9 @@ NEW_VAR = "hello"
 func TestRunConfigDiff_NoChanges(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "8080"
+[[service]]
+name = "api"
+variables = { PORT = "8080" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -81,8 +82,9 @@ func TestRunConfigDiff_WithInterpolation(t *testing.T) {
 	t.Setenv("MY_PORT_FC_TEST", "9090")
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "${MY_PORT_FC_TEST}"
+[[service]]
+name = "api"
+variables = { PORT = "${MY_PORT_FC_TEST}" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -111,8 +113,9 @@ PORT = "${MY_PORT_FC_TEST}"
 func TestRunConfigDiff_MissingEnvVarErrors(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-SECRET = "${TOTALLY_MISSING_FC_VAR}"
+[[service]]
+name = "api"
+variables = { SECRET = "${TOTALLY_MISSING_FC_VAR}" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -135,8 +138,9 @@ SECRET = "${TOTALLY_MISSING_FC_VAR}"
 func TestRunConfigDiff_ResolveError(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "8080"
+[[service]]
+name = "api"
+variables = { PORT = "8080" }
 `)
 	fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
 	var buf bytes.Buffer
@@ -149,11 +153,13 @@ PORT = "8080"
 func TestRunConfigDiff_ServiceFilter(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-[api.variables]
-PORT = "9090"
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 
-[worker.variables]
-QUEUE = "high"
+[[service]]
+name = "worker"
+variables = { QUEUE = "high" }
 `)
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{
@@ -184,11 +190,14 @@ QUEUE = "high"
 func TestRunConfigDiff_UsesConfigFileProject(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-project = "my-app"
-environment = "production"
+name = "production"
 
-[api.variables]
-PORT = "9090"
+[project]
+name = "my-app"
+
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	// fakeFetcher doesn't validate project/environment args, but we
 	// verify via a capturing fetcher that the config-file values are used.
@@ -218,11 +227,14 @@ PORT = "9090"
 func TestRunConfigDiff_FlagOverridesConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	writeTOML(t, dir, "fat-controller.toml", `
-project = "my-app"
-environment = "production"
+name = "production"
 
-[api.variables]
-PORT = "9090"
+[project]
+name = "my-app"
+
+[[service]]
+name = "api"
+variables = { PORT = "9090" }
 `)
 	captureFetcher := &capturingFetcher{
 		cfg: &config.LiveConfig{

@@ -823,7 +823,8 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 	t.Run("config init non-interactive shows preview when file exists", func(t *testing.T) {
 		_, resolver := newTestInitResolver(t)
 		dir := t.TempDir()
-		writeConfigTOML(t, dir, `project = "existing"`)
+		writeConfigTOML(t, dir, `[project]
+name = "existing"`)
 
 		var out bytes.Buffer
 		// Non-interactive without --yes shows preview, does not write.
@@ -985,20 +986,16 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = "9090"
-			NEW = "hello"
+			[project]
+			name = "`+fixtureProjectName+`"
 
-			[api.deploy]
-			builder = "NIXPACKS"
-			start_command = "./start"
-
-			[api.resources]
-			vcpus = 1
-			memory_gb = 2
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090", NEW = "hello" }
+			deploy = { builder = "NIXPACKS", start_command = "./start" }
+			resources = { vcpus = 1, memory_gb = 2 }
 		`)
 
 		globals := &cli.Globals{}
@@ -1080,11 +1077,14 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = "9999"
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "9999" }
 		`)
 
 		globals := &cli.Globals{}
@@ -1110,17 +1110,21 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		dir := t.TempDir()
 		// Config matches exactly what the mock returns.
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[shared.variables]
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[variables]
 			GLOBAL = "one"
 
-			[api.variables]
-			PORT = "8080"
+			[[service]]
+			name = "api"
+			variables = { PORT = "8080" }
 
-			[worker.variables]
-			QUEUE = "default"
+			[[service]]
+			name = "worker"
+			variables = { QUEUE = "default" }
 		`)
 
 		globals := &cli.Globals{}
@@ -1146,14 +1150,18 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		dir := t.TempDir()
 		// Both services have changes, but --service=api should only apply api.
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = "9090"
+			[project]
+			name = "`+fixtureProjectName+`"
 
-			[worker.variables]
-			QUEUE = "high"
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090" }
+
+			[[service]]
+			name = "worker"
+			variables = { QUEUE = "high" }
 		`)
 
 		globals := &cli.Globals{}
@@ -1182,11 +1190,14 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		dir := t.TempDir()
 		// Empty string means "delete this variable".
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = ""
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "" }
 		`)
 
 		globals := &cli.Globals{}
@@ -1218,10 +1229,12 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 		dir := t.TempDir()
 		// Two new shared variables -> one batch upsert. Batch will fail.
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[shared.variables]
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[variables]
 			GLOBAL = "one"
 			ALPHA = "new-a"
 			BRAVO = "new-b"
@@ -1247,11 +1260,14 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = "9090"
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090" }
 		`)
 
 		globals := &cli.Globals{}
@@ -1308,11 +1324,14 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		writeConfigTOML(t, dir, `
-			project = "`+fixtureProjectName+`"
-			environment = "`+fixtureEnvironment+`"
+			name = "`+fixtureEnvironment+`"
 
-			[api.variables]
-			PORT = "9090"
+			[project]
+			name = "`+fixtureProjectName+`"
+
+			[[service]]
+			name = "api"
+			variables = { PORT = "9090" }
 		`)
 
 		ctx, cancel := context.WithCancel(context.Background())

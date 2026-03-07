@@ -39,16 +39,16 @@ func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 
 	// 3. Use config-file project/environment/workspace as fallback for resolution.
 	project := flagProject
-	if project == "" {
-		project = desired.Project
+	if project == "" && desired.Project != nil {
+		project = desired.Project.Name
 	}
 	environment := flagEnvironment
 	if environment == "" {
-		environment = desired.Environment
+		environment = desired.Name
 	}
 	workspace := flagWorkspace
-	if workspace == "" {
-		workspace = desired.Workspace
+	if workspace == "" && desired.Workspace != nil {
+		workspace = desired.Workspace.Name
 	}
 
 	// 4. Resolve project and environment IDs.
@@ -68,11 +68,13 @@ func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 	// 6. Filter desired config by --service if set.
 	if service != "" {
 		filtered := &config.DesiredConfig{
-			Shared:   desired.Shared,
-			Services: make(map[string]*config.DesiredService),
+			Variables: desired.Variables,
 		}
-		if svc, ok := desired.Services[service]; ok {
-			filtered.Services[service] = svc
+		for _, svc := range desired.Services {
+			if svc.Name == service {
+				filtered.Services = append(filtered.Services, svc)
+				break
+			}
 		}
 		desired = filtered
 	}
@@ -102,8 +104,12 @@ func emitWarnings(pair *configPair, quiet bool, configDir string) {
 	warnings = append(warnings, config.ValidateFiles(configDir)...)
 
 	// Filter suppressed warnings (Validate already filters, but ValidateFiles warnings need it too).
-	suppressed := make(map[string]bool, len(pair.Desired.SuppressWarnings))
-	for _, code := range pair.Desired.SuppressWarnings {
+	var suppressWarnings []string
+	if pair.Desired.Tool != nil {
+		suppressWarnings = pair.Desired.Tool.SuppressWarnings
+	}
+	suppressed := make(map[string]bool, len(suppressWarnings))
+	for _, code := range suppressWarnings {
 		suppressed[code] = true
 	}
 

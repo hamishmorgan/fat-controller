@@ -100,6 +100,10 @@ func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
 	for _, svc := range cfg.Services {
 		knownServices[svc.Name] = true
 	}
+	// Railway treats environment-level variables as belonging to a pseudo-service
+	// named "shared" for the purpose of ${{shared.VAR}} references. In this tool,
+	// those variables are represented by the top-level [variables] table.
+	knownServices["shared"] = true
 
 	// Check shared vars for W060.
 	if cfg.Variables != nil {

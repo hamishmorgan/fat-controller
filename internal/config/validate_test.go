@@ -486,6 +486,18 @@ func TestValidate_W060_SharedVarUnknownServiceRef(t *testing.T) {
 	assertHasWarning(t, warnings, "W060")
 }
 
+func TestValidate_W060_SharedPseudoServiceNoWarning(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
+				"MEILI_MASTER_KEY": "${{shared.MEILI_MASTER_KEY}}",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W060")
+}
+
 // --- W070: Duplicate service name ---
 
 func TestValidate_W070_DuplicateServiceName(t *testing.T) {

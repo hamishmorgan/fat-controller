@@ -60,6 +60,10 @@ hitting the API).
 |------|---------|------|
 | `W060` | Reference to unknown service | `${{service.VAR}}` references a service name not defined in the config (may still be valid if the service exists in Railway but isn't managed) |
 
+> **Note:** References to `${{shared.VAR}}` are always treated as valid because
+> Railway uses `shared` as the pseudo-service for environment-level variables
+> (represented by this tool's top-level `[variables]` table).
+
 ## Controlling warnings
 
 Warnings can be suppressed per-code:

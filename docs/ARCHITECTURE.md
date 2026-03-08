@@ -261,6 +261,7 @@ Every command accepts these flags.
 | `--yes` | `-y` | `FAT_CONTROLLER_PROMPT` | `tool.prompt` | | Set prompt mode to `none` |
 | `--verbose` | `-v` | `FAT_CONTROLLER_LOG_LEVEL` | `tool.log_level` | | Decrease log level. Repeatable: `-v` = DEBUG, `-vv` = TRACE |
 | `--quiet` | `-q` | `FAT_CONTROLLER_LOG_LEVEL` | `tool.log_level` | | Increase log level. Repeatable: `-q` = WARN, `-qq` = ERROR, `-qqq` = silent |
+| `--version` | `-V` | | | | Print version and exit |
 
 Default format is `auto` — the tool picks the best format from
 context (e.g. text for TTY, JSON for piped output). `--json`,
@@ -383,8 +384,8 @@ reads them but never sets them.
 | `CLICOLOR_FORCE` | [CLICOLOR](https://bixense.com/clicolors/) | When set to non-zero, forces color (like `FORCE_COLOR`). `NO_COLOR` takes precedence |
 | `TERM` | Terminal | When set to `dumb`, disables color and interactive features |
 | `COLUMNS` | Terminal / POSIX | Terminal width override. Used for help text wrapping and table formatting. Useful when output is piped or in Docker/CI |
-| `XDG_CONFIG_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for global config. Default: `~/.config` |
-| `XDG_DATA_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for persistent data (auth credentials). Default: `~/.local/share` |
+| `XDG_CONFIG_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for global config and auth credentials (`auth.json`). Default: `~/.config` |
+| `XDG_DATA_HOME` | [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/) | Base path for persistent data. Default: `~/.local/share` |
 | `BROWSER` | Unix convention | Program to open URLs. Used by `open` and `auth login` |
 
 **Implicitly handled** by Go or dependencies — no special code
@@ -719,6 +720,10 @@ fat-controller show api.variables --environment staging
 does not express — for example, volume current size, deployment
 status, or creation timestamps.
 
+Use `--full` to include IDs and deploy settings. Use `--raw` to
+output a single unmasked value (useful in scripts, e.g.
+`fat-controller show api.variables.PORT --raw`).
+
 Read-only — no confirmation needed.
 
 ### `deploy`
@@ -791,9 +796,9 @@ Interactive resolution: same as `deploy`.
 
 ### `logs`
 
-View or stream logs. No service arguments = all services in the
-environment. Streams by default; switches to fetch mode when
-`--lines`, `--since`, or `--until` is set.
+View logs. No service arguments = all services in the
+environment. Streaming is not yet implemented — currently fetches
+a fixed window of logs.
 
 ```text
 fat-controller logs [service...] [--build | --deploy] [--lines N]
@@ -840,7 +845,7 @@ Flags: global, context, config.
 
 Interactive resolution: same as `logs`.
 
-### `ssh`
+### `ssh` *(Not Yet Implemented)*
 
 Open an interactive shell inside a running service container.
 WebSocket-based — does not support SCP, SFTP, or port forwarding.
@@ -897,7 +902,7 @@ fat-controller list [type]
 
 | Type | Context required | Description |
 |------|-----------------|-------------|
-| `all` | None | Full hierarchy: workspaces → projects → environments → services |
+| `all` | None | Full hierarchy: workspaces → projects → environments → services *(not yet implemented)* |
 | `workspaces` | None | |
 | `projects` | Workspace | |
 | `environments` | Workspace + project | |
@@ -942,10 +947,12 @@ workspace + project + environment.
 ### `auth login`
 
 Authenticate via browser-based OAuth. Opens a browser by default.
-Use `--browserless` for headless environments (SSH sessions, CI
-containers) — displays a pairing code to enter at a URL.
+Use `--browserless` *(not yet implemented)* for headless
+environments (SSH sessions, CI containers) — displays a pairing
+code to enter at a URL. Respects the `BROWSER` environment
+variable when opening the browser.
 Credentials are stored in
-`$XDG_DATA_HOME/fat-controller/credentials.json`.
+`$XDG_CONFIG_HOME/fat-controller/auth.json`.
 
 ```text
 fat-controller auth login [--browserless]
@@ -993,7 +1000,12 @@ Generate shell completion scripts.
 fat-controller completion <shell>
 ```
 
-Supported shells: `bash`, `zsh`, `fish`, `powershell`.
+Supported shells: `bash`, `zsh`, `fish`.
+
+> **Note:** The legacy command tree (`config`, `project`,
+> `environment`, `workspace`) has been removed. The top-level
+> commands (`adopt`, `diff`, `apply`, `validate`, `show`, `list`)
+> supersede them.
 
 ---
 
@@ -1171,7 +1183,7 @@ icon identifier in the Railway dashboard). Sub-tables use
 
 `service.deploy` fields:
 
-- **Source:** `repo`, `image`, `branch`, `registry_credentials`
+- **Source:** `repo`, `image`, `registry_credentials`
 - **Build:** `builder`, `build_command`, `dockerfile_path`,
   `root_directory`, `nixpacks_plan`, `watch_patterns`
 - **Run:** `start_command`, `pre_deploy_command`, `cron_schedule`
@@ -1184,13 +1196,20 @@ icon identifier in the Railway dashboard). Sub-tables use
 
 `repo` and `image` are mutually exclusive source types. `repo` is
 a GitHub repo (e.g. `"railwayapp/starters"`); `image` is a Docker
-image (e.g. `"postgres:16"`). `branch` sets the Git branch for
-repo-sourced services (e.g. `"main"`). If neither `repo` nor
-`image` is specified, `apply` creates the service with no source.
+image (e.g. `"postgres:16"`). If neither `repo` nor `image` is
+specified, `apply` creates the service with no source.
+
+> **Note:** `branch` lives in deployment triggers
+> (`service.triggers`), not in deploy settings. Railway's
+> `ServiceSource` GraphQL type only has `image` and `repo`; branch
+> is part of the deployment trigger configuration.
 
 `registry_credentials` authenticates to a private Docker registry.
 It takes `username` and `password` — use `${VAR}` interpolation
-for credentials to keep them out of the config file:
+for credentials to keep them out of the config file.
+`registry_credentials` is **write-only** in the Railway API — it
+can be set via `apply` but is not readable from live state, so
+`diff` and `show` cannot display it:
 
 ```toml
 deploy = {
@@ -1247,7 +1266,6 @@ variables = {
 }
 deploy = {
     repo = "org/api",
-    branch = "main",
     builder = "NIXPACKS",
     build_command = "npm run build",
     start_command = "node dist/server.js",

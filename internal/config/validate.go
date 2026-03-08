@@ -30,6 +30,10 @@ var validVarNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 // serviceRefRe matches ${{service.VAR}} Railway cross-service references.
 var serviceRefRe = regexp.MustCompile(`\$\{\{([a-zA-Z_][a-zA-Z0-9_-]*)\.[a-zA-Z_][a-zA-Z0-9_]*\}\}`)
 
+// sharedVarRefRe matches a value that is exactly a shared var reference like
+// "${{shared.API_KEY}}" (whitespace inside the braces is allowed).
+var sharedVarRefRe = regexp.MustCompile(`^\$\{\{\s*shared\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$`)
+
 // Validate runs advisory checks on a DesiredConfig and returns warnings.
 // liveServiceNames is the list of service names that actually exist in Railway;
 // pass nil to skip W040 checks (e.g. for offline validation).
@@ -134,12 +138,20 @@ func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
 
 			// W020: Variable in both shared and service.
 			if cfg.Variables != nil {
-				if _, ok := cfg.Variables[name]; ok {
-					warnings = append(warnings, Warning{
-						Code:    "W020",
-						Message: fmt.Sprintf("variable %q defined in both shared and service %q (service wins)", name, svcName),
-						Path:    path,
-					})
+				if sharedValue, ok := cfg.Variables[name]; ok {
+					// Don't warn if the service value is just an explicit reference to the
+					// shared variable. On Railway, shared vars are not implicitly inherited;
+					// adding a shared var to a service creates a per-service reference.
+					if strings.TrimSpace(sharedValue) != strings.TrimSpace(value) && !isSharedVarReference(value, name) {
+						warnings = append(warnings, Warning{
+							Code: "W020",
+							Message: fmt.Sprintf(
+								"variable %q is defined in shared and also in service %q — ensure this is intentional (service scope can shadow shared)",
+								name, svcName,
+							),
+							Path: path,
+						})
+					}
 				}
 			}
 		}
@@ -269,6 +281,15 @@ func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
 
 	slog.Debug("validation complete", "warnings", len(warnings))
 	return warnings
+}
+
+func isSharedVarReference(value, varName string) bool {
+	value = strings.TrimSpace(value)
+	if value == "${{shared."+varName+"}}" {
+		return true
+	}
+	parts := sharedVarRefRe.FindStringSubmatch(value)
+	return len(parts) == 2 && parts[1] == varName
 }
 
 func collectEnvReferences(cfg *DesiredConfig) map[string]bool {

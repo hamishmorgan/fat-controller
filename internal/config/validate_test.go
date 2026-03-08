@@ -163,6 +163,36 @@ func TestValidate_W020_SharedAndServiceConflict(t *testing.T) {
 	assertHasWarning(t, warnings, "W020")
 }
 
+func TestValidate_W020_NoWarning_WhenServiceRefersToShared(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Variables: config.Variables{
+			"APP_ENV": "production",
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
+				"APP_ENV": "${{shared.APP_ENV}}",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W020")
+}
+
+func TestValidate_W020_NoWarning_WhenSameValue(t *testing.T) {
+	cfg := &config.DesiredConfig{
+		Variables: config.Variables{
+			"APP_ENV": "production",
+		},
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{
+				"APP_ENV": "production",
+			}},
+		},
+	}
+	warnings := config.Validate(cfg, nil)
+	assertNoWarning(t, warnings, "W020")
+}
+
 func TestValidate_W020_NoConflictWhenDifferentVars(t *testing.T) {
 	cfg := &config.DesiredConfig{
 		Variables: config.Variables{

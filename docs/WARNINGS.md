@@ -30,7 +30,7 @@ hitting the API).
 
 | Code | Warning | When |
 |------|---------|------|
-| `W020` | Variable in both shared and service | Variable appears in `[shared.variables]` and `[X.variables]` — service value wins |
+| `W020` | Variable in both shared and service | Variable appears in shared `[variables]` and also in `[X.variables]` with a different value (can be intentional, but can also indicate an accidental shadow/override) |
 | `W021` | Variable overridden by overlay file | Same variable defined in base config and override file — later value wins |
 
 ## Naming warnings

@@ -38,7 +38,7 @@ NODE_ENV = "production"
 
 # Tool behavior settings
 [tool]
-env_file = ".env.fat-controller"
+env_file = ".secrets.fat-controller"
 fail_fast = true
 
 # --- Services ---
@@ -127,7 +127,7 @@ Multiple config files are merged in order (later values override earlier):
 
 - `fat-controller.toml` — base config (committed)
 - Additional files via `--config` flags
-- `.env.fat-controller` or files specified in `[tool] env_file`
+- `.secrets.fat-controller` or files specified in `[tool] env_file`
 
 ```bash
 fat-controller diff
@@ -141,7 +141,7 @@ Two interpolation syntaxes in config values:
 - `${{service.VAR}}` — **Railway reference**. Passed through as-is.
   Railway resolves at runtime. Safe to commit.
 - `${VAR}` — **Local environment variable**. Resolved at apply time from
-  the local shell environment or `.env.fat-controller`. Missing env var =
+  the local shell environment or `.secrets.fat-controller`. Missing env var =
   error. Useful for secrets in CI.
 
 ## Secret handling
@@ -155,11 +155,11 @@ ignored. Three patterns for managing secrets:
    Safe to commit. Railway resolves at runtime.
 3. **Local env interpolation** — `STRIPE_KEY = "${STRIPE_KEY}"`. Resolved
    from local environment at apply time. Config file is safe to commit;
-   actual value comes from `.env.fat-controller` or CI env vars.
+   actual value comes from `.secrets.fat-controller` or CI env vars.
 
-`adopt` (or `config init`) generates a `.env.fat-controller` file
+`adopt` (or `config init`) generates a `.secrets.fat-controller` file
 (gitignored) with actual secret values pulled from Railway. Load it into
-your environment before running `apply` (e.g. `source .env.fat-controller`,
+your environment before running `apply` (e.g. `source .secrets.fat-controller`,
 direnv, or CI pipeline secrets).
 
 See also: [SECRET-MASKING.md](SECRET-MASKING.md) for output masking,

@@ -13,8 +13,8 @@ const (
 	BaseConfigFile = "fat-controller.toml"
 	// LocalConfigFile is the auto-discovered local override.
 	LocalConfigFile = "fat-controller.local.toml"
-	// DefaultEnvFile is the default env file for secret values.
-	DefaultEnvFile = ".env.fat-controller"
+	// DefaultEnvFile is the default secrets file written by init/adopt.
+	DefaultEnvFile = ".secrets.fat-controller"
 )
 
 // LoadConfigs loads and merges config files:
@@ -51,7 +51,7 @@ func LoadConfigs(dir string, extraFiles []string) (*DesiredConfig, error) {
 	if _, err := os.Stat(localPath); err == nil {
 		slog.Warn("fat-controller.local.toml is deprecated — move secrets "+
 			"to ${VAR} references in fat-controller.toml and use "+
-			".env.fat-controller for secret values",
+			".secrets.fat-controller for secret values",
 			"path", localPath)
 	}
 

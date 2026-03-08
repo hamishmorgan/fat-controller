@@ -425,7 +425,7 @@ func ValidateFiles(dir string) []Warning {
 		warnings = append(warnings, Warning{
 			Code: "W052",
 			Message: fmt.Sprintf("%s is deprecated — move secrets to ${VAR} "+
-				"references in %s and use .env.fat-controller for secret values",
+				"references in %s and use .secrets.fat-controller for secret values",
 				LocalConfigFile, BaseConfigFile),
 			Path: LocalConfigFile,
 		})

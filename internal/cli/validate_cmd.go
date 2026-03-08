@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -29,9 +30,14 @@ func (c *ValidateCmd) Run(globals *Globals) error {
 // RunConfigValidateScoped is a scoped variant of RunConfigValidate.
 func RunConfigValidateScoped(globals *Globals, configDir string, configFile string, path string, out io.Writer) error {
 	// Path scoping for validate filters warnings by path prefix.
-	// For now, delegate to the base implementation — all warnings are returned
-	// and filtered at output time if path is set.
-	return RunConfigValidate(globals, configDir, configFile, out)
+	warnings, err := collectValidateWarnings(configDir, configFile)
+	if err != nil {
+		return err
+	}
+	if path != "" {
+		warnings = filterWarningsByPath(warnings, path)
+	}
+	return writeValidateWarnings(globals, warnings, out)
 }
 
 // RunConfigValidate is the testable core of `config validate`.
@@ -41,13 +47,21 @@ func RunConfigValidate(globals *Globals, configDir string, configFile string, ou
 		out = os.Stdout
 	}
 
+	warnings, err := collectValidateWarnings(configDir, configFile)
+	if err != nil {
+		return err
+	}
+	return writeValidateWarnings(globals, warnings, out)
+}
+
+func collectValidateWarnings(configDir string, configFile string) ([]config.Warning, error) {
 	// Load config files (cascade or single --config-file).
 	result, err := config.LoadCascade(config.LoadOptions{
 		WorkDir:    configDir,
 		ConfigFile: configFile,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	desired := result.Config
 
@@ -55,6 +69,26 @@ func RunConfigValidate(globals *Globals, configDir string, configFile string, ou
 	// No API calls: liveServiceNames is nil (W040 skipped in offline mode).
 	warnings := config.ValidateWithOptions(desired, config.ValidateOptions{EnvFileVars: result.EnvVars})
 	warnings = append(warnings, config.ValidateFiles(configDir)...)
+	return warnings, nil
+}
+
+func filterWarningsByPath(warnings []config.Warning, path string) []config.Warning {
+	if path == "" {
+		return warnings
+	}
+	filtered := warnings[:0]
+	for _, w := range warnings {
+		if w.Path == path || strings.HasPrefix(w.Path, path+".") {
+			filtered = append(filtered, w)
+		}
+	}
+	return filtered
+}
+
+func writeValidateWarnings(globals *Globals, warnings []config.Warning, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
 
 	if len(warnings) == 0 {
 		if globals.Quiet == 0 {

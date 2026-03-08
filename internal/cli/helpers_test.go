@@ -19,33 +19,6 @@ func writeTOML(t *testing.T, dir, name, content string) {
 	}
 }
 
-// --- Shared mutation fakes ---
-
-// recordingMutator implements both configSetter and configDeleter,
-// recording the arguments it was called with. Set err to make it fail.
-type recordingMutator struct {
-	called  bool
-	service string
-	key     string
-	value   string // populated only by SetVar
-	err     error
-}
-
-func (r *recordingMutator) SetVar(_ context.Context, service, key, value string) error {
-	r.called = true
-	r.service = service
-	r.key = key
-	r.value = value
-	return r.err
-}
-
-func (r *recordingMutator) DeleteVar(_ context.Context, service, key string) error {
-	r.called = true
-	r.service = service
-	r.key = key
-	return r.err
-}
-
 // --- Shared fetcher fakes ---
 
 // fakeFetcher implements cli.ConfigFetcher for testing.

@@ -11,25 +11,6 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/diff"
 )
 
-// Run implements `config diff`.
-func (c *ConfigDiffCmd) Run(globals *Globals) error {
-	slog.Warn("'config diff' is deprecated; use 'diff' instead")
-	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
-	defer cancel()
-	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
-	if err != nil {
-		return err
-	}
-	fetcher := &defaultConfigFetcher{client: client}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
-	return RunConfigDiff(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, c.ShowSecrets, fetcher, os.Stdout)
-}
-
 // DiffOpts holds options for RunConfigDiffWithOpts.
 type DiffOpts struct {
 	ShowSecrets bool

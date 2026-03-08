@@ -30,25 +30,7 @@ func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environment
 	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, service)
 }
 
-// SetOutput overrides the output writer (for testing).
-func (c *ConfigGetCmd) SetOutput(w io.Writer) {
-	c.output = w
-}
-
-// Run implements `config get`.
-func (c *ConfigGetCmd) Run(globals *Globals) error {
-	slog.Warn("'config get' is deprecated; use 'show' instead")
-	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
-	defer cancel()
-	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
-	if err != nil {
-		return err
-	}
-	fetcher := &defaultConfigFetcher{client: client}
-	return RunConfigGet(ctx, globals, c.Workspace, c.Project, c.Environment, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, c.output)
-}
-
-// RunConfigGet is the testable core of `config get`.
+// RunConfigGet is the testable core of `show` (formerly `config get`).
 func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, environment, path string, full bool, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
 	slog.Debug("starting config get", "path", path)
 	if out == nil {

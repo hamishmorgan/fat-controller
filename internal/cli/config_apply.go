@@ -15,39 +15,6 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
-// Run implements `config apply`.
-func (c *ConfigApplyCmd) Run(globals *Globals) error {
-	slog.Warn("'config apply' is deprecated; use 'apply' instead")
-	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
-	defer cancel()
-	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
-	if err != nil {
-		return err
-	}
-	fetcher := &defaultConfigFetcher{client: client}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
-	pair, err := loadAndFetch(ctx, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, fetcher)
-	if err != nil {
-		return err
-	}
-
-	// Emit validation warnings to stderr.
-	emitWarnings(pair, globals.Quiet, wd)
-
-	applier := &apply.RailwayApplier{
-		Client:        client,
-		ProjectID:     pair.ProjectID,
-		EnvironmentID: pair.EnvironmentID,
-	}
-
-	return runConfigApplyWithPair(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, applier, os.Stdout)
-}
-
 // ApplyOpts holds command-specific options for RunConfigApply / runConfigApplyWithPair.
 type ApplyOpts struct {
 	DryRun      bool

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"os"
 	"time"
@@ -220,100 +219,17 @@ type AuthStatusCmd struct {
 	ApiFlags `kong:"embed"`
 }
 
-// ConfigCmd is the `config` command group.
-type ConfigCmd struct {
-	Init     ConfigInitCmd     `cmd:"" help:"Bootstrap a fat-controller.toml from live Railway state."`
-	Get      ConfigGetCmd      `cmd:"" help:"Fetch live config from Railway."`
-	Set      ConfigSetCmd      `cmd:"" help:"Set a single value by dot-path."`
-	Delete   ConfigDeleteCmd   `cmd:"" help:"Delete a single value by dot-path."`
-	Diff     ConfigDiffCmd     `cmd:"" help:"Compare local config against live state."`
-	Apply    ConfigApplyCmd    `cmd:"" help:"Push configuration changes to Railway."`
-	Validate ConfigValidateCmd `cmd:"" help:"Check config file for warnings (no API calls)."`
-}
-
-// ConfigGetCmd implements `config get`.
-type ConfigGetCmd struct {
-	ServiceFlags `kong:"embed"`
-	Path         string    `arg:"" optional:"" help:"Dot-path to fetch (e.g. api.variables.PORT). Omit for all."`
-	Full         bool      `help:"Include IDs and read-only fields."`
-	ShowSecrets  bool      `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	output       io.Writer `kong:"-"`
-}
-
-// ConfigSetCmd implements `config set`.
-type ConfigSetCmd struct {
-	EnvironmentFlags `kong:"embed"`
-	MutationFlags    `kong:"embed"`
-	Path             string `arg:"" required:"" help:"Dot-path to set (e.g. api.variables.PORT)."`
-	Value            string `arg:"" required:"" help:"Value to set."`
-	SkipDeploys      bool   `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_DEPLOY"`
-}
-
-// ConfigDeleteCmd implements `config delete`.
-type ConfigDeleteCmd struct {
-	EnvironmentFlags `kong:"embed"`
-	MutationFlags    `kong:"embed"`
-	Path             string `arg:"" required:"" help:"Dot-path to delete (e.g. api.variables.OLD)."`
-}
-
-// ConfigInitCmd implements `config init`.
-type ConfigInitCmd struct {
-	EnvironmentFlags `kong:"embed"`
-	MutationFlags    `kong:"embed"`
-}
-
-// ConfigDiffCmd implements `config diff`.
-type ConfigDiffCmd struct {
-	ServiceFlags    `kong:"embed"`
-	ConfigFileFlags `kong:"embed"`
-	ShowSecrets     bool `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-}
-
-// ConfigApplyCmd implements `config apply`.
-type ConfigApplyCmd struct {
-	ServiceFlags    `kong:"embed"`
-	MutationFlags   `kong:"embed"`
-	ConfigFileFlags `kong:"embed"`
-	ShowSecrets     bool `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
-	SkipDeploys     bool `help:"Don't trigger redeployments." name:"skip-deploys" env:"FAT_CONTROLLER_DEPLOY"`
-	FailFast        bool `help:"Stop on first error during apply." name:"fail-fast" env:"FAT_CONTROLLER_FAIL_FAST"`
-}
-
-// ConfigValidateCmd implements `config validate`.
-type ConfigValidateCmd struct {
-	ConfigFileFlags `kong:"embed"`
-}
-
-type ProjectCmd struct {
-	List ProjectListCmd `cmd:"" help:"List available projects."`
-}
+// ProjectListCmd, EnvironmentListCmd, WorkspaceListCmd are used by
+// ListCmd in list.go to delegate `list workspaces/projects/environments`.
 
 type ProjectListCmd struct {
 	WorkspaceFlags `kong:"embed"`
-}
-
-type EnvironmentCmd struct {
-	List EnvironmentListCmd `cmd:"" help:"List environments for a project."`
 }
 
 type EnvironmentListCmd struct {
 	ProjectFlags `kong:"embed"`
 }
 
-type WorkspaceCmd struct {
-	List WorkspaceListCmd `cmd:"" help:"List available workspaces."`
-}
-
 type WorkspaceListCmd struct {
 	ApiFlags `kong:"embed"`
 }
-
-// Run methods:
-// - ConfigInitCmd.Run   → config_init.go
-// - ConfigGetCmd.Run    → config_get.go
-// - ConfigSetCmd.Run    → config_set.go
-// - ConfigDeleteCmd.Run → config_delete.go
-// - ConfigDiffCmd.Run   → config_diff.go
-// - ConfigApplyCmd.Run  → config_apply.go
-
-// ConfigValidateCmd.Run → config_validate.go

@@ -116,25 +116,6 @@ func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, env
 	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, "")
 }
 
-// Run implements `config init`.
-func (c *ConfigInitCmd) Run(globals *Globals) error {
-	slog.Warn("'config init' is deprecated; use 'adopt' instead")
-	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
-	defer cancel()
-	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
-	if err != nil {
-		return err
-	}
-	resolver := &railwayInitResolver{client: client}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
-	return RunConfigInit(ctx, wd, c.Workspace, c.Project, c.Environment, resolver, prompt.StdinIsInteractive(), c.DryRun, c.Yes, os.Stdout)
-}
-
 // withSpinner wraps an action in a loading spinner when interactive mode is
 // enabled. In non-interactive mode the action runs directly.
 func withSpinner(ctx context.Context, title string, interactive bool, action func()) error {

@@ -13,10 +13,9 @@ import (
 )
 
 // ---------- Config stub tests ----------
-// Note: ConfigGetCmd, ConfigSetCmd, ConfigDeleteCmd tests moved to
-// config_get_test.go, config_set_test.go, config_delete_test.go respectively.
-
-// Note: ConfigValidateCmd.Run tested in config_validate_test.go
+// Legacy ConfigXxxCmd types retained in cli.go for Kong routing; their .Run
+// methods have been removed. Testable logic lives in RunConfigXxx functions
+// tested in config_*_test.go files.
 
 // ---------- Auth tests ----------
 

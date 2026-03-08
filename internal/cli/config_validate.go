@@ -11,17 +11,6 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// Run implements `config validate`.
-func (c *ConfigValidateCmd) Run(globals *Globals) error {
-	slog.Warn("'config validate' is deprecated; use 'validate' instead")
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-
-	return RunConfigValidate(globals, wd, c.ConfigFiles, os.Stdout)
-}
-
 // RunConfigValidateScoped is a scoped variant of RunConfigValidate.
 func RunConfigValidateScoped(globals *Globals, configDir string, extraFiles []string, path string, out io.Writer) error {
 	// Path scoping for validate filters warnings by path prefix.

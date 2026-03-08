@@ -13,17 +13,6 @@ import (
 
 // fakeFetcher and capturingFetcher are defined in helpers_test.go.
 
-func TestConfigGet_PrintsOutput(t *testing.T) {
-	var buf bytes.Buffer
-	cmd := &cli.ConfigGetCmd{}
-	cmd.SetOutput(&buf)
-
-	// Run will fail because it tries to create a real auth store / client.
-	// This tests that SetOutput wiring works — the real logic is tested via
-	// RunConfigGet below.
-	_ = cmd.Run(&cli.Globals{})
-}
-
 func TestRunConfigGet_RendersText(t *testing.T) {
 	fetcher := &fakeFetcher{
 		cfg: &config.LiveConfig{

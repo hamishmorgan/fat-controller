@@ -10,6 +10,13 @@ Clear stored credentials.
 fat-controller auth logout [flags]
 ```
 
+## Flags
+
+| Flag | Type | Default | Env | Description |
+|------|------|---------|-----|-------------|
+| `-a`, `--ask` | bool |  |  | Prompt for all parameters. |
+| `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Skip all confirmation prompts. |
+
 ## Global Flags
 
 | Flag | Type | Default | Env | Description |

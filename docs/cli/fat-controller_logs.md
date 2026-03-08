@@ -24,6 +24,7 @@ fat-controller logs [<services>] [flags]
 | `--project` | string |  | `FAT_CONTROLLER_PROJECT` | Project ID or name. |
 | `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
 | `-b`, `--build` | bool |  |  | Show build logs. |
+| `-d`, `--deploy` | bool |  |  | Show deploy logs (default when services specified). |
 | `-n`, `--lines` | string |  |  | Number of lines to fetch. |
 | `--since` | string |  |  | Start time: relative (5m, 2h) or ISO 8601. |
 | `--until` | string |  |  | End time: relative or ISO 8601. |

@@ -25,6 +25,7 @@ fat-controller deploy [<services>] [flags]
 | `--environment` | string |  | `FAT_CONTROLLER_ENVIRONMENT` | Environment name. |
 | `-a`, `--ask` | bool |  |  | Prompt for all parameters. |
 | `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Skip all confirmation prompts. |
+| `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Preview what would be deployed without triggering. |
 
 ## Global Flags
 

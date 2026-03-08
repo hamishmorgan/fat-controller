@@ -31,6 +31,7 @@ fat-controller adopt [<path>] [flags]
 | `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Skip all confirmation prompts. |
 | `-f`, `--config-file` | string[] |  | `FAT_CONTROLLER_CONFIG_FILE` | Railway config file paths. Repeatable. |
 | `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Force preview of mutations. |
+| `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 
 ## Global Flags
 

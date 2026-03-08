@@ -42,7 +42,7 @@ type Applier interface {
 	DeleteServiceDomain(ctx context.Context, domainID string) error
 
 	// Volumes
-	CreateVolume(ctx context.Context, serviceID, mountPath string) error
+	CreateVolume(ctx context.Context, serviceID, mountPath, region string) error
 	DeleteVolume(ctx context.Context, volumeID string) error
 
 	// TCP Proxies
@@ -57,7 +57,7 @@ type Applier interface {
 	SetEgressGateways(ctx context.Context, serviceID string, regions []string) error
 
 	// Triggers
-	CreateDeploymentTrigger(ctx context.Context, serviceID, repo, branch string) error
+	CreateDeploymentTrigger(ctx context.Context, serviceID, repo, branch, provider string) error
 	DeleteDeploymentTrigger(ctx context.Context, triggerID string) error
 
 	// Deploy
@@ -306,8 +306,8 @@ func applyDomainChange(ctx context.Context, applier Applier, serviceID string, c
 func applyVolumeChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
 	switch ch.Action {
 	case diff.ActionCreate:
-		slog.Debug("creating volume", "service", serviceID, "mount", ch.Mount)
-		return applier.CreateVolume(ctx, serviceID, ch.Mount)
+		slog.Debug("creating volume", "service", serviceID, "mount", ch.Mount, "region", ch.Region)
+		return applier.CreateVolume(ctx, serviceID, ch.Mount, ch.Region)
 	case diff.ActionDelete:
 		slog.Debug("deleting volume", "volume", ch.Key)
 		return applier.DeleteVolume(ctx, ch.LiveID)
@@ -342,8 +342,8 @@ func applyNetworkChange(ctx context.Context, applier Applier, serviceID string, 
 func applyTriggerChange(ctx context.Context, applier Applier, serviceID string, ch diff.SubResourceChange) error {
 	switch ch.Action {
 	case diff.ActionCreate:
-		slog.Debug("creating trigger", "service", serviceID, "repo", ch.Repo, "branch", ch.Branch)
-		return applier.CreateDeploymentTrigger(ctx, serviceID, ch.Repo, ch.Branch)
+		slog.Debug("creating trigger", "service", serviceID, "repo", ch.Repo, "branch", ch.Branch, "provider", ch.Provider)
+		return applier.CreateDeploymentTrigger(ctx, serviceID, ch.Repo, ch.Branch, ch.Provider)
 	case diff.ActionDelete:
 		slog.Debug("deleting trigger", "trigger", ch.Key)
 		return applier.DeleteDeploymentTrigger(ctx, ch.LiveID)

@@ -8,15 +8,18 @@ import (
 
 // CreateDeploymentTrigger creates a deployment trigger that links a GitHub repo
 // and branch to a service. Returns the trigger ID on success.
-func CreateDeploymentTrigger(ctx context.Context, client *Client, envID, projectID, serviceID, repo, branch string) (string, error) {
-	slog.Debug("creating deployment trigger", "service_id", serviceID, "repo", repo, "branch", branch)
+func CreateDeploymentTrigger(ctx context.Context, client *Client, envID, projectID, serviceID, repo, branch, provider string) (string, error) {
+	slog.Debug("creating deployment trigger", "service_id", serviceID, "repo", repo, "branch", branch, "provider", provider)
+	if provider == "" {
+		provider = "github"
+	}
 	input := DeploymentTriggerCreateInput{
 		EnvironmentId: envID,
 		ProjectId:     projectID,
 		ServiceId:     serviceID,
 		Repository:    repo,
 		Branch:        branch,
-		Provider:      "github",
+		Provider:      provider,
 	}
 	resp, err := DeploymentTriggerCreate(ctx, client.gql(), input)
 	if err != nil {

@@ -8,13 +8,16 @@ import (
 
 // CreateVolume creates a persistent volume attached to a service.
 // Returns the volume ID on success.
-func CreateVolume(ctx context.Context, client *Client, projectID, envID, serviceID, path string) (string, error) {
-	slog.Debug("creating volume", "service_id", serviceID, "path", path)
+func CreateVolume(ctx context.Context, client *Client, projectID, envID, serviceID, path, region string) (string, error) {
+	slog.Debug("creating volume", "service_id", serviceID, "path", path, "region", region)
 	input := VolumeCreateInput{
 		ProjectId:     projectID,
 		EnvironmentId: &envID,
 		ServiceId:     &serviceID,
 		MountPath:     path,
+	}
+	if region != "" {
+		input.Region = &region
 	}
 	resp, err := VolumeCreate(ctx, client.gql(), input)
 	if err != nil {

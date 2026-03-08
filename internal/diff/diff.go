@@ -54,6 +54,8 @@ type SubResourceChange struct {
 	Mount    string   // for volumes
 	Repo     string   // for triggers
 	Branch   string   // for triggers
+	Provider string   // for triggers
+	Region   string   // for single-region resources like volumes
 	Regions  []string // for egress (set semantics)
 	IsCustom bool     // for domains: true = custom, false = service domain
 }
@@ -408,6 +410,7 @@ func diffVolumes(desired map[string]config.VolumeConfig, live *config.ServiceCon
 				Action: ActionCreate,
 				Key:    volName,
 				Mount:  vc.Mount,
+				Region: vc.Region,
 			})
 		}
 	}
@@ -510,11 +513,12 @@ func diffTriggers(desired []config.TriggerConfig, live *config.ServiceConfig) []
 		desiredKeys[key] = true
 		if _, ok := liveByKey[key]; !ok {
 			changes = append(changes, SubResourceChange{
-				Type:   "trigger",
-				Action: ActionCreate,
-				Key:    tc.Repository + ":" + tc.Branch,
-				Repo:   tc.Repository,
-				Branch: tc.Branch,
+				Type:     "trigger",
+				Action:   ActionCreate,
+				Key:      tc.Repository + ":" + tc.Branch,
+				Repo:     tc.Repository,
+				Branch:   tc.Branch,
+				Provider: tc.Provider,
 			})
 		}
 	}

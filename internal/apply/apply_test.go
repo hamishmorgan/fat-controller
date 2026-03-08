@@ -101,8 +101,8 @@ func (r *recordingApplier) DeleteServiceDomain(_ context.Context, id string) err
 	return nil
 }
 
-func (r *recordingApplier) CreateVolume(_ context.Context, svcID, mount string) error {
-	r.calls = append(r.calls, fmt.Sprintf("create-volume:%s:%s", svcID, mount))
+func (r *recordingApplier) CreateVolume(_ context.Context, svcID, mount, region string) error {
+	r.calls = append(r.calls, fmt.Sprintf("create-volume:%s:%s:%s", svcID, mount, region))
 	return nil
 }
 
@@ -137,8 +137,8 @@ func (r *recordingApplier) SetEgressGateways(_ context.Context, svcID string, re
 	return nil
 }
 
-func (r *recordingApplier) CreateDeploymentTrigger(_ context.Context, svcID, repo, branch string) error {
-	r.calls = append(r.calls, fmt.Sprintf("create-trigger:%s:%s:%s", svcID, repo, branch))
+func (r *recordingApplier) CreateDeploymentTrigger(_ context.Context, svcID, repo, branch, provider string) error {
+	r.calls = append(r.calls, fmt.Sprintf("create-trigger:%s:%s:%s:%s", svcID, repo, branch, provider))
 	return nil
 }
 
@@ -524,13 +524,13 @@ func TestApply_SubResources_Egress(t *testing.T) {
 	}
 }
 
-func TestApply_SubResources_Trigger(t *testing.T) {
+func TestApply_SubResources_VolumePassesRegion(t *testing.T) {
 	desired := &config.DesiredConfig{
 		Services: []*config.DesiredService{
 			{
 				Name: "api",
-				Triggers: []config.TriggerConfig{
-					{Repository: "org/repo", Branch: "main"},
+				Volumes: map[string]config.VolumeConfig{
+					"data": {Mount: "/data", Region: "us-west1"},
 				},
 			},
 		},
@@ -551,7 +551,43 @@ func TestApply_SubResources_Trigger(t *testing.T) {
 	}
 	found := false
 	for _, c := range rec.calls {
-		if c == "create-trigger:svc-1:org/repo:main" {
+		if c == "create-volume:svc-1:/data:us-west1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected region-aware create-volume call, got: %v", rec.calls)
+	}
+}
+
+func TestApply_SubResources_Trigger(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{
+				Name: "api",
+				Triggers: []config.TriggerConfig{
+					{Repository: "org/repo", Branch: "main", Provider: "gitlab"},
+				},
+			},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {ID: "svc-1", Name: "api"},
+		},
+	}
+
+	rec := &recordingApplier{}
+	result, err := apply.Apply(context.Background(), desired, live, rec, apply.Options{})
+	if err != nil {
+		t.Fatalf("Apply() error: %v", err)
+	}
+	if result.Applied != 1 {
+		t.Errorf("Applied = %d, want 1", result.Applied)
+	}
+	found := false
+	for _, c := range rec.calls {
+		if c == "create-trigger:svc-1:org/repo:main:gitlab" {
 			found = true
 		}
 	}

@@ -657,6 +657,26 @@ func TestDiff_VolumeCreate(t *testing.T) {
 	if ch.Type != "volume" || ch.Action != diff.ActionCreate || ch.Mount != "/data" {
 		t.Errorf("unexpected: type=%s action=%v mount=%s", ch.Type, ch.Action, ch.Mount)
 	}
+	if ch.Region != "" {
+		t.Errorf("region = %q, want empty", ch.Region)
+	}
+}
+
+func TestDiff_VolumeCreateWithRegion(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Volumes: map[string]config.VolumeConfig{
+				"data": {Mount: "/data", Region: "us-west1"},
+			},
+		}},
+	}
+	live := &config.LiveConfig{Services: map[string]*config.ServiceConfig{"api": {Name: "api"}}}
+	result := diff.Compute(desired, live)
+	ch := result.Services["api"].SubResources[0]
+	if ch.Region != "us-west1" {
+		t.Errorf("region = %q, want us-west1", ch.Region)
+	}
 }
 
 func TestDiff_TCPProxyCreateAndDelete(t *testing.T) {
@@ -755,6 +775,26 @@ func TestDiff_TriggerCreate(t *testing.T) {
 	}
 	if ch.Repo != "org/repo" || ch.Branch != "main" {
 		t.Errorf("unexpected trigger: repo=%q branch=%q", ch.Repo, ch.Branch)
+	}
+	if ch.Provider != "" {
+		t.Errorf("provider = %q, want empty", ch.Provider)
+	}
+}
+
+func TestDiff_TriggerCreateWithProvider(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{{
+			Name: "api",
+			Triggers: []config.TriggerConfig{
+				{Repository: "org/repo", Branch: "main", Provider: "gitlab"},
+			},
+		}},
+	}
+	live := &config.LiveConfig{Services: map[string]*config.ServiceConfig{"api": {Name: "api"}}}
+	result := diff.Compute(desired, live)
+	ch := result.Services["api"].SubResources[0]
+	if ch.Provider != "gitlab" {
+		t.Errorf("provider = %q, want gitlab", ch.Provider)
 	}
 }
 

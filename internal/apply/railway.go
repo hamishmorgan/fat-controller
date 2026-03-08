@@ -157,8 +157,8 @@ func (r *RailwayApplier) DeleteServiceDomain(ctx context.Context, domainID strin
 
 // --- Volumes ---
 
-func (r *RailwayApplier) CreateVolume(ctx context.Context, serviceID, mountPath string) error {
-	_, err := railway.CreateVolume(ctx, r.Client, r.ProjectID, r.EnvironmentID, serviceID, mountPath)
+func (r *RailwayApplier) CreateVolume(ctx context.Context, serviceID, mountPath, region string) error {
+	_, err := railway.CreateVolume(ctx, r.Client, r.ProjectID, r.EnvironmentID, serviceID, mountPath, region)
 	return err
 }
 
@@ -204,8 +204,8 @@ func (r *RailwayApplier) SetEgressGateways(ctx context.Context, serviceID string
 
 // --- Triggers ---
 
-func (r *RailwayApplier) CreateDeploymentTrigger(ctx context.Context, serviceID, repo, branch string) error {
-	_, err := railway.CreateDeploymentTrigger(ctx, r.Client, r.EnvironmentID, r.ProjectID, serviceID, repo, branch)
+func (r *RailwayApplier) CreateDeploymentTrigger(ctx context.Context, serviceID, repo, branch, provider string) error {
+	_, err := railway.CreateDeploymentTrigger(ctx, r.Client, r.EnvironmentID, r.ProjectID, serviceID, repo, branch, provider)
 	return err
 }
 

@@ -56,7 +56,7 @@ func (c *countingApplier) CreateServiceDomain(_ context.Context, _ string, _ int
 	return nil
 }
 func (c *countingApplier) DeleteServiceDomain(_ context.Context, _ string) error   { return nil }
-func (c *countingApplier) CreateVolume(_ context.Context, _, _ string) error       { return nil }
+func (c *countingApplier) CreateVolume(_ context.Context, _, _, _ string) error    { return nil }
 func (c *countingApplier) DeleteVolume(_ context.Context, _ string) error          { return nil }
 func (c *countingApplier) CreateTCPProxy(_ context.Context, _ string, _ int) error { return nil }
 func (c *countingApplier) DeleteTCPProxy(_ context.Context, _ string) error        { return nil }
@@ -65,7 +65,7 @@ func (c *countingApplier) DisablePrivateNetwork(_ context.Context, _ string) err
 func (c *countingApplier) SetEgressGateways(_ context.Context, _ string, _ []string) error {
 	return nil
 }
-func (c *countingApplier) CreateDeploymentTrigger(_ context.Context, _, _, _ string) error {
+func (c *countingApplier) CreateDeploymentTrigger(_ context.Context, _, _, _, _ string) error {
 	return nil
 }
 func (c *countingApplier) DeleteDeploymentTrigger(_ context.Context, _ string) error { return nil }

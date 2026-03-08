@@ -352,48 +352,6 @@ func ResolveServiceID(ctx context.Context, client *Client, projectID, service st
 	return "", fmt.Errorf("service not found: %s", service)
 }
 
-type environmentResult struct {
-	id   string
-	name string
-}
-
-func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string, picker Picker) (environmentResult, error) {
-	if env != "" && uuidPattern.MatchString(env) {
-		return environmentResult{id: env}, nil
-	}
-	resp, err := Environments(ctx, client.gql(), projectID)
-	if err != nil {
-		return environmentResult{}, err
-	}
-	if env != "" {
-		for _, edge := range resp.Environments.Edges {
-			if edge.Node.Name == env {
-				slog.Debug("resolved environment", "name", env, "id", edge.Node.Id)
-				return environmentResult{id: edge.Node.Id, name: edge.Node.Name}, nil
-			}
-		}
-		return environmentResult{}, fmt.Errorf("environment not found: %s", env)
-	}
-
-	items := make([]PickCandidate, len(resp.Environments.Edges))
-	for i, edge := range resp.Environments.Edges {
-		items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
-	}
-	id, err := pickOne("environment", items, picker)
-	if err != nil {
-		return environmentResult{}, err
-	}
-	// Find the name for the selected ID.
-	var name string
-	for _, edge := range resp.Environments.Edges {
-		if edge.Node.Id == id {
-			name = edge.Node.Name
-			break
-		}
-	}
-	return environmentResult{id: id, name: name}, nil
-}
-
 // pickOne selects from candidates:
 //   - 0 items: error
 //   - 1 item: auto-select

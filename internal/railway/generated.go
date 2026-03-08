@@ -4,6 +4,7 @@ package railway
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -171,22 +172,67 @@ func (v *BucketUpdateResponse) GetBucketUpdate() BucketUpdateBucketUpdateBucket 
 //
 // The result of a logs query.
 type BuildLogsBuildLogsLog struct {
-	// The contents of the log message
-	Message string `json:"message"`
-	// The severity of the log message (eg. err)
-	Severity *string `json:"severity"`
-	// The timestamp of the log message in format RFC3339 (nano)
-	Timestamp string `json:"timestamp"`
+	LogEntryFields `json:"-"`
 }
 
 // GetMessage returns BuildLogsBuildLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetMessage() string { return v.Message }
+func (v *BuildLogsBuildLogsLog) GetMessage() string { return v.LogEntryFields.Message }
 
 // GetSeverity returns BuildLogsBuildLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetSeverity() *string { return v.Severity }
+func (v *BuildLogsBuildLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
 
 // GetTimestamp returns BuildLogsBuildLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetTimestamp() string { return v.Timestamp }
+func (v *BuildLogsBuildLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+
+func (v *BuildLogsBuildLogsLog) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*BuildLogsBuildLogsLog
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.BuildLogsBuildLogsLog = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LogEntryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBuildLogsBuildLogsLog struct {
+	Message string `json:"message"`
+
+	Severity *string `json:"severity"`
+
+	Timestamp string `json:"timestamp"`
+}
+
+func (v *BuildLogsBuildLogsLog) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BuildLogsBuildLogsLog) __premarshalJSON() (*__premarshalBuildLogsBuildLogsLog, error) {
+	var retval __premarshalBuildLogsBuildLogsLog
+
+	retval.Message = v.LogEntryFields.Message
+	retval.Severity = v.LogEntryFields.Severity
+	retval.Timestamp = v.LogEntryFields.Timestamp
+	return &retval, nil
+}
 
 // BuildLogsResponse is returned by BuildLogs on success.
 type BuildLogsResponse struct {
@@ -305,22 +351,67 @@ func (v *DeploymentListInput) GetStatus() *DeploymentStatusInput { return v.Stat
 //
 // The result of a logs query.
 type DeploymentLogsDeploymentLogsLog struct {
-	// The contents of the log message
-	Message string `json:"message"`
-	// The severity of the log message (eg. err)
-	Severity *string `json:"severity"`
-	// The timestamp of the log message in format RFC3339 (nano)
-	Timestamp string `json:"timestamp"`
+	LogEntryFields `json:"-"`
 }
 
 // GetMessage returns DeploymentLogsDeploymentLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetMessage() string { return v.Message }
+func (v *DeploymentLogsDeploymentLogsLog) GetMessage() string { return v.LogEntryFields.Message }
 
 // GetSeverity returns DeploymentLogsDeploymentLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetSeverity() *string { return v.Severity }
+func (v *DeploymentLogsDeploymentLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
 
 // GetTimestamp returns DeploymentLogsDeploymentLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetTimestamp() string { return v.Timestamp }
+func (v *DeploymentLogsDeploymentLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+
+func (v *DeploymentLogsDeploymentLogsLog) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DeploymentLogsDeploymentLogsLog
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DeploymentLogsDeploymentLogsLog = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LogEntryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDeploymentLogsDeploymentLogsLog struct {
+	Message string `json:"message"`
+
+	Severity *string `json:"severity"`
+
+	Timestamp string `json:"timestamp"`
+}
+
+func (v *DeploymentLogsDeploymentLogsLog) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DeploymentLogsDeploymentLogsLog) __premarshalJSON() (*__premarshalDeploymentLogsDeploymentLogsLog, error) {
+	var retval __premarshalDeploymentLogsDeploymentLogsLog
+
+	retval.Message = v.LogEntryFields.Message
+	retval.Severity = v.LogEntryFields.Severity
+	retval.Timestamp = v.LogEntryFields.Timestamp
+	return &retval, nil
+}
 
 // DeploymentLogsResponse is returned by DeploymentLogs on success.
 type DeploymentLogsResponse struct {
@@ -486,6 +577,35 @@ func (v *DeploymentTriggerDeleteResponse) GetDeploymentTriggerDelete() bool {
 	return v.DeploymentTriggerDelete
 }
 
+// Deployment trigger metadata.
+// Used by EnvironmentBulk (env-wide) and DeploymentTriggers (per-service).
+type DeploymentTriggerFields struct {
+	Id          string  `json:"id"`
+	ServiceId   *string `json:"serviceId"`
+	Branch      string  `json:"branch"`
+	Repository  string  `json:"repository"`
+	Provider    string  `json:"provider"`
+	CheckSuites bool    `json:"checkSuites"`
+}
+
+// GetId returns DeploymentTriggerFields.Id, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetId() string { return v.Id }
+
+// GetServiceId returns DeploymentTriggerFields.ServiceId, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetServiceId() *string { return v.ServiceId }
+
+// GetBranch returns DeploymentTriggerFields.Branch, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetBranch() string { return v.Branch }
+
+// GetRepository returns DeploymentTriggerFields.Repository, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetRepository() string { return v.Repository }
+
+// GetProvider returns DeploymentTriggerFields.Provider, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetProvider() string { return v.Provider }
+
+// GetCheckSuites returns DeploymentTriggerFields.CheckSuites, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggerFields) GetCheckSuites() bool { return v.CheckSuites }
+
 // DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
 type DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger struct {
 	Id string `json:"id"`
@@ -546,36 +666,96 @@ func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEd
 
 // DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
 type DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	Id          string `json:"id"`
-	Branch      string `json:"branch"`
-	Repository  string `json:"repository"`
-	Provider    string `json:"provider"`
-	CheckSuites bool   `json:"checkSuites"`
+	DeploymentTriggerFields `json:"-"`
 }
 
 // GetId returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Id, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetId() string {
-	return v.Id
+	return v.DeploymentTriggerFields.Id
+}
+
+// GetServiceId returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.ServiceId, and is useful for accessing the field via an interface.
+func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetServiceId() *string {
+	return v.DeploymentTriggerFields.ServiceId
 }
 
 // GetBranch returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Branch, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetBranch() string {
-	return v.Branch
+	return v.DeploymentTriggerFields.Branch
 }
 
 // GetRepository returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Repository, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetRepository() string {
-	return v.Repository
+	return v.DeploymentTriggerFields.Repository
 }
 
 // GetProvider returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Provider, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetProvider() string {
-	return v.Provider
+	return v.DeploymentTriggerFields.Provider
 }
 
 // GetCheckSuites returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.CheckSuites, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetCheckSuites() bool {
-	return v.CheckSuites
+	return v.DeploymentTriggerFields.CheckSuites
+}
+
+func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DeploymentTriggerFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
+	Id string `json:"id"`
+
+	ServiceId *string `json:"serviceId"`
+
+	Branch string `json:"branch"`
+
+	Repository string `json:"repository"`
+
+	Provider string `json:"provider"`
+
+	CheckSuites bool `json:"checkSuites"`
+}
+
+func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) __premarshalJSON() (*__premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger, error) {
+	var retval __premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
+
+	retval.Id = v.DeploymentTriggerFields.Id
+	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
+	retval.Branch = v.DeploymentTriggerFields.Branch
+	retval.Repository = v.DeploymentTriggerFields.Repository
+	retval.Provider = v.DeploymentTriggerFields.Provider
+	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
+	return &retval, nil
 }
 
 // DeploymentTriggersResponse is returned by DeploymentTriggers on success.
@@ -801,42 +981,96 @@ func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTrigge
 
 // EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
 type EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	Id          string  `json:"id"`
-	ServiceId   *string `json:"serviceId"`
-	Branch      string  `json:"branch"`
-	Repository  string  `json:"repository"`
-	Provider    string  `json:"provider"`
-	CheckSuites bool    `json:"checkSuites"`
+	DeploymentTriggerFields `json:"-"`
 }
 
 // GetId returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Id, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetId() string {
-	return v.Id
+	return v.DeploymentTriggerFields.Id
 }
 
 // GetServiceId returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.ServiceId, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetServiceId() *string {
-	return v.ServiceId
+	return v.DeploymentTriggerFields.ServiceId
 }
 
 // GetBranch returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Branch, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetBranch() string {
-	return v.Branch
+	return v.DeploymentTriggerFields.Branch
 }
 
 // GetRepository returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Repository, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetRepository() string {
-	return v.Repository
+	return v.DeploymentTriggerFields.Repository
 }
 
 // GetProvider returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Provider, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetProvider() string {
-	return v.Provider
+	return v.DeploymentTriggerFields.Provider
 }
 
 // GetCheckSuites returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.CheckSuites, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetCheckSuites() bool {
-	return v.CheckSuites
+	return v.DeploymentTriggerFields.CheckSuites
+}
+
+func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DeploymentTriggerFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
+	Id string `json:"id"`
+
+	ServiceId *string `json:"serviceId"`
+
+	Branch string `json:"branch"`
+
+	Repository string `json:"repository"`
+
+	Provider string `json:"provider"`
+
+	CheckSuites bool `json:"checkSuites"`
+}
+
+func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger, error) {
+	var retval __premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
+
+	retval.Id = v.DeploymentTriggerFields.Id
+	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
+	retval.Branch = v.DeploymentTriggerFields.Branch
+	retval.Repository = v.DeploymentTriggerFields.Repository
+	retval.Provider = v.DeploymentTriggerFields.Provider
+	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
+	return &retval, nil
 }
 
 // EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnection.
@@ -861,214 +1095,216 @@ func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesCo
 
 // EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
 type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance struct {
-	ServiceId               string                                                                                                                                                               `json:"serviceId"`
-	Builder                 Builder                                                                                                                                                              `json:"builder"`
-	BuildCommand            *string                                                                                                                                                              `json:"buildCommand"`
-	StartCommand            *string                                                                                                                                                              `json:"startCommand"`
-	DockerfilePath          *string                                                                                                                                                              `json:"dockerfilePath"`
-	RootDirectory           *string                                                                                                                                                              `json:"rootDirectory"`
-	HealthcheckPath         *string                                                                                                                                                              `json:"healthcheckPath"`
-	HealthcheckTimeout      *int                                                                                                                                                                 `json:"healthcheckTimeout"`
-	CronSchedule            *string                                                                                                                                                              `json:"cronSchedule"`
-	NumReplicas             *int                                                                                                                                                                 `json:"numReplicas"`
-	Region                  *string                                                                                                                                                              `json:"region"`
-	RestartPolicyType       RestartPolicyType                                                                                                                                                    `json:"restartPolicyType"`
-	RestartPolicyMaxRetries int                                                                                                                                                                  `json:"restartPolicyMaxRetries"`
-	DrainingSeconds         *int                                                                                                                                                                 `json:"drainingSeconds"`
-	OverlapSeconds          *int                                                                                                                                                                 `json:"overlapSeconds"`
-	SleepApplication        *bool                                                                                                                                                                `json:"sleepApplication"`
-	Ipv6EgressEnabled       *bool                                                                                                                                                                `json:"ipv6EgressEnabled"`
-	WatchPatterns           []string                                                                                                                                                             `json:"watchPatterns"`
-	PreDeployCommand        *map[string]interface{}                                                                                                                                              `json:"preDeployCommand"`
-	Source                  *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource `json:"source"`
-	Domains                 EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains    `json:"domains"`
+	ServiceInstanceFields `json:"-"`
 }
 
 // GetServiceId returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.ServiceId, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetServiceId() string {
-	return v.ServiceId
+	return v.ServiceInstanceFields.ServiceId
 }
 
 // GetBuilder returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Builder, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuilder() Builder {
-	return v.Builder
+	return v.ServiceInstanceFields.Builder
 }
 
 // GetBuildCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuildCommand() *string {
-	return v.BuildCommand
+	return v.ServiceInstanceFields.BuildCommand
 }
 
 // GetStartCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.StartCommand, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetStartCommand() *string {
-	return v.StartCommand
+	return v.ServiceInstanceFields.StartCommand
 }
 
 // GetDockerfilePath returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDockerfilePath() *string {
-	return v.DockerfilePath
+	return v.ServiceInstanceFields.DockerfilePath
 }
 
 // GetRootDirectory returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRootDirectory() *string {
-	return v.RootDirectory
+	return v.ServiceInstanceFields.RootDirectory
 }
 
 // GetHealthcheckPath returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckPath() *string {
-	return v.HealthcheckPath
+	return v.ServiceInstanceFields.HealthcheckPath
 }
 
 // GetHealthcheckTimeout returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckTimeout() *int {
-	return v.HealthcheckTimeout
+	return v.ServiceInstanceFields.HealthcheckTimeout
 }
 
 // GetCronSchedule returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetCronSchedule() *string {
-	return v.CronSchedule
+	return v.ServiceInstanceFields.CronSchedule
 }
 
 // GetNumReplicas returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetNumReplicas() *int {
-	return v.NumReplicas
+	return v.ServiceInstanceFields.NumReplicas
 }
 
 // GetRegion returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Region, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRegion() *string {
-	return v.Region
+	return v.ServiceInstanceFields.Region
 }
 
 // GetRestartPolicyType returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyType() RestartPolicyType {
-	return v.RestartPolicyType
+	return v.ServiceInstanceFields.RestartPolicyType
 }
 
 // GetRestartPolicyMaxRetries returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyMaxRetries() int {
-	return v.RestartPolicyMaxRetries
+	return v.ServiceInstanceFields.RestartPolicyMaxRetries
 }
 
 // GetDrainingSeconds returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDrainingSeconds() *int {
-	return v.DrainingSeconds
+	return v.ServiceInstanceFields.DrainingSeconds
 }
 
 // GetOverlapSeconds returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetOverlapSeconds() *int {
-	return v.OverlapSeconds
+	return v.ServiceInstanceFields.OverlapSeconds
 }
 
 // GetSleepApplication returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSleepApplication() *bool {
-	return v.SleepApplication
+	return v.ServiceInstanceFields.SleepApplication
 }
 
 // GetIpv6EgressEnabled returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetIpv6EgressEnabled() *bool {
-	return v.Ipv6EgressEnabled
+	return v.ServiceInstanceFields.Ipv6EgressEnabled
 }
 
 // GetWatchPatterns returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetWatchPatterns() []string {
-	return v.WatchPatterns
+	return v.ServiceInstanceFields.WatchPatterns
 }
 
 // GetPreDeployCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetPreDeployCommand() *map[string]interface{} {
-	return v.PreDeployCommand
+	return v.ServiceInstanceFields.PreDeployCommand
 }
 
 // GetSource returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Source, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSource() *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource {
-	return v.Source
+func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSource() *ServiceInstanceFieldsSourceServiceSource {
+	return v.ServiceInstanceFields.Source
 }
 
 // GetDomains returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Domains, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDomains() EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains {
-	return v.Domains
+func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDomains() ServiceInstanceFieldsDomainsAllDomains {
+	return v.ServiceInstanceFields.Domains
 }
 
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains struct {
-	CustomDomains  []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
-	ServiceDomains []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
+func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetCustomDomains returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains) GetCustomDomains() []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain {
-	return v.CustomDomains
+type __premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance struct {
+	ServiceId string `json:"serviceId"`
+
+	Builder Builder `json:"builder"`
+
+	BuildCommand *string `json:"buildCommand"`
+
+	StartCommand *string `json:"startCommand"`
+
+	DockerfilePath *string `json:"dockerfilePath"`
+
+	RootDirectory *string `json:"rootDirectory"`
+
+	HealthcheckPath *string `json:"healthcheckPath"`
+
+	HealthcheckTimeout *int `json:"healthcheckTimeout"`
+
+	CronSchedule *string `json:"cronSchedule"`
+
+	NumReplicas *int `json:"numReplicas"`
+
+	Region *string `json:"region"`
+
+	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
+
+	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
+
+	DrainingSeconds *int `json:"drainingSeconds"`
+
+	OverlapSeconds *int `json:"overlapSeconds"`
+
+	SleepApplication *bool `json:"sleepApplication"`
+
+	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
+
+	WatchPatterns []string `json:"watchPatterns"`
+
+	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
+
+	Source *ServiceInstanceFieldsSourceServiceSource `json:"source"`
+
+	Domains ServiceInstanceFieldsDomainsAllDomains `json:"domains"`
 }
 
-// GetServiceDomains returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains) GetServiceDomains() []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain {
-	return v.ServiceDomains
+func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
 }
 
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain struct {
-	Id         string `json:"id"`
-	Domain     string `json:"domain"`
-	TargetPort *int   `json:"targetPort"`
-}
+func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance, error) {
+	var retval __premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
 
-// GetId returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetId() string {
-	return v.Id
-}
-
-// GetDomain returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
-	return v.Domain
-}
-
-// GetTargetPort returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
-	return v.TargetPort
-}
-
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain struct {
-	Id         string  `json:"id"`
-	Domain     string  `json:"domain"`
-	TargetPort *int    `json:"targetPort"`
-	Suffix     *string `json:"suffix"`
-}
-
-// GetId returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
-	return v.Id
-}
-
-// GetDomain returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
-	return v.Domain
-}
-
-// GetTargetPort returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
-	return v.TargetPort
-}
-
-// GetSuffix returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
-	return v.Suffix
-}
-
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource struct {
-	Image *string `json:"image"`
-	Repo  *string `json:"repo"`
-}
-
-// GetImage returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource.Image, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource) GetImage() *string {
-	return v.Image
-}
-
-// GetRepo returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource.Repo, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource) GetRepo() *string {
-	return v.Repo
+	retval.ServiceId = v.ServiceInstanceFields.ServiceId
+	retval.Builder = v.ServiceInstanceFields.Builder
+	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
+	retval.StartCommand = v.ServiceInstanceFields.StartCommand
+	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
+	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
+	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
+	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
+	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
+	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
+	retval.Region = v.ServiceInstanceFields.Region
+	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
+	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
+	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
+	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
+	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
+	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
+	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
+	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
+	retval.Source = v.ServiceInstanceFields.Source
+	retval.Domains = v.ServiceInstanceFields.Domains
+	return &retval, nil
 }
 
 // EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
@@ -1093,75 +1329,167 @@ func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConn
 
 // EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance includes the requested fields of the GraphQL type VolumeInstance.
 type EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
-	Id        string                                                                                                                                             `json:"id"`
-	MountPath string                                                                                                                                             `json:"mountPath"`
-	Region    *string                                                                                                                                            `json:"region"`
-	ServiceId *string                                                                                                                                            `json:"serviceId"`
-	VolumeId  string                                                                                                                                             `json:"volumeId"`
-	Volume    EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume `json:"volume"`
+	VolumeInstanceFields `json:"-"`
 }
 
 // GetId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Id, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetId() string {
-	return v.Id
+	return v.VolumeInstanceFields.Id
 }
 
 // GetMountPath returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.MountPath, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetMountPath() string {
-	return v.MountPath
+	return v.VolumeInstanceFields.MountPath
 }
 
 // GetRegion returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Region, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetRegion() *string {
-	return v.Region
+	return v.VolumeInstanceFields.Region
 }
 
 // GetServiceId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.ServiceId, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetServiceId() *string {
-	return v.ServiceId
+	return v.VolumeInstanceFields.ServiceId
 }
 
 // GetVolumeId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.VolumeId, and is useful for accessing the field via an interface.
 func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolumeId() string {
-	return v.VolumeId
+	return v.VolumeInstanceFields.VolumeId
 }
 
 // GetVolume returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Volume, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume {
-	return v.Volume
+func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() VolumeInstanceFieldsVolume {
+	return v.VolumeInstanceFields.Volume
 }
 
-// EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume includes the requested fields of the GraphQL type Volume.
-type EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.VolumeInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume) GetId() string {
-	return v.Id
+type __premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
+	Id string `json:"id"`
+
+	MountPath string `json:"mountPath"`
+
+	Region *string `json:"region"`
+
+	ServiceId *string `json:"serviceId"`
+
+	VolumeId string `json:"volumeId"`
+
+	Volume VolumeInstanceFieldsVolume `json:"volume"`
 }
 
-// GetName returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume) GetName() string {
-	return v.Name
+func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance, error) {
+	var retval __premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+
+	retval.Id = v.VolumeInstanceFields.Id
+	retval.MountPath = v.VolumeInstanceFields.MountPath
+	retval.Region = v.VolumeInstanceFields.Region
+	retval.ServiceId = v.VolumeInstanceFields.ServiceId
+	retval.VolumeId = v.VolumeInstanceFields.VolumeId
+	retval.Volume = v.VolumeInstanceFields.Volume
+	return &retval, nil
 }
 
 // EnvironmentBulkPrivateNetworksPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
 type EnvironmentBulkPrivateNetworksPrivateNetwork struct {
-	PublicId string `json:"publicId"`
-	DnsName  string `json:"dnsName"`
-	Name     string `json:"name"`
+	PrivateNetworkFields `json:"-"`
 }
 
 // GetPublicId returns EnvironmentBulkPrivateNetworksPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetPublicId() string { return v.PublicId }
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetPublicId() string {
+	return v.PrivateNetworkFields.PublicId
+}
 
 // GetDnsName returns EnvironmentBulkPrivateNetworksPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetDnsName() string { return v.DnsName }
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetDnsName() string {
+	return v.PrivateNetworkFields.DnsName
+}
 
 // GetName returns EnvironmentBulkPrivateNetworksPrivateNetwork.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetName() string { return v.Name }
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetName() string {
+	return v.PrivateNetworkFields.Name
+}
+
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentBulkPrivateNetworksPrivateNetwork
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentBulkPrivateNetworksPrivateNetwork = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalEnvironmentBulkPrivateNetworksPrivateNetwork struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	Name string `json:"name"`
+}
+
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) __premarshalJSON() (*__premarshalEnvironmentBulkPrivateNetworksPrivateNetwork, error) {
+	var retval __premarshalEnvironmentBulkPrivateNetworksPrivateNetwork
+
+	retval.PublicId = v.PrivateNetworkFields.PublicId
+	retval.DnsName = v.PrivateNetworkFields.DnsName
+	retval.Name = v.PrivateNetworkFields.Name
+	return &retval, nil
+}
 
 // EnvironmentBulkResponse is returned by EnvironmentBulk on success.
 type EnvironmentBulkResponse struct {
@@ -1253,22 +1581,67 @@ func (v *EnvironmentDeleteResponse) GetEnvironmentDelete() bool { return v.Envir
 //
 // The result of a logs query.
 type EnvironmentLogsEnvironmentLogsLog struct {
-	// The contents of the log message
-	Message string `json:"message"`
-	// The severity of the log message (eg. err)
-	Severity *string `json:"severity"`
-	// The timestamp of the log message in format RFC3339 (nano)
-	Timestamp string `json:"timestamp"`
+	LogEntryFields `json:"-"`
 }
 
 // GetMessage returns EnvironmentLogsEnvironmentLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetMessage() string { return v.Message }
+func (v *EnvironmentLogsEnvironmentLogsLog) GetMessage() string { return v.LogEntryFields.Message }
 
 // GetSeverity returns EnvironmentLogsEnvironmentLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetSeverity() *string { return v.Severity }
+func (v *EnvironmentLogsEnvironmentLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
 
 // GetTimestamp returns EnvironmentLogsEnvironmentLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetTimestamp() string { return v.Timestamp }
+func (v *EnvironmentLogsEnvironmentLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+
+func (v *EnvironmentLogsEnvironmentLogsLog) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentLogsEnvironmentLogsLog
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentLogsEnvironmentLogsLog = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LogEntryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalEnvironmentLogsEnvironmentLogsLog struct {
+	Message string `json:"message"`
+
+	Severity *string `json:"severity"`
+
+	Timestamp string `json:"timestamp"`
+}
+
+func (v *EnvironmentLogsEnvironmentLogsLog) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentLogsEnvironmentLogsLog) __premarshalJSON() (*__premarshalEnvironmentLogsEnvironmentLogsLog, error) {
+	var retval __premarshalEnvironmentLogsEnvironmentLogsLog
+
+	retval.Message = v.LogEntryFields.Message
+	retval.Severity = v.LogEntryFields.Severity
+	retval.Timestamp = v.LogEntryFields.Timestamp
+	return &retval, nil
+}
 
 // EnvironmentLogsResponse is returned by EnvironmentLogs on success.
 type EnvironmentLogsResponse struct {
@@ -1313,58 +1686,96 @@ func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesC
 
 // EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance includes the requested fields of the GraphQL type VolumeInstance.
 type EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
-	Id        string                                                                                                                                                `json:"id"`
-	MountPath string                                                                                                                                                `json:"mountPath"`
-	Region    *string                                                                                                                                               `json:"region"`
-	ServiceId *string                                                                                                                                               `json:"serviceId"`
-	VolumeId  string                                                                                                                                                `json:"volumeId"`
-	Volume    EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume `json:"volume"`
+	VolumeInstanceFields `json:"-"`
 }
 
 // GetId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Id, and is useful for accessing the field via an interface.
 func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetId() string {
-	return v.Id
+	return v.VolumeInstanceFields.Id
 }
 
 // GetMountPath returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.MountPath, and is useful for accessing the field via an interface.
 func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetMountPath() string {
-	return v.MountPath
+	return v.VolumeInstanceFields.MountPath
 }
 
 // GetRegion returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Region, and is useful for accessing the field via an interface.
 func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetRegion() *string {
-	return v.Region
+	return v.VolumeInstanceFields.Region
 }
 
 // GetServiceId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.ServiceId, and is useful for accessing the field via an interface.
 func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetServiceId() *string {
-	return v.ServiceId
+	return v.VolumeInstanceFields.ServiceId
 }
 
 // GetVolumeId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.VolumeId, and is useful for accessing the field via an interface.
 func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolumeId() string {
-	return v.VolumeId
+	return v.VolumeInstanceFields.VolumeId
 }
 
 // GetVolume returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Volume, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume {
-	return v.Volume
+func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() VolumeInstanceFieldsVolume {
+	return v.VolumeInstanceFields.Volume
 }
 
-// EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume includes the requested fields of the GraphQL type Volume.
-type EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.VolumeInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume) GetId() string {
-	return v.Id
+type __premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
+	Id string `json:"id"`
+
+	MountPath string `json:"mountPath"`
+
+	Region *string `json:"region"`
+
+	ServiceId *string `json:"serviceId"`
+
+	VolumeId string `json:"volumeId"`
+
+	Volume VolumeInstanceFieldsVolume `json:"volume"`
 }
 
-// GetName returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstanceVolume) GetName() string {
-	return v.Name
+func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) __premarshalJSON() (*__premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance, error) {
+	var retval __premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+
+	retval.Id = v.VolumeInstanceFields.Id
+	retval.MountPath = v.VolumeInstanceFields.MountPath
+	retval.Region = v.VolumeInstanceFields.Region
+	retval.ServiceId = v.VolumeInstanceFields.ServiceId
+	retval.VolumeId = v.VolumeInstanceFields.VolumeId
+	retval.Volume = v.VolumeInstanceFields.Volume
+	return &retval, nil
 }
 
 // EnvironmentVolumesResponse is returned by EnvironmentVolumes on success.
@@ -1424,6 +1835,25 @@ type EnvironmentsResponse struct {
 func (v *EnvironmentsResponse) GetEnvironments() EnvironmentsEnvironmentsQueryEnvironmentsConnection {
 	return v.Environments
 }
+
+// Log entry fields shared across all log queries.
+type LogEntryFields struct {
+	// The contents of the log message
+	Message string `json:"message"`
+	// The severity of the log message (eg. err)
+	Severity *string `json:"severity"`
+	// The timestamp of the log message in format RFC3339 (nano)
+	Timestamp string `json:"timestamp"`
+}
+
+// GetMessage returns LogEntryFields.Message, and is useful for accessing the field via an interface.
+func (v *LogEntryFields) GetMessage() string { return v.Message }
+
+// GetSeverity returns LogEntryFields.Severity, and is useful for accessing the field via an interface.
+func (v *LogEntryFields) GetSeverity() *string { return v.Severity }
+
+// GetTimestamp returns LogEntryFields.Timestamp, and is useful for accessing the field via an interface.
+func (v *LogEntryFields) GetTimestamp() string { return v.Timestamp }
 
 type PrivateNetworkCreateOrGetInput struct {
 	EnvironmentId string   `json:"environmentId"`
@@ -1575,21 +2005,92 @@ func (v *PrivateNetworkEndpointResponse) GetPrivateNetworkEndpoint() *PrivateNet
 	return v.PrivateNetworkEndpoint
 }
 
-// PrivateNetworksPrivateNetworksPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
-type PrivateNetworksPrivateNetworksPrivateNetwork struct {
+// Private network summary.
+// Used by EnvironmentBulk and PrivateNetworks.
+type PrivateNetworkFields struct {
 	PublicId string `json:"publicId"`
 	DnsName  string `json:"dnsName"`
 	Name     string `json:"name"`
 }
 
+// GetPublicId returns PrivateNetworkFields.PublicId, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkFields) GetPublicId() string { return v.PublicId }
+
+// GetDnsName returns PrivateNetworkFields.DnsName, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkFields) GetDnsName() string { return v.DnsName }
+
+// GetName returns PrivateNetworkFields.Name, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkFields) GetName() string { return v.Name }
+
+// PrivateNetworksPrivateNetworksPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
+type PrivateNetworksPrivateNetworksPrivateNetwork struct {
+	PrivateNetworkFields `json:"-"`
+}
+
 // GetPublicId returns PrivateNetworksPrivateNetworksPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetPublicId() string { return v.PublicId }
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetPublicId() string {
+	return v.PrivateNetworkFields.PublicId
+}
 
 // GetDnsName returns PrivateNetworksPrivateNetworksPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetDnsName() string { return v.DnsName }
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetDnsName() string {
+	return v.PrivateNetworkFields.DnsName
+}
 
 // GetName returns PrivateNetworksPrivateNetworksPrivateNetwork.Name, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetName() string { return v.Name }
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetName() string {
+	return v.PrivateNetworkFields.Name
+}
+
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*PrivateNetworksPrivateNetworksPrivateNetwork
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.PrivateNetworksPrivateNetworksPrivateNetwork = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalPrivateNetworksPrivateNetworksPrivateNetwork struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	Name string `json:"name"`
+}
+
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *PrivateNetworksPrivateNetworksPrivateNetwork) __premarshalJSON() (*__premarshalPrivateNetworksPrivateNetworksPrivateNetwork, error) {
+	var retval __premarshalPrivateNetworksPrivateNetworksPrivateNetwork
+
+	retval.PublicId = v.PrivateNetworkFields.PublicId
+	retval.DnsName = v.PrivateNetworkFields.DnsName
+	retval.Name = v.PrivateNetworkFields.Name
+	return &retval, nil
+}
 
 // PrivateNetworksResponse is returned by PrivateNetworks on success.
 type PrivateNetworksResponse struct {
@@ -2293,6 +2794,176 @@ func (v *ServiceInstanceDeployV2Response) GetServiceInstanceDeployV2() string {
 	return v.ServiceInstanceDeployV2
 }
 
+// Deploy settings and domains for a single service instance.
+// Used by both the standalone ServiceInstance query (per-service fallback)
+// and the EnvironmentBulk query (environment-wide batch).
+type ServiceInstanceFields struct {
+	ServiceId               string                                    `json:"serviceId"`
+	Builder                 Builder                                   `json:"builder"`
+	BuildCommand            *string                                   `json:"buildCommand"`
+	StartCommand            *string                                   `json:"startCommand"`
+	DockerfilePath          *string                                   `json:"dockerfilePath"`
+	RootDirectory           *string                                   `json:"rootDirectory"`
+	HealthcheckPath         *string                                   `json:"healthcheckPath"`
+	HealthcheckTimeout      *int                                      `json:"healthcheckTimeout"`
+	CronSchedule            *string                                   `json:"cronSchedule"`
+	NumReplicas             *int                                      `json:"numReplicas"`
+	Region                  *string                                   `json:"region"`
+	RestartPolicyType       RestartPolicyType                         `json:"restartPolicyType"`
+	RestartPolicyMaxRetries int                                       `json:"restartPolicyMaxRetries"`
+	DrainingSeconds         *int                                      `json:"drainingSeconds"`
+	OverlapSeconds          *int                                      `json:"overlapSeconds"`
+	SleepApplication        *bool                                     `json:"sleepApplication"`
+	Ipv6EgressEnabled       *bool                                     `json:"ipv6EgressEnabled"`
+	WatchPatterns           []string                                  `json:"watchPatterns"`
+	PreDeployCommand        *map[string]interface{}                   `json:"preDeployCommand"`
+	Source                  *ServiceInstanceFieldsSourceServiceSource `json:"source"`
+	Domains                 ServiceInstanceFieldsDomainsAllDomains    `json:"domains"`
+}
+
+// GetServiceId returns ServiceInstanceFields.ServiceId, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetServiceId() string { return v.ServiceId }
+
+// GetBuilder returns ServiceInstanceFields.Builder, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetBuilder() Builder { return v.Builder }
+
+// GetBuildCommand returns ServiceInstanceFields.BuildCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetBuildCommand() *string { return v.BuildCommand }
+
+// GetStartCommand returns ServiceInstanceFields.StartCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetStartCommand() *string { return v.StartCommand }
+
+// GetDockerfilePath returns ServiceInstanceFields.DockerfilePath, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetDockerfilePath() *string { return v.DockerfilePath }
+
+// GetRootDirectory returns ServiceInstanceFields.RootDirectory, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetRootDirectory() *string { return v.RootDirectory }
+
+// GetHealthcheckPath returns ServiceInstanceFields.HealthcheckPath, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetHealthcheckPath() *string { return v.HealthcheckPath }
+
+// GetHealthcheckTimeout returns ServiceInstanceFields.HealthcheckTimeout, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetHealthcheckTimeout() *int { return v.HealthcheckTimeout }
+
+// GetCronSchedule returns ServiceInstanceFields.CronSchedule, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetCronSchedule() *string { return v.CronSchedule }
+
+// GetNumReplicas returns ServiceInstanceFields.NumReplicas, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetNumReplicas() *int { return v.NumReplicas }
+
+// GetRegion returns ServiceInstanceFields.Region, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetRegion() *string { return v.Region }
+
+// GetRestartPolicyType returns ServiceInstanceFields.RestartPolicyType, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetRestartPolicyType() RestartPolicyType { return v.RestartPolicyType }
+
+// GetRestartPolicyMaxRetries returns ServiceInstanceFields.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetRestartPolicyMaxRetries() int { return v.RestartPolicyMaxRetries }
+
+// GetDrainingSeconds returns ServiceInstanceFields.DrainingSeconds, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetDrainingSeconds() *int { return v.DrainingSeconds }
+
+// GetOverlapSeconds returns ServiceInstanceFields.OverlapSeconds, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetOverlapSeconds() *int { return v.OverlapSeconds }
+
+// GetSleepApplication returns ServiceInstanceFields.SleepApplication, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetSleepApplication() *bool { return v.SleepApplication }
+
+// GetIpv6EgressEnabled returns ServiceInstanceFields.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetIpv6EgressEnabled() *bool { return v.Ipv6EgressEnabled }
+
+// GetWatchPatterns returns ServiceInstanceFields.WatchPatterns, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetWatchPatterns() []string { return v.WatchPatterns }
+
+// GetPreDeployCommand returns ServiceInstanceFields.PreDeployCommand, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetPreDeployCommand() *map[string]interface{} {
+	return v.PreDeployCommand
+}
+
+// GetSource returns ServiceInstanceFields.Source, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetSource() *ServiceInstanceFieldsSourceServiceSource {
+	return v.Source
+}
+
+// GetDomains returns ServiceInstanceFields.Domains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFields) GetDomains() ServiceInstanceFieldsDomainsAllDomains { return v.Domains }
+
+// ServiceInstanceFieldsDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
+type ServiceInstanceFieldsDomainsAllDomains struct {
+	CustomDomains  []ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
+	ServiceDomains []ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
+}
+
+// GetCustomDomains returns ServiceInstanceFieldsDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomains) GetCustomDomains() []ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain {
+	return v.CustomDomains
+}
+
+// GetServiceDomains returns ServiceInstanceFieldsDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomains) GetServiceDomains() []ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain {
+	return v.ServiceDomains
+}
+
+// ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
+type ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain struct {
+	Id         string `json:"id"`
+	Domain     string `json:"domain"`
+	TargetPort *int   `json:"targetPort"`
+}
+
+// GetId returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetId() string { return v.Id }
+
+// GetDomain returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
+type ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain struct {
+	Id         string  `json:"id"`
+	Domain     string  `json:"domain"`
+	TargetPort *int    `json:"targetPort"`
+	Suffix     *string `json:"suffix"`
+}
+
+// GetId returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
+	return v.Id
+}
+
+// GetDomain returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// GetSuffix returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
+	return v.Suffix
+}
+
+// ServiceInstanceFieldsSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
+type ServiceInstanceFieldsSourceServiceSource struct {
+	Image *string `json:"image"`
+	Repo  *string `json:"repo"`
+}
+
+// GetImage returns ServiceInstanceFieldsSourceServiceSource.Image, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsSourceServiceSource) GetImage() *string { return v.Image }
+
+// GetRepo returns ServiceInstanceFieldsSourceServiceSource.Repo, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceFieldsSourceServiceSource) GetRepo() *string { return v.Repo }
+
 // ServiceInstanceLimitsResponse is returned by ServiceInstanceLimits on success.
 type ServiceInstanceLimitsResponse struct {
 	// Get the merged resource limits for a service instance (includes plan defaults)
@@ -2349,175 +3020,213 @@ func (v *ServiceInstanceResponse) GetServiceInstance() ServiceInstanceServiceIns
 
 // ServiceInstanceServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
 type ServiceInstanceServiceInstance struct {
-	Builder                 Builder                                            `json:"builder"`
-	BuildCommand            *string                                            `json:"buildCommand"`
-	StartCommand            *string                                            `json:"startCommand"`
-	DockerfilePath          *string                                            `json:"dockerfilePath"`
-	RootDirectory           *string                                            `json:"rootDirectory"`
-	HealthcheckPath         *string                                            `json:"healthcheckPath"`
-	HealthcheckTimeout      *int                                               `json:"healthcheckTimeout"`
-	CronSchedule            *string                                            `json:"cronSchedule"`
-	NumReplicas             *int                                               `json:"numReplicas"`
-	Region                  *string                                            `json:"region"`
-	RestartPolicyType       RestartPolicyType                                  `json:"restartPolicyType"`
-	RestartPolicyMaxRetries int                                                `json:"restartPolicyMaxRetries"`
-	DrainingSeconds         *int                                               `json:"drainingSeconds"`
-	OverlapSeconds          *int                                               `json:"overlapSeconds"`
-	SleepApplication        *bool                                              `json:"sleepApplication"`
-	Ipv6EgressEnabled       *bool                                              `json:"ipv6EgressEnabled"`
-	WatchPatterns           []string                                           `json:"watchPatterns"`
-	PreDeployCommand        *map[string]interface{}                            `json:"preDeployCommand"`
-	Source                  *ServiceInstanceServiceInstanceSourceServiceSource `json:"source"`
-	Domains                 ServiceInstanceServiceInstanceDomainsAllDomains    `json:"domains"`
+	ServiceInstanceFields `json:"-"`
+}
+
+// GetServiceId returns ServiceInstanceServiceInstance.ServiceId, and is useful for accessing the field via an interface.
+func (v *ServiceInstanceServiceInstance) GetServiceId() string {
+	return v.ServiceInstanceFields.ServiceId
 }
 
 // GetBuilder returns ServiceInstanceServiceInstance.Builder, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetBuilder() Builder { return v.Builder }
+func (v *ServiceInstanceServiceInstance) GetBuilder() Builder { return v.ServiceInstanceFields.Builder }
 
 // GetBuildCommand returns ServiceInstanceServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetBuildCommand() *string { return v.BuildCommand }
+func (v *ServiceInstanceServiceInstance) GetBuildCommand() *string {
+	return v.ServiceInstanceFields.BuildCommand
+}
 
 // GetStartCommand returns ServiceInstanceServiceInstance.StartCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetStartCommand() *string { return v.StartCommand }
+func (v *ServiceInstanceServiceInstance) GetStartCommand() *string {
+	return v.ServiceInstanceFields.StartCommand
+}
 
 // GetDockerfilePath returns ServiceInstanceServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDockerfilePath() *string { return v.DockerfilePath }
+func (v *ServiceInstanceServiceInstance) GetDockerfilePath() *string {
+	return v.ServiceInstanceFields.DockerfilePath
+}
 
 // GetRootDirectory returns ServiceInstanceServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRootDirectory() *string { return v.RootDirectory }
+func (v *ServiceInstanceServiceInstance) GetRootDirectory() *string {
+	return v.ServiceInstanceFields.RootDirectory
+}
 
 // GetHealthcheckPath returns ServiceInstanceServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetHealthcheckPath() *string { return v.HealthcheckPath }
+func (v *ServiceInstanceServiceInstance) GetHealthcheckPath() *string {
+	return v.ServiceInstanceFields.HealthcheckPath
+}
 
 // GetHealthcheckTimeout returns ServiceInstanceServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetHealthcheckTimeout() *int { return v.HealthcheckTimeout }
+func (v *ServiceInstanceServiceInstance) GetHealthcheckTimeout() *int {
+	return v.ServiceInstanceFields.HealthcheckTimeout
+}
 
 // GetCronSchedule returns ServiceInstanceServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetCronSchedule() *string { return v.CronSchedule }
+func (v *ServiceInstanceServiceInstance) GetCronSchedule() *string {
+	return v.ServiceInstanceFields.CronSchedule
+}
 
 // GetNumReplicas returns ServiceInstanceServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetNumReplicas() *int { return v.NumReplicas }
+func (v *ServiceInstanceServiceInstance) GetNumReplicas() *int {
+	return v.ServiceInstanceFields.NumReplicas
+}
 
 // GetRegion returns ServiceInstanceServiceInstance.Region, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRegion() *string { return v.Region }
+func (v *ServiceInstanceServiceInstance) GetRegion() *string { return v.ServiceInstanceFields.Region }
 
 // GetRestartPolicyType returns ServiceInstanceServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetRestartPolicyType() RestartPolicyType {
-	return v.RestartPolicyType
+	return v.ServiceInstanceFields.RestartPolicyType
 }
 
 // GetRestartPolicyMaxRetries returns ServiceInstanceServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetRestartPolicyMaxRetries() int {
-	return v.RestartPolicyMaxRetries
+	return v.ServiceInstanceFields.RestartPolicyMaxRetries
 }
 
 // GetDrainingSeconds returns ServiceInstanceServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDrainingSeconds() *int { return v.DrainingSeconds }
+func (v *ServiceInstanceServiceInstance) GetDrainingSeconds() *int {
+	return v.ServiceInstanceFields.DrainingSeconds
+}
 
 // GetOverlapSeconds returns ServiceInstanceServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetOverlapSeconds() *int { return v.OverlapSeconds }
+func (v *ServiceInstanceServiceInstance) GetOverlapSeconds() *int {
+	return v.ServiceInstanceFields.OverlapSeconds
+}
 
 // GetSleepApplication returns ServiceInstanceServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetSleepApplication() *bool { return v.SleepApplication }
+func (v *ServiceInstanceServiceInstance) GetSleepApplication() *bool {
+	return v.ServiceInstanceFields.SleepApplication
+}
 
 // GetIpv6EgressEnabled returns ServiceInstanceServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetIpv6EgressEnabled() *bool { return v.Ipv6EgressEnabled }
+func (v *ServiceInstanceServiceInstance) GetIpv6EgressEnabled() *bool {
+	return v.ServiceInstanceFields.Ipv6EgressEnabled
+}
 
 // GetWatchPatterns returns ServiceInstanceServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetWatchPatterns() []string { return v.WatchPatterns }
+func (v *ServiceInstanceServiceInstance) GetWatchPatterns() []string {
+	return v.ServiceInstanceFields.WatchPatterns
+}
 
 // GetPreDeployCommand returns ServiceInstanceServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
 func (v *ServiceInstanceServiceInstance) GetPreDeployCommand() *map[string]interface{} {
-	return v.PreDeployCommand
+	return v.ServiceInstanceFields.PreDeployCommand
 }
 
 // GetSource returns ServiceInstanceServiceInstance.Source, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetSource() *ServiceInstanceServiceInstanceSourceServiceSource {
-	return v.Source
+func (v *ServiceInstanceServiceInstance) GetSource() *ServiceInstanceFieldsSourceServiceSource {
+	return v.ServiceInstanceFields.Source
 }
 
 // GetDomains returns ServiceInstanceServiceInstance.Domains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDomains() ServiceInstanceServiceInstanceDomainsAllDomains {
-	return v.Domains
+func (v *ServiceInstanceServiceInstance) GetDomains() ServiceInstanceFieldsDomainsAllDomains {
+	return v.ServiceInstanceFields.Domains
 }
 
-// ServiceInstanceServiceInstanceDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
-type ServiceInstanceServiceInstanceDomainsAllDomains struct {
-	CustomDomains  []ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
-	ServiceDomains []ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
+func (v *ServiceInstanceServiceInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ServiceInstanceServiceInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ServiceInstanceServiceInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetCustomDomains returns ServiceInstanceServiceInstanceDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomains) GetCustomDomains() []ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain {
-	return v.CustomDomains
+type __premarshalServiceInstanceServiceInstance struct {
+	ServiceId string `json:"serviceId"`
+
+	Builder Builder `json:"builder"`
+
+	BuildCommand *string `json:"buildCommand"`
+
+	StartCommand *string `json:"startCommand"`
+
+	DockerfilePath *string `json:"dockerfilePath"`
+
+	RootDirectory *string `json:"rootDirectory"`
+
+	HealthcheckPath *string `json:"healthcheckPath"`
+
+	HealthcheckTimeout *int `json:"healthcheckTimeout"`
+
+	CronSchedule *string `json:"cronSchedule"`
+
+	NumReplicas *int `json:"numReplicas"`
+
+	Region *string `json:"region"`
+
+	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
+
+	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
+
+	DrainingSeconds *int `json:"drainingSeconds"`
+
+	OverlapSeconds *int `json:"overlapSeconds"`
+
+	SleepApplication *bool `json:"sleepApplication"`
+
+	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
+
+	WatchPatterns []string `json:"watchPatterns"`
+
+	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
+
+	Source *ServiceInstanceFieldsSourceServiceSource `json:"source"`
+
+	Domains ServiceInstanceFieldsDomainsAllDomains `json:"domains"`
 }
 
-// GetServiceDomains returns ServiceInstanceServiceInstanceDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomains) GetServiceDomains() []ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain {
-	return v.ServiceDomains
+func (v *ServiceInstanceServiceInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
 }
 
-// ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
-type ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain struct {
-	Id         string `json:"id"`
-	Domain     string `json:"domain"`
-	TargetPort *int   `json:"targetPort"`
+func (v *ServiceInstanceServiceInstance) __premarshalJSON() (*__premarshalServiceInstanceServiceInstance, error) {
+	var retval __premarshalServiceInstanceServiceInstance
+
+	retval.ServiceId = v.ServiceInstanceFields.ServiceId
+	retval.Builder = v.ServiceInstanceFields.Builder
+	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
+	retval.StartCommand = v.ServiceInstanceFields.StartCommand
+	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
+	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
+	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
+	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
+	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
+	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
+	retval.Region = v.ServiceInstanceFields.Region
+	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
+	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
+	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
+	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
+	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
+	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
+	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
+	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
+	retval.Source = v.ServiceInstanceFields.Source
+	retval.Domains = v.ServiceInstanceFields.Domains
+	return &retval, nil
 }
-
-// GetId returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetId() string {
-	return v.Id
-}
-
-// GetDomain returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
-	return v.Domain
-}
-
-// GetTargetPort returns ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
-	return v.TargetPort
-}
-
-// ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
-type ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain struct {
-	Id         string  `json:"id"`
-	Domain     string  `json:"domain"`
-	TargetPort *int    `json:"targetPort"`
-	Suffix     *string `json:"suffix"`
-}
-
-// GetId returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
-	return v.Id
-}
-
-// GetDomain returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
-	return v.Domain
-}
-
-// GetTargetPort returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
-	return v.TargetPort
-}
-
-// GetSuffix returns ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
-	return v.Suffix
-}
-
-// ServiceInstanceServiceInstanceSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
-type ServiceInstanceServiceInstanceSourceServiceSource struct {
-	Image *string `json:"image"`
-	Repo  *string `json:"repo"`
-}
-
-// GetImage returns ServiceInstanceServiceInstanceSourceServiceSource.Image, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceSourceServiceSource) GetImage() *string { return v.Image }
-
-// GetRepo returns ServiceInstanceServiceInstanceSourceServiceSource.Repo, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstanceSourceServiceSource) GetRepo() *string { return v.Repo }
 
 type ServiceInstanceUpdateInput struct {
 	BuildCommand            *string                   `json:"buildCommand"`
@@ -2935,6 +3644,47 @@ type VolumeDeleteResponse struct {
 
 // GetVolumeDelete returns VolumeDeleteResponse.VolumeDelete, and is useful for accessing the field via an interface.
 func (v *VolumeDeleteResponse) GetVolumeDelete() bool { return v.VolumeDelete }
+
+// Volume instance with its parent volume name.
+// Used by EnvironmentBulk and EnvironmentVolumes.
+type VolumeInstanceFields struct {
+	Id        string                     `json:"id"`
+	MountPath string                     `json:"mountPath"`
+	Region    *string                    `json:"region"`
+	ServiceId *string                    `json:"serviceId"`
+	VolumeId  string                     `json:"volumeId"`
+	Volume    VolumeInstanceFieldsVolume `json:"volume"`
+}
+
+// GetId returns VolumeInstanceFields.Id, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetId() string { return v.Id }
+
+// GetMountPath returns VolumeInstanceFields.MountPath, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetMountPath() string { return v.MountPath }
+
+// GetRegion returns VolumeInstanceFields.Region, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetRegion() *string { return v.Region }
+
+// GetServiceId returns VolumeInstanceFields.ServiceId, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetServiceId() *string { return v.ServiceId }
+
+// GetVolumeId returns VolumeInstanceFields.VolumeId, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetVolumeId() string { return v.VolumeId }
+
+// GetVolume returns VolumeInstanceFields.Volume, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFields) GetVolume() VolumeInstanceFieldsVolume { return v.Volume }
+
+// VolumeInstanceFieldsVolume includes the requested fields of the GraphQL type Volume.
+type VolumeInstanceFieldsVolume struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetId returns VolumeInstanceFieldsVolume.Id, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFieldsVolume) GetId() string { return v.Id }
+
+// GetName returns VolumeInstanceFieldsVolume.Name, and is useful for accessing the field via an interface.
+func (v *VolumeInstanceFieldsVolume) GetName() string { return v.Name }
 
 type VolumeInstanceUpdateInput struct {
 	// The mount path of the volume instance. If not provided, the mount path will not be updated.
@@ -3771,10 +4521,13 @@ func BucketUpdate(
 const BuildLogs_Operation = `
 query BuildLogs ($deploymentId: String!, $limit: Int, $startDate: DateTime, $endDate: DateTime, $filter: String) {
 	buildLogs(deploymentId: $deploymentId, limit: $limit, startDate: $startDate, endDate: $endDate, filter: $filter) {
-		message
-		severity
-		timestamp
+		... LogEntryFields
 	}
+}
+fragment LogEntryFields on Log {
+	message
+	severity
+	timestamp
 }
 `
 
@@ -3915,10 +4668,13 @@ func DeploymentCancel(
 const DeploymentLogs_Operation = `
 query DeploymentLogs ($deploymentId: String!, $limit: Int, $startDate: DateTime, $endDate: DateTime, $filter: String) {
 	deploymentLogs(deploymentId: $deploymentId, limit: $limit, startDate: $startDate, endDate: $endDate, filter: $filter) {
-		message
-		severity
-		timestamp
+		... LogEntryFields
 	}
+}
+fragment LogEntryFields on Log {
+	message
+	severity
+	timestamp
 }
 `
 
@@ -4166,14 +4922,18 @@ query DeploymentTriggers ($environmentId: String!, $projectId: String!, $service
 	deploymentTriggers(environmentId: $environmentId, projectId: $projectId, serviceId: $serviceId, first: 100) {
 		edges {
 			node {
-				id
-				branch
-				repository
-				provider
-				checkSuites
+				... DeploymentTriggerFields
 			}
 		}
 	}
+}
+fragment DeploymentTriggerFields on DeploymentTrigger {
+	id
+	serviceId
+	branch
+	repository
+	provider
+	checkSuites
 }
 `
 
@@ -4368,78 +5128,90 @@ query EnvironmentBulk ($environmentId: String!, $projectId: String) {
 		serviceInstances(first: 200) {
 			edges {
 				node {
-					serviceId
-					builder
-					buildCommand
-					startCommand
-					dockerfilePath
-					rootDirectory
-					healthcheckPath
-					healthcheckTimeout
-					cronSchedule
-					numReplicas
-					region
-					restartPolicyType
-					restartPolicyMaxRetries
-					drainingSeconds
-					overlapSeconds
-					sleepApplication
-					ipv6EgressEnabled
-					watchPatterns
-					preDeployCommand
-					source {
-						image
-						repo
-					}
-					domains {
-						customDomains {
-							id
-							domain
-							targetPort
-						}
-						serviceDomains {
-							id
-							domain
-							targetPort
-							suffix
-						}
-					}
+					... ServiceInstanceFields
 				}
 			}
 		}
 		deploymentTriggers(first: 1000) {
 			edges {
 				node {
-					id
-					serviceId
-					branch
-					repository
-					provider
-					checkSuites
+					... DeploymentTriggerFields
 				}
 			}
 		}
 		volumeInstances(first: 100) {
 			edges {
 				node {
-					id
-					mountPath
-					region
-					serviceId
-					volumeId
-					volume {
-						id
-						name
-					}
+					... VolumeInstanceFields
 				}
 			}
 		}
 	}
 	privateNetworks(environmentId: $environmentId) {
-		publicId
-		dnsName
+		... PrivateNetworkFields
+	}
+}
+fragment ServiceInstanceFields on ServiceInstance {
+	serviceId
+	builder
+	buildCommand
+	startCommand
+	dockerfilePath
+	rootDirectory
+	healthcheckPath
+	healthcheckTimeout
+	cronSchedule
+	numReplicas
+	region
+	restartPolicyType
+	restartPolicyMaxRetries
+	drainingSeconds
+	overlapSeconds
+	sleepApplication
+	ipv6EgressEnabled
+	watchPatterns
+	preDeployCommand
+	source {
+		image
+		repo
+	}
+	domains {
+		customDomains {
+			id
+			domain
+			targetPort
+		}
+		serviceDomains {
+			id
+			domain
+			targetPort
+			suffix
+		}
+	}
+}
+fragment DeploymentTriggerFields on DeploymentTrigger {
+	id
+	serviceId
+	branch
+	repository
+	provider
+	checkSuites
+}
+fragment VolumeInstanceFields on VolumeInstance {
+	id
+	mountPath
+	region
+	serviceId
+	volumeId
+	volume {
+		id
 		name
 	}
+}
+fragment PrivateNetworkFields on PrivateNetwork {
+	publicId
+	dnsName
+	name
 }
 `
 
@@ -4546,10 +5318,13 @@ func EnvironmentDelete(
 const EnvironmentLogs_Operation = `
 query EnvironmentLogs ($environmentId: String!, $anchorDate: String, $afterDate: String, $afterLimit: Int, $beforeDate: String, $beforeLimit: Int, $filter: String) {
 	environmentLogs(environmentId: $environmentId, anchorDate: $anchorDate, afterDate: $afterDate, afterLimit: $afterLimit, beforeDate: $beforeDate, beforeLimit: $beforeLimit, filter: $filter) {
-		message
-		severity
-		timestamp
+		... LogEntryFields
 	}
+}
+fragment LogEntryFields on Log {
+	message
+	severity
+	timestamp
 }
 `
 
@@ -4597,18 +5372,21 @@ query EnvironmentVolumes ($environmentId: String!, $projectId: String) {
 		volumeInstances(first: 100) {
 			edges {
 				node {
-					id
-					mountPath
-					region
-					serviceId
-					volumeId
-					volume {
-						id
-						name
-					}
+					... VolumeInstanceFields
 				}
 			}
 		}
+	}
+}
+fragment VolumeInstanceFields on VolumeInstance {
+	id
+	mountPath
+	region
+	serviceId
+	volumeId
+	volume {
+		id
+		name
 	}
 }
 `
@@ -4828,10 +5606,13 @@ func PrivateNetworkEndpointDelete(
 const PrivateNetworks_Operation = `
 query PrivateNetworks ($environmentId: String!) {
 	privateNetworks(environmentId: $environmentId) {
-		publicId
-		dnsName
-		name
+		... PrivateNetworkFields
 	}
+}
+fragment PrivateNetworkFields on PrivateNetwork {
+	publicId
+	dnsName
+	name
 }
 `
 
@@ -5363,46 +6144,50 @@ func ServiceDomainDelete(
 const ServiceInstance_Operation = `
 query ServiceInstance ($environmentId: String!, $serviceId: String!) {
 	serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
-		builder
-		buildCommand
-		startCommand
-		dockerfilePath
-		rootDirectory
-		healthcheckPath
-		healthcheckTimeout
-		cronSchedule
-		numReplicas
-		region
-		restartPolicyType
-		restartPolicyMaxRetries
-		drainingSeconds
-		overlapSeconds
-		sleepApplication
-		ipv6EgressEnabled
-		watchPatterns
-		preDeployCommand
-		source {
-			image
-			repo
+		... ServiceInstanceFields
+	}
+}
+fragment ServiceInstanceFields on ServiceInstance {
+	serviceId
+	builder
+	buildCommand
+	startCommand
+	dockerfilePath
+	rootDirectory
+	healthcheckPath
+	healthcheckTimeout
+	cronSchedule
+	numReplicas
+	region
+	restartPolicyType
+	restartPolicyMaxRetries
+	drainingSeconds
+	overlapSeconds
+	sleepApplication
+	ipv6EgressEnabled
+	watchPatterns
+	preDeployCommand
+	source {
+		image
+		repo
+	}
+	domains {
+		customDomains {
+			id
+			domain
+			targetPort
 		}
-		domains {
-			customDomains {
-				id
-				domain
-				targetPort
-			}
-			serviceDomains {
-				id
-				domain
-				targetPort
-				suffix
-			}
+		serviceDomains {
+			id
+			domain
+			targetPort
+			suffix
 		}
 	}
 }
 `
 
-// Service deploy settings
+// Service deploy settings (per-service fallback; see EnvironmentBulk for batch path)
 func ServiceInstance(
 	ctx_ context.Context,
 	client_ graphql.Client,

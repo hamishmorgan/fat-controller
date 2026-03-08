@@ -11,10 +11,6 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// serviceInstanceNode is a type alias to shorten references to the generated
-// batched service-instance node type from the EnvironmentBulk query.
-type serviceInstanceNode = EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
-
 // FetchLiveConfig loads shared + per-service variables and settings.
 // serviceFilter limits which services are fetched — empty means all.
 // prefetchedServices, when non-nil, provides service name/ID/icon data from a
@@ -112,12 +108,12 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 // service instances, deployment triggers, volume instances, and private networks.
 // Non-fatal: returns empty/nil maps on error.
 func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, environmentID string) (
-	instancesByService map[string]*serviceInstanceNode,
+	instancesByService map[string]*ServiceInstanceFields,
 	triggersByService map[string][]config.LiveTrigger,
 	volumesByService map[string][]config.LiveVolume,
-	networks []EnvironmentBulkPrivateNetworksPrivateNetwork,
+	networks []PrivateNetworkFields,
 ) {
-	instancesByService = make(map[string]*serviceInstanceNode)
+	instancesByService = make(map[string]*ServiceInstanceFields)
 	triggersByService = make(map[string][]config.LiveTrigger)
 	volumesByService = make(map[string][]config.LiveVolume)
 
@@ -129,8 +125,8 @@ func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, enviro
 
 	// Service instances — keyed by serviceId.
 	for i := range resp.Environment.ServiceInstances.Edges {
-		node := &resp.Environment.ServiceInstances.Edges[i].Node
-		instancesByService[node.ServiceId] = node
+		fields := &resp.Environment.ServiceInstances.Edges[i].Node.ServiceInstanceFields
+		instancesByService[fields.ServiceId] = fields
 	}
 	slog.Debug("fetched environment service instances", "count", len(instancesByService))
 
@@ -168,14 +164,16 @@ func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, enviro
 		})
 	}
 
-	// Private networks.
-	networks = resp.PrivateNetworks
+	// Private networks — unwrap from query-specific wrapper to shared fragment type.
+	for i := range resp.PrivateNetworks {
+		networks = append(networks, resp.PrivateNetworks[i].PrivateNetworkFields)
+	}
 
 	return
 }
 
 // fetchServiceState fetches all state for a single service. Called concurrently.
-func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []EnvironmentBulkPrivateNetworksPrivateNetwork, instancesByService map[string]*serviceInstanceNode, triggersByService map[string][]config.LiveTrigger) (*config.ServiceConfig, error) {
+func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworkFields, instancesByService map[string]*ServiceInstanceFields, triggersByService map[string][]config.LiveTrigger) (*config.ServiceConfig, error) {
 	svc := &config.ServiceConfig{
 		ID:        serviceID,
 		Name:      serviceName,
@@ -192,95 +190,16 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 		svc.Variables[k] = fmt.Sprint(v)
 	}
 
-	// Apply pre-fetched service instance settings.
+	// Apply service instance settings (deploy config + domains).
 	if si, ok := instancesByService[serviceID]; ok {
-		svc.Deploy = config.Deploy{
-			Builder:                 string(si.Builder),
-			BuildCommand:            si.BuildCommand,
-			DockerfilePath:          si.DockerfilePath,
-			RootDirectory:           si.RootDirectory,
-			WatchPatterns:           si.WatchPatterns,
-			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
-			StartCommand:            si.StartCommand,
-			CronSchedule:            si.CronSchedule,
-			HealthcheckPath:         si.HealthcheckPath,
-			HealthcheckTimeout:      si.HealthcheckTimeout,
-			RestartPolicy:           string(si.RestartPolicyType),
-			RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
-			DrainingSeconds:         si.DrainingSeconds,
-			OverlapSeconds:          si.OverlapSeconds,
-			SleepApplication:        si.SleepApplication,
-			NumReplicas:             si.NumReplicas,
-			Region:                  si.Region,
-			IPv6Egress:              si.Ipv6EgressEnabled,
-		}
-		if si.Source != nil {
-			svc.Deploy.Repo = si.Source.Repo
-			svc.Deploy.Image = si.Source.Image
-		}
-
-		// Map domains into LiveDomain slice.
-		for _, cd := range si.Domains.CustomDomains {
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
-			})
-		}
-		for _, sd := range si.Domains.ServiceDomains {
-			suffix := ""
-			if sd.Suffix != nil {
-				suffix = *sd.Suffix
-			}
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
-				IsService: true, Suffix: suffix,
-			})
-		}
+		mapServiceInstance(si, svc)
 	} else {
 		slog.Debug("no pre-fetched service instance, falling back to per-service query", "service", serviceName)
 		instance, err := ServiceInstance(ctx, client.gql(), environmentID, serviceID)
 		if err != nil {
 			return nil, fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
 		}
-		si := instance.ServiceInstance
-		svc.Deploy = config.Deploy{
-			Builder:                 string(si.Builder),
-			BuildCommand:            si.BuildCommand,
-			DockerfilePath:          si.DockerfilePath,
-			RootDirectory:           si.RootDirectory,
-			WatchPatterns:           si.WatchPatterns,
-			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
-			StartCommand:            si.StartCommand,
-			CronSchedule:            si.CronSchedule,
-			HealthcheckPath:         si.HealthcheckPath,
-			HealthcheckTimeout:      si.HealthcheckTimeout,
-			RestartPolicy:           string(si.RestartPolicyType),
-			RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
-			DrainingSeconds:         si.DrainingSeconds,
-			OverlapSeconds:          si.OverlapSeconds,
-			SleepApplication:        si.SleepApplication,
-			NumReplicas:             si.NumReplicas,
-			Region:                  si.Region,
-			IPv6Egress:              si.Ipv6EgressEnabled,
-		}
-		if si.Source != nil {
-			svc.Deploy.Repo = si.Source.Repo
-			svc.Deploy.Image = si.Source.Image
-		}
-		for _, cd := range si.Domains.CustomDomains {
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
-			})
-		}
-		for _, sd := range si.Domains.ServiceDomains {
-			suffix := ""
-			if sd.Suffix != nil {
-				suffix = *sd.Suffix
-			}
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
-				IsService: true, Suffix: suffix,
-			})
-		}
+		mapServiceInstance(&instance.ServiceInstance.ServiceInstanceFields, svc)
 	}
 
 	// Apply pre-fetched triggers.
@@ -331,6 +250,50 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 	return svc, nil
 }
 
+// mapServiceInstance maps a ServiceInstanceFields (shared fragment type) into
+// the service config's Deploy settings and Domains slice.
+func mapServiceInstance(si *ServiceInstanceFields, svc *config.ServiceConfig) {
+	svc.Deploy = config.Deploy{
+		Builder:                 string(si.Builder),
+		BuildCommand:            si.BuildCommand,
+		DockerfilePath:          si.DockerfilePath,
+		RootDirectory:           si.RootDirectory,
+		WatchPatterns:           si.WatchPatterns,
+		PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
+		StartCommand:            si.StartCommand,
+		CronSchedule:            si.CronSchedule,
+		HealthcheckPath:         si.HealthcheckPath,
+		HealthcheckTimeout:      si.HealthcheckTimeout,
+		RestartPolicy:           string(si.RestartPolicyType),
+		RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
+		DrainingSeconds:         si.DrainingSeconds,
+		OverlapSeconds:          si.OverlapSeconds,
+		SleepApplication:        si.SleepApplication,
+		NumReplicas:             si.NumReplicas,
+		Region:                  si.Region,
+		IPv6Egress:              si.Ipv6EgressEnabled,
+	}
+	if si.Source != nil {
+		svc.Deploy.Repo = si.Source.Repo
+		svc.Deploy.Image = si.Source.Image
+	}
+	for _, cd := range si.Domains.CustomDomains {
+		svc.Domains = append(svc.Domains, config.LiveDomain{
+			ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
+		})
+	}
+	for _, sd := range si.Domains.ServiceDomains {
+		suffix := ""
+		if sd.Suffix != nil {
+			suffix = *sd.Suffix
+		}
+		svc.Domains = append(svc.Domains, config.LiveDomain{
+			ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
+			IsService: true, Suffix: suffix,
+		})
+	}
+}
+
 // fetchTCPProxies populates TCP proxies on the service config. Non-fatal.
 func fetchTCPProxies(ctx context.Context, client *Client, environmentID, serviceID string, svc *config.ServiceConfig) {
 	resp, err := TCPProxies(ctx, client.gql(), environmentID, serviceID)
@@ -364,7 +327,7 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 }
 
 // fetchNetworkEndpoint checks if a service has a private network endpoint. Non-fatal.
-func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, serviceID string, networks []EnvironmentBulkPrivateNetworksPrivateNetwork, svc *config.ServiceConfig) {
+func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, serviceID string, networks []PrivateNetworkFields, svc *config.ServiceConfig) {
 	for _, net := range networks {
 		resp, err := PrivateNetworkEndpoint(ctx, client.gql(), environmentID, net.PublicId, serviceID)
 		if err != nil {

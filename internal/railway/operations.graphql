@@ -1,3 +1,94 @@
+# ---------------------------------------------------------------------------
+# Shared fragments — reused across multiple queries to avoid field duplication
+# and to produce clean, shared Go types via genqlient.
+# ---------------------------------------------------------------------------
+
+# Deploy settings and domains for a single service instance.
+# Used by both the standalone ServiceInstance query (per-service fallback)
+# and the EnvironmentBulk query (environment-wide batch).
+fragment ServiceInstanceFields on ServiceInstance {
+  serviceId
+  builder
+  buildCommand
+  startCommand
+  dockerfilePath
+  rootDirectory
+  healthcheckPath
+  healthcheckTimeout
+  cronSchedule
+  numReplicas
+  region
+  restartPolicyType
+  restartPolicyMaxRetries
+  drainingSeconds
+  overlapSeconds
+  sleepApplication
+  ipv6EgressEnabled
+  watchPatterns
+  preDeployCommand
+  source {
+    image
+    repo
+  }
+  domains {
+    customDomains {
+      id
+      domain
+      targetPort
+    }
+    serviceDomains {
+      id
+      domain
+      targetPort
+      suffix
+    }
+  }
+}
+
+# Deployment trigger metadata.
+# Used by EnvironmentBulk (env-wide) and DeploymentTriggers (per-service).
+fragment DeploymentTriggerFields on DeploymentTrigger {
+  id
+  serviceId
+  branch
+  repository
+  provider
+  checkSuites
+}
+
+# Volume instance with its parent volume name.
+# Used by EnvironmentBulk and EnvironmentVolumes.
+fragment VolumeInstanceFields on VolumeInstance {
+  id
+  mountPath
+  region
+  serviceId
+  volumeId
+  volume {
+    id
+    name
+  }
+}
+
+# Private network summary.
+# Used by EnvironmentBulk and PrivateNetworks.
+fragment PrivateNetworkFields on PrivateNetwork {
+  publicId
+  dnsName
+  name
+}
+
+# Log entry fields shared across all log queries.
+fragment LogEntryFields on Log {
+  message
+  severity
+  timestamp
+}
+
+# ---------------------------------------------------------------------------
+# Queries
+# ---------------------------------------------------------------------------
+
 # ProjectToken resolves a project-scoped token to its project and environment IDs.
 # Used by auth status and as a basic connectivity check.
 query ProjectToken {
@@ -101,44 +192,10 @@ query Variables(
   )
 }
 
-# Service deploy settings
+# Service deploy settings (per-service fallback; see EnvironmentBulk for batch path)
 query ServiceInstance($environmentId: String!, $serviceId: String!) {
   serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
-    builder
-    buildCommand
-    startCommand
-    dockerfilePath
-    rootDirectory
-    healthcheckPath
-    healthcheckTimeout
-    cronSchedule
-    numReplicas
-    region
-    restartPolicyType
-    restartPolicyMaxRetries
-    drainingSeconds
-    overlapSeconds
-    sleepApplication
-    ipv6EgressEnabled
-    watchPatterns
-    preDeployCommand
-    source {
-      image
-      repo
-    }
-    domains {
-      customDomains {
-        id
-        domain
-        targetPort
-      }
-      serviceDomains {
-        id
-        domain
-        targetPort
-        suffix
-      }
-    }
+    ...ServiceInstanceFields
   }
 }
 
@@ -422,9 +479,7 @@ query DeploymentLogs(
     endDate: $endDate
     filter: $filter
   ) {
-    message
-    severity
-    timestamp
+    ...LogEntryFields
   }
 }
 
@@ -442,9 +497,7 @@ query BuildLogs(
     endDate: $endDate
     filter: $filter
   ) {
-    message
-    severity
-    timestamp
+    ...LogEntryFields
   }
 }
 
@@ -466,9 +519,7 @@ query EnvironmentLogs(
     beforeLimit: $beforeLimit
     filter: $filter
   ) {
-    message
-    severity
-    timestamp
+    ...LogEntryFields
   }
 }
 
@@ -481,77 +532,27 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
     serviceInstances(first: 200) {
       edges {
         node {
-          serviceId
-          builder
-          buildCommand
-          startCommand
-          dockerfilePath
-          rootDirectory
-          healthcheckPath
-          healthcheckTimeout
-          cronSchedule
-          numReplicas
-          region
-          restartPolicyType
-          restartPolicyMaxRetries
-          drainingSeconds
-          overlapSeconds
-          sleepApplication
-          ipv6EgressEnabled
-          watchPatterns
-          preDeployCommand
-          source {
-            image
-            repo
-          }
-          domains {
-            customDomains {
-              id
-              domain
-              targetPort
-            }
-            serviceDomains {
-              id
-              domain
-              targetPort
-              suffix
-            }
-          }
+          ...ServiceInstanceFields
         }
       }
     }
     deploymentTriggers(first: 1000) {
       edges {
         node {
-          id
-          serviceId
-          branch
-          repository
-          provider
-          checkSuites
+          ...DeploymentTriggerFields
         }
       }
     }
     volumeInstances(first: 100) {
       edges {
         node {
-          id
-          mountPath
-          region
-          serviceId
-          volumeId
-          volume {
-            id
-            name
-          }
+          ...VolumeInstanceFields
         }
       }
     }
   }
   privateNetworks(environmentId: $environmentId) {
-    publicId
-    dnsName
-    name
+    ...PrivateNetworkFields
   }
 }
 
@@ -585,11 +586,7 @@ query DeploymentTriggers(
   ) {
     edges {
       node {
-        id
-        branch
-        repository
-        provider
-        checkSuites
+        ...DeploymentTriggerFields
       }
     }
   }
@@ -605,15 +602,7 @@ query EnvironmentVolumes($environmentId: String!, $projectId: String) {
     volumeInstances(first: 100) {
       edges {
         node {
-          id
-          mountPath
-          region
-          serviceId
-          volumeId
-          volume {
-            id
-            name
-          }
+          ...VolumeInstanceFields
         }
       }
     }
@@ -622,9 +611,7 @@ query EnvironmentVolumes($environmentId: String!, $projectId: String) {
 
 query PrivateNetworks($environmentId: String!) {
   privateNetworks(environmentId: $environmentId) {
-    publicId
-    dnsName
-    name
+    ...PrivateNetworkFields
   }
 }
 

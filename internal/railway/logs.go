@@ -7,12 +7,9 @@ import (
 	"time"
 )
 
-// LogEntry represents a single log line.
-type LogEntry struct {
-	Message   string
-	Severity  *string
-	Timestamp string
-}
+// LogEntry is a single log line. It is a type alias for the generated
+// LogEntryFields fragment type so callers don't depend on genqlient names.
+type LogEntry = LogEntryFields
 
 // GetDeploymentLogs fetches logs for a deployment.
 // limit defaults to 100 on the server side; max is 5000.
@@ -24,7 +21,7 @@ func GetDeploymentLogs(ctx context.Context, client *Client, deploymentID string,
 	}
 	entries := make([]LogEntry, len(resp.DeploymentLogs))
 	for i, l := range resp.DeploymentLogs {
-		entries[i] = LogEntry(l)
+		entries[i] = l.LogEntryFields
 	}
 	return entries, nil
 }
@@ -39,7 +36,7 @@ func GetBuildLogs(ctx context.Context, client *Client, deploymentID string, limi
 	}
 	entries := make([]LogEntry, len(resp.BuildLogs))
 	for i, l := range resp.BuildLogs {
-		entries[i] = LogEntry(l)
+		entries[i] = l.LogEntryFields
 	}
 	return entries, nil
 }
@@ -54,7 +51,7 @@ func GetEnvironmentLogs(ctx context.Context, client *Client, environmentID strin
 	}
 	entries := make([]LogEntry, len(resp.EnvironmentLogs))
 	for i, l := range resp.EnvironmentLogs {
-		entries[i] = LogEntry(l)
+		entries[i] = l.LogEntryFields
 	}
 	return entries, nil
 }

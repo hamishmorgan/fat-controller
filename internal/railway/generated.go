@@ -10,148 +10,14 @@ import (
 	"github.com/Khan/genqlient/graphql"
 )
 
-// ApiTokenApiTokenApiTokenContext includes the requested fields of the GraphQL type ApiTokenContext.
-// The GraphQL type's documentation follows.
-//
-// Information about the current API token and its accessible workspaces.
-type ApiTokenApiTokenApiTokenContext struct {
-	// Workspaces this subject can operate on via this token or session.
-	Workspaces []ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace `json:"workspaces"`
-}
-
-// GetWorkspaces returns ApiTokenApiTokenApiTokenContext.Workspaces, and is useful for accessing the field via an interface.
-func (v *ApiTokenApiTokenApiTokenContext) GetWorkspaces() []ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace {
-	return v.Workspaces
-}
-
-// ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace includes the requested fields of the GraphQL type ApiTokenWorkspace.
-type ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace struct {
-	WorkspaceFields `json:"-"`
-}
-
-// GetId returns ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace.Id, and is useful for accessing the field via an interface.
-func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) GetId() string {
-	return v.WorkspaceFields.Id
-}
-
-// GetName returns ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace.Name, and is useful for accessing the field via an interface.
-func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) GetName() string {
-	return v.WorkspaceFields.Name
-}
-
-func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.WorkspaceFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace) __premarshalJSON() (*__premarshalApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace, error) {
-	var retval __premarshalApiTokenApiTokenApiTokenContextWorkspacesApiTokenWorkspace
-
-	retval.Id = v.WorkspaceFields.Id
-	retval.Name = v.WorkspaceFields.Name
-	return &retval, nil
-}
-
 // ApiTokenResponse is returned by ApiToken on success.
 type ApiTokenResponse struct {
 	// Introspect the current API token and its accessible workspaces.
-	ApiToken ApiTokenApiTokenApiTokenContext `json:"apiToken"`
+	ApiToken TokenContext `json:"apiToken"`
 }
 
 // GetApiToken returns ApiTokenResponse.ApiToken, and is useful for accessing the field via an interface.
-func (v *ApiTokenResponse) GetApiToken() ApiTokenApiTokenApiTokenContext { return v.ApiToken }
-
-// BucketCreateBucketCreateBucket includes the requested fields of the GraphQL type Bucket.
-type BucketCreateBucketCreateBucket struct {
-	BucketSummaryFields `json:"-"`
-}
-
-// GetId returns BucketCreateBucketCreateBucket.Id, and is useful for accessing the field via an interface.
-func (v *BucketCreateBucketCreateBucket) GetId() string { return v.BucketSummaryFields.Id }
-
-// GetName returns BucketCreateBucketCreateBucket.Name, and is useful for accessing the field via an interface.
-func (v *BucketCreateBucketCreateBucket) GetName() string { return v.BucketSummaryFields.Name }
-
-func (v *BucketCreateBucketCreateBucket) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*BucketCreateBucketCreateBucket
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.BucketCreateBucketCreateBucket = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.BucketSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalBucketCreateBucketCreateBucket struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *BucketCreateBucketCreateBucket) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *BucketCreateBucketCreateBucket) __premarshalJSON() (*__premarshalBucketCreateBucketCreateBucket, error) {
-	var retval __premarshalBucketCreateBucketCreateBucket
-
-	retval.Id = v.BucketSummaryFields.Id
-	retval.Name = v.BucketSummaryFields.Name
-	return &retval, nil
-}
+func (v *ApiTokenResponse) GetApiToken() TokenContext { return v.ApiToken }
 
 type BucketCreateInput struct {
 	// [unimplemented] The environment to deploy the bucket instances into. If `null`, the bucket will not be deployed to any environment. `undefined` will deploy to all environments.
@@ -174,13 +40,11 @@ func (v *BucketCreateInput) GetProjectId() string { return v.ProjectId }
 // BucketCreateResponse is returned by BucketCreate on success.
 type BucketCreateResponse struct {
 	// Create a bucket in a project
-	BucketCreate BucketCreateBucketCreateBucket `json:"bucketCreate"`
+	BucketCreate CreatedBucket `json:"bucketCreate"`
 }
 
 // GetBucketCreate returns BucketCreateResponse.BucketCreate, and is useful for accessing the field via an interface.
-func (v *BucketCreateResponse) GetBucketCreate() BucketCreateBucketCreateBucket {
-	return v.BucketCreate
-}
+func (v *BucketCreateResponse) GetBucketCreate() CreatedBucket { return v.BucketCreate }
 
 // BucketCredentialFields includes the GraphQL fields of BucketS3CompatibleCredentials requested by the fragment BucketCredentialFields.
 type BucketCredentialFields struct {
@@ -210,52 +74,42 @@ func (v *BucketCredentialFields) GetSecretAccessKey() string { return v.SecretAc
 // GetUrlStyle returns BucketCredentialFields.UrlStyle, and is useful for accessing the field via an interface.
 func (v *BucketCredentialFields) GetUrlStyle() string { return v.UrlStyle }
 
-// BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials includes the requested fields of the GraphQL type BucketS3CompatibleCredentials.
-type BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials struct {
+// BucketCredentials includes the requested fields of the GraphQL type BucketS3CompatibleCredentials.
+type BucketCredentials struct {
 	BucketCredentialFields `json:"-"`
 }
 
-// GetAccessKeyId returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.AccessKeyId, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetAccessKeyId() string {
-	return v.BucketCredentialFields.AccessKeyId
-}
+// GetAccessKeyId returns BucketCredentials.AccessKeyId, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetAccessKeyId() string { return v.BucketCredentialFields.AccessKeyId }
 
-// GetBucketName returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.BucketName, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetBucketName() string {
-	return v.BucketCredentialFields.BucketName
-}
+// GetBucketName returns BucketCredentials.BucketName, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetBucketName() string { return v.BucketCredentialFields.BucketName }
 
-// GetEndpoint returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.Endpoint, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetEndpoint() string {
-	return v.BucketCredentialFields.Endpoint
-}
+// GetEndpoint returns BucketCredentials.Endpoint, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetEndpoint() string { return v.BucketCredentialFields.Endpoint }
 
-// GetRegion returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.Region, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetRegion() string {
-	return v.BucketCredentialFields.Region
-}
+// GetRegion returns BucketCredentials.Region, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetRegion() string { return v.BucketCredentialFields.Region }
 
-// GetSecretAccessKey returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.SecretAccessKey, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetSecretAccessKey() string {
+// GetSecretAccessKey returns BucketCredentials.SecretAccessKey, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetSecretAccessKey() string {
 	return v.BucketCredentialFields.SecretAccessKey
 }
 
-// GetUrlStyle returns BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials.UrlStyle, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) GetUrlStyle() string {
-	return v.BucketCredentialFields.UrlStyle
-}
+// GetUrlStyle returns BucketCredentials.UrlStyle, and is useful for accessing the field via an interface.
+func (v *BucketCredentials) GetUrlStyle() string { return v.BucketCredentialFields.UrlStyle }
 
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) UnmarshalJSON(b []byte) error {
+func (v *BucketCredentials) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials
+		*BucketCredentials
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials = v
+	firstPass.BucketCredentials = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -270,7 +124,7 @@ func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) Un
 	return nil
 }
 
-type __premarshalBucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials struct {
+type __premarshalBucketCredentials struct {
 	AccessKeyId string `json:"accessKeyId"`
 
 	BucketName string `json:"bucketName"`
@@ -284,7 +138,7 @@ type __premarshalBucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredent
 	UrlStyle string `json:"urlStyle"`
 }
 
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) MarshalJSON() ([]byte, error) {
+func (v *BucketCredentials) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -292,8 +146,8 @@ func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) Ma
 	return json.Marshal(premarshaled)
 }
 
-func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) __premarshalJSON() (*__premarshalBucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials, error) {
-	var retval __premarshalBucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials
+func (v *BucketCredentials) __premarshalJSON() (*__premarshalBucketCredentials, error) {
+	var retval __premarshalBucketCredentials
 
 	retval.AccessKeyId = v.BucketCredentialFields.AccessKeyId
 	retval.BucketName = v.BucketCredentialFields.BucketName
@@ -304,14 +158,95 @@ func (v *BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials) __
 	return &retval, nil
 }
 
+// BucketList includes the requested fields of the GraphQL type ProjectBucketsConnection.
+type BucketList struct {
+	Edges []BucketListEdge `json:"edges"`
+}
+
+// GetEdges returns BucketList.Edges, and is useful for accessing the field via an interface.
+func (v *BucketList) GetEdges() []BucketListEdge { return v.Edges }
+
+// BucketListEdge includes the requested fields of the GraphQL type ProjectBucketsConnectionEdge.
+type BucketListEdge struct {
+	Node BucketListItem `json:"node"`
+}
+
+// GetNode returns BucketListEdge.Node, and is useful for accessing the field via an interface.
+func (v *BucketListEdge) GetNode() BucketListItem { return v.Node }
+
+// BucketListItem includes the requested fields of the GraphQL type Bucket.
+type BucketListItem struct {
+	BucketSummaryFields `json:"-"`
+	ProjectId           string `json:"projectId"`
+}
+
+// GetProjectId returns BucketListItem.ProjectId, and is useful for accessing the field via an interface.
+func (v *BucketListItem) GetProjectId() string { return v.ProjectId }
+
+// GetId returns BucketListItem.Id, and is useful for accessing the field via an interface.
+func (v *BucketListItem) GetId() string { return v.BucketSummaryFields.Id }
+
+// GetName returns BucketListItem.Name, and is useful for accessing the field via an interface.
+func (v *BucketListItem) GetName() string { return v.BucketSummaryFields.Name }
+
+func (v *BucketListItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*BucketListItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.BucketListItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.BucketSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBucketListItem struct {
+	ProjectId string `json:"projectId"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *BucketListItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BucketListItem) __premarshalJSON() (*__premarshalBucketListItem, error) {
+	var retval __premarshalBucketListItem
+
+	retval.ProjectId = v.ProjectId
+	retval.Id = v.BucketSummaryFields.Id
+	retval.Name = v.BucketSummaryFields.Name
+	return &retval, nil
+}
+
 // BucketS3CredentialsResponse is returned by BucketS3Credentials on success.
 type BucketS3CredentialsResponse struct {
 	// Get the S3-compatible credentials for a bucket
-	BucketS3Credentials []BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials `json:"bucketS3Credentials"`
+	BucketS3Credentials []BucketCredentials `json:"bucketS3Credentials"`
 }
 
 // GetBucketS3Credentials returns BucketS3CredentialsResponse.BucketS3Credentials, and is useful for accessing the field via an interface.
-func (v *BucketS3CredentialsResponse) GetBucketS3Credentials() []BucketS3CredentialsBucketS3CredentialsBucketS3CompatibleCredentials {
+func (v *BucketS3CredentialsResponse) GetBucketS3Credentials() []BucketCredentials {
 	return v.BucketS3Credentials
 }
 
@@ -327,64 +262,6 @@ func (v *BucketSummaryFields) GetId() string { return v.Id }
 // GetName returns BucketSummaryFields.Name, and is useful for accessing the field via an interface.
 func (v *BucketSummaryFields) GetName() string { return v.Name }
 
-// BucketUpdateBucketUpdateBucket includes the requested fields of the GraphQL type Bucket.
-type BucketUpdateBucketUpdateBucket struct {
-	BucketSummaryFields `json:"-"`
-}
-
-// GetId returns BucketUpdateBucketUpdateBucket.Id, and is useful for accessing the field via an interface.
-func (v *BucketUpdateBucketUpdateBucket) GetId() string { return v.BucketSummaryFields.Id }
-
-// GetName returns BucketUpdateBucketUpdateBucket.Name, and is useful for accessing the field via an interface.
-func (v *BucketUpdateBucketUpdateBucket) GetName() string { return v.BucketSummaryFields.Name }
-
-func (v *BucketUpdateBucketUpdateBucket) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*BucketUpdateBucketUpdateBucket
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.BucketUpdateBucketUpdateBucket = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.BucketSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalBucketUpdateBucketUpdateBucket struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *BucketUpdateBucketUpdateBucket) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *BucketUpdateBucketUpdateBucket) __premarshalJSON() (*__premarshalBucketUpdateBucketUpdateBucket, error) {
-	var retval __premarshalBucketUpdateBucketUpdateBucket
-
-	retval.Id = v.BucketSummaryFields.Id
-	retval.Name = v.BucketSummaryFields.Name
-	return &retval, nil
-}
-
 type BucketUpdateInput struct {
 	Name string `json:"name"`
 }
@@ -395,42 +272,40 @@ func (v *BucketUpdateInput) GetName() string { return v.Name }
 // BucketUpdateResponse is returned by BucketUpdate on success.
 type BucketUpdateResponse struct {
 	// Updates a bucket.
-	BucketUpdate BucketUpdateBucketUpdateBucket `json:"bucketUpdate"`
+	BucketUpdate UpdatedBucket `json:"bucketUpdate"`
 }
 
 // GetBucketUpdate returns BucketUpdateResponse.BucketUpdate, and is useful for accessing the field via an interface.
-func (v *BucketUpdateResponse) GetBucketUpdate() BucketUpdateBucketUpdateBucket {
-	return v.BucketUpdate
-}
+func (v *BucketUpdateResponse) GetBucketUpdate() UpdatedBucket { return v.BucketUpdate }
 
-// BuildLogsBuildLogsLog includes the requested fields of the GraphQL type Log.
+// BuildLogEntry includes the requested fields of the GraphQL type Log.
 // The GraphQL type's documentation follows.
 //
 // The result of a logs query.
-type BuildLogsBuildLogsLog struct {
+type BuildLogEntry struct {
 	LogEntryFields `json:"-"`
 }
 
-// GetMessage returns BuildLogsBuildLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetMessage() string { return v.LogEntryFields.Message }
+// GetMessage returns BuildLogEntry.Message, and is useful for accessing the field via an interface.
+func (v *BuildLogEntry) GetMessage() string { return v.LogEntryFields.Message }
 
-// GetSeverity returns BuildLogsBuildLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
+// GetSeverity returns BuildLogEntry.Severity, and is useful for accessing the field via an interface.
+func (v *BuildLogEntry) GetSeverity() *string { return v.LogEntryFields.Severity }
 
-// GetTimestamp returns BuildLogsBuildLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *BuildLogsBuildLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+// GetTimestamp returns BuildLogEntry.Timestamp, and is useful for accessing the field via an interface.
+func (v *BuildLogEntry) GetTimestamp() string { return v.LogEntryFields.Timestamp }
 
-func (v *BuildLogsBuildLogsLog) UnmarshalJSON(b []byte) error {
+func (v *BuildLogEntry) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*BuildLogsBuildLogsLog
+		*BuildLogEntry
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.BuildLogsBuildLogsLog = v
+	firstPass.BuildLogEntry = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -445,7 +320,7 @@ func (v *BuildLogsBuildLogsLog) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type __premarshalBuildLogsBuildLogsLog struct {
+type __premarshalBuildLogEntry struct {
 	Message string `json:"message"`
 
 	Severity *string `json:"severity"`
@@ -453,7 +328,7 @@ type __premarshalBuildLogsBuildLogsLog struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func (v *BuildLogsBuildLogsLog) MarshalJSON() ([]byte, error) {
+func (v *BuildLogEntry) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -461,8 +336,8 @@ func (v *BuildLogsBuildLogsLog) MarshalJSON() ([]byte, error) {
 	return json.Marshal(premarshaled)
 }
 
-func (v *BuildLogsBuildLogsLog) __premarshalJSON() (*__premarshalBuildLogsBuildLogsLog, error) {
-	var retval __premarshalBuildLogsBuildLogsLog
+func (v *BuildLogEntry) __premarshalJSON() (*__premarshalBuildLogEntry, error) {
+	var retval __premarshalBuildLogEntry
 
 	retval.Message = v.LogEntryFields.Message
 	retval.Severity = v.LogEntryFields.Severity
@@ -473,11 +348,11 @@ func (v *BuildLogsBuildLogsLog) __premarshalJSON() (*__premarshalBuildLogsBuildL
 // BuildLogsResponse is returned by BuildLogs on success.
 type BuildLogsResponse struct {
 	// Fetch logs for a build
-	BuildLogs []BuildLogsBuildLogsLog `json:"buildLogs"`
+	BuildLogs []BuildLogEntry `json:"buildLogs"`
 }
 
 // GetBuildLogs returns BuildLogsResponse.BuildLogs, and is useful for accessing the field via an interface.
-func (v *BuildLogsResponse) GetBuildLogs() []BuildLogsBuildLogsLog { return v.BuildLogs }
+func (v *BuildLogsResponse) GetBuildLogs() []BuildLogEntry { return v.BuildLogs }
 
 type Builder string
 
@@ -495,37 +370,585 @@ var AllBuilder = []Builder{
 	BuilderRailpack,
 }
 
-// CustomDomainCreateCustomDomainCreateCustomDomain includes the requested fields of the GraphQL type CustomDomain.
-type CustomDomainCreateCustomDomainCreateCustomDomain struct {
-	CustomDomainFields `json:"-"`
+// BulkEnvironment includes the requested fields of the GraphQL type Environment.
+type BulkEnvironment struct {
+	ServiceInstances   BulkServiceInstances `json:"serviceInstances"`
+	DeploymentTriggers BulkTriggers         `json:"deploymentTriggers"`
+	VolumeInstances    BulkVolumeInstances  `json:"volumeInstances"`
 }
 
-// GetId returns CustomDomainCreateCustomDomainCreateCustomDomain.Id, and is useful for accessing the field via an interface.
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) GetId() string {
-	return v.CustomDomainFields.Id
+// GetServiceInstances returns BulkEnvironment.ServiceInstances, and is useful for accessing the field via an interface.
+func (v *BulkEnvironment) GetServiceInstances() BulkServiceInstances { return v.ServiceInstances }
+
+// GetDeploymentTriggers returns BulkEnvironment.DeploymentTriggers, and is useful for accessing the field via an interface.
+func (v *BulkEnvironment) GetDeploymentTriggers() BulkTriggers { return v.DeploymentTriggers }
+
+// GetVolumeInstances returns BulkEnvironment.VolumeInstances, and is useful for accessing the field via an interface.
+func (v *BulkEnvironment) GetVolumeInstances() BulkVolumeInstances { return v.VolumeInstances }
+
+// BulkPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
+type BulkPrivateNetwork struct {
+	PrivateNetworkFields `json:"-"`
 }
 
-// GetDomain returns CustomDomainCreateCustomDomainCreateCustomDomain.Domain, and is useful for accessing the field via an interface.
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) GetDomain() string {
-	return v.CustomDomainFields.Domain
-}
+// GetPublicId returns BulkPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
+func (v *BulkPrivateNetwork) GetPublicId() string { return v.PrivateNetworkFields.PublicId }
 
-// GetTargetPort returns CustomDomainCreateCustomDomainCreateCustomDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) GetTargetPort() *int {
-	return v.CustomDomainFields.TargetPort
-}
+// GetDnsName returns BulkPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
+func (v *BulkPrivateNetwork) GetDnsName() string { return v.PrivateNetworkFields.DnsName }
 
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) UnmarshalJSON(b []byte) error {
+// GetName returns BulkPrivateNetwork.Name, and is useful for accessing the field via an interface.
+func (v *BulkPrivateNetwork) GetName() string { return v.PrivateNetworkFields.Name }
+
+func (v *BulkPrivateNetwork) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*CustomDomainCreateCustomDomainCreateCustomDomain
+		*BulkPrivateNetwork
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.CustomDomainCreateCustomDomainCreateCustomDomain = v
+	firstPass.BulkPrivateNetwork = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBulkPrivateNetwork struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	Name string `json:"name"`
+}
+
+func (v *BulkPrivateNetwork) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BulkPrivateNetwork) __premarshalJSON() (*__premarshalBulkPrivateNetwork, error) {
+	var retval __premarshalBulkPrivateNetwork
+
+	retval.PublicId = v.PrivateNetworkFields.PublicId
+	retval.DnsName = v.PrivateNetworkFields.DnsName
+	retval.Name = v.PrivateNetworkFields.Name
+	return &retval, nil
+}
+
+// BulkServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
+type BulkServiceInstance struct {
+	ServiceInstanceFields `json:"-"`
+}
+
+// GetServiceId returns BulkServiceInstance.ServiceId, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetServiceId() string { return v.ServiceInstanceFields.ServiceId }
+
+// GetBuilder returns BulkServiceInstance.Builder, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetBuilder() Builder { return v.ServiceInstanceFields.Builder }
+
+// GetBuildCommand returns BulkServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetBuildCommand() *string { return v.ServiceInstanceFields.BuildCommand }
+
+// GetStartCommand returns BulkServiceInstance.StartCommand, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetStartCommand() *string { return v.ServiceInstanceFields.StartCommand }
+
+// GetDockerfilePath returns BulkServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetDockerfilePath() *string {
+	return v.ServiceInstanceFields.DockerfilePath
+}
+
+// GetRootDirectory returns BulkServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetRootDirectory() *string {
+	return v.ServiceInstanceFields.RootDirectory
+}
+
+// GetHealthcheckPath returns BulkServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetHealthcheckPath() *string {
+	return v.ServiceInstanceFields.HealthcheckPath
+}
+
+// GetHealthcheckTimeout returns BulkServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetHealthcheckTimeout() *int {
+	return v.ServiceInstanceFields.HealthcheckTimeout
+}
+
+// GetCronSchedule returns BulkServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetCronSchedule() *string { return v.ServiceInstanceFields.CronSchedule }
+
+// GetNumReplicas returns BulkServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetNumReplicas() *int { return v.ServiceInstanceFields.NumReplicas }
+
+// GetRegion returns BulkServiceInstance.Region, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetRegion() *string { return v.ServiceInstanceFields.Region }
+
+// GetRestartPolicyType returns BulkServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetRestartPolicyType() RestartPolicyType {
+	return v.ServiceInstanceFields.RestartPolicyType
+}
+
+// GetRestartPolicyMaxRetries returns BulkServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetRestartPolicyMaxRetries() int {
+	return v.ServiceInstanceFields.RestartPolicyMaxRetries
+}
+
+// GetDrainingSeconds returns BulkServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetDrainingSeconds() *int {
+	return v.ServiceInstanceFields.DrainingSeconds
+}
+
+// GetOverlapSeconds returns BulkServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetOverlapSeconds() *int { return v.ServiceInstanceFields.OverlapSeconds }
+
+// GetSleepApplication returns BulkServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetSleepApplication() *bool {
+	return v.ServiceInstanceFields.SleepApplication
+}
+
+// GetIpv6EgressEnabled returns BulkServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetIpv6EgressEnabled() *bool {
+	return v.ServiceInstanceFields.Ipv6EgressEnabled
+}
+
+// GetWatchPatterns returns BulkServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetWatchPatterns() []string {
+	return v.ServiceInstanceFields.WatchPatterns
+}
+
+// GetPreDeployCommand returns BulkServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetPreDeployCommand() *map[string]interface{} {
+	return v.ServiceInstanceFields.PreDeployCommand
+}
+
+// GetSource returns BulkServiceInstance.Source, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetSource() *ServiceSource { return v.ServiceInstanceFields.Source }
+
+// GetDomains returns BulkServiceInstance.Domains, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstance) GetDomains() ServiceDomains { return v.ServiceInstanceFields.Domains }
+
+func (v *BulkServiceInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*BulkServiceInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.BulkServiceInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBulkServiceInstance struct {
+	ServiceId string `json:"serviceId"`
+
+	Builder Builder `json:"builder"`
+
+	BuildCommand *string `json:"buildCommand"`
+
+	StartCommand *string `json:"startCommand"`
+
+	DockerfilePath *string `json:"dockerfilePath"`
+
+	RootDirectory *string `json:"rootDirectory"`
+
+	HealthcheckPath *string `json:"healthcheckPath"`
+
+	HealthcheckTimeout *int `json:"healthcheckTimeout"`
+
+	CronSchedule *string `json:"cronSchedule"`
+
+	NumReplicas *int `json:"numReplicas"`
+
+	Region *string `json:"region"`
+
+	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
+
+	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
+
+	DrainingSeconds *int `json:"drainingSeconds"`
+
+	OverlapSeconds *int `json:"overlapSeconds"`
+
+	SleepApplication *bool `json:"sleepApplication"`
+
+	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
+
+	WatchPatterns []string `json:"watchPatterns"`
+
+	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
+
+	Source *ServiceSource `json:"source"`
+
+	Domains ServiceDomains `json:"domains"`
+}
+
+func (v *BulkServiceInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BulkServiceInstance) __premarshalJSON() (*__premarshalBulkServiceInstance, error) {
+	var retval __premarshalBulkServiceInstance
+
+	retval.ServiceId = v.ServiceInstanceFields.ServiceId
+	retval.Builder = v.ServiceInstanceFields.Builder
+	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
+	retval.StartCommand = v.ServiceInstanceFields.StartCommand
+	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
+	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
+	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
+	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
+	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
+	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
+	retval.Region = v.ServiceInstanceFields.Region
+	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
+	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
+	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
+	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
+	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
+	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
+	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
+	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
+	retval.Source = v.ServiceInstanceFields.Source
+	retval.Domains = v.ServiceInstanceFields.Domains
+	return &retval, nil
+}
+
+// BulkServiceInstanceEdge includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnectionEdge.
+type BulkServiceInstanceEdge struct {
+	Node BulkServiceInstance `json:"node"`
+}
+
+// GetNode returns BulkServiceInstanceEdge.Node, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstanceEdge) GetNode() BulkServiceInstance { return v.Node }
+
+// BulkServiceInstances includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnection.
+type BulkServiceInstances struct {
+	Edges []BulkServiceInstanceEdge `json:"edges"`
+}
+
+// GetEdges returns BulkServiceInstances.Edges, and is useful for accessing the field via an interface.
+func (v *BulkServiceInstances) GetEdges() []BulkServiceInstanceEdge { return v.Edges }
+
+// BulkTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
+type BulkTrigger struct {
+	DeploymentTriggerFields `json:"-"`
+}
+
+// GetId returns BulkTrigger.Id, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetId() string { return v.DeploymentTriggerFields.Id }
+
+// GetServiceId returns BulkTrigger.ServiceId, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetServiceId() *string { return v.DeploymentTriggerFields.ServiceId }
+
+// GetBranch returns BulkTrigger.Branch, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetBranch() string { return v.DeploymentTriggerFields.Branch }
+
+// GetRepository returns BulkTrigger.Repository, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetRepository() string { return v.DeploymentTriggerFields.Repository }
+
+// GetProvider returns BulkTrigger.Provider, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetProvider() string { return v.DeploymentTriggerFields.Provider }
+
+// GetCheckSuites returns BulkTrigger.CheckSuites, and is useful for accessing the field via an interface.
+func (v *BulkTrigger) GetCheckSuites() bool { return v.DeploymentTriggerFields.CheckSuites }
+
+func (v *BulkTrigger) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*BulkTrigger
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.BulkTrigger = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DeploymentTriggerFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBulkTrigger struct {
+	Id string `json:"id"`
+
+	ServiceId *string `json:"serviceId"`
+
+	Branch string `json:"branch"`
+
+	Repository string `json:"repository"`
+
+	Provider string `json:"provider"`
+
+	CheckSuites bool `json:"checkSuites"`
+}
+
+func (v *BulkTrigger) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BulkTrigger) __premarshalJSON() (*__premarshalBulkTrigger, error) {
+	var retval __premarshalBulkTrigger
+
+	retval.Id = v.DeploymentTriggerFields.Id
+	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
+	retval.Branch = v.DeploymentTriggerFields.Branch
+	retval.Repository = v.DeploymentTriggerFields.Repository
+	retval.Provider = v.DeploymentTriggerFields.Provider
+	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
+	return &retval, nil
+}
+
+// BulkTriggerEdge includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnectionEdge.
+type BulkTriggerEdge struct {
+	Node BulkTrigger `json:"node"`
+}
+
+// GetNode returns BulkTriggerEdge.Node, and is useful for accessing the field via an interface.
+func (v *BulkTriggerEdge) GetNode() BulkTrigger { return v.Node }
+
+// BulkTriggers includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnection.
+type BulkTriggers struct {
+	Edges []BulkTriggerEdge `json:"edges"`
+}
+
+// GetEdges returns BulkTriggers.Edges, and is useful for accessing the field via an interface.
+func (v *BulkTriggers) GetEdges() []BulkTriggerEdge { return v.Edges }
+
+// BulkVolumeInstance includes the requested fields of the GraphQL type VolumeInstance.
+type BulkVolumeInstance struct {
+	VolumeInstanceFields `json:"-"`
+}
+
+// GetId returns BulkVolumeInstance.Id, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetId() string { return v.VolumeInstanceFields.Id }
+
+// GetMountPath returns BulkVolumeInstance.MountPath, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetMountPath() string { return v.VolumeInstanceFields.MountPath }
+
+// GetRegion returns BulkVolumeInstance.Region, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetRegion() *string { return v.VolumeInstanceFields.Region }
+
+// GetServiceId returns BulkVolumeInstance.ServiceId, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetServiceId() *string { return v.VolumeInstanceFields.ServiceId }
+
+// GetVolumeId returns BulkVolumeInstance.VolumeId, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetVolumeId() string { return v.VolumeInstanceFields.VolumeId }
+
+// GetVolume returns BulkVolumeInstance.Volume, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstance) GetVolume() VolumeInstanceFieldsVolume {
+	return v.VolumeInstanceFields.Volume
+}
+
+func (v *BulkVolumeInstance) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*BulkVolumeInstance
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.BulkVolumeInstance = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.VolumeInstanceFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalBulkVolumeInstance struct {
+	Id string `json:"id"`
+
+	MountPath string `json:"mountPath"`
+
+	Region *string `json:"region"`
+
+	ServiceId *string `json:"serviceId"`
+
+	VolumeId string `json:"volumeId"`
+
+	Volume VolumeInstanceFieldsVolume `json:"volume"`
+}
+
+func (v *BulkVolumeInstance) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *BulkVolumeInstance) __premarshalJSON() (*__premarshalBulkVolumeInstance, error) {
+	var retval __premarshalBulkVolumeInstance
+
+	retval.Id = v.VolumeInstanceFields.Id
+	retval.MountPath = v.VolumeInstanceFields.MountPath
+	retval.Region = v.VolumeInstanceFields.Region
+	retval.ServiceId = v.VolumeInstanceFields.ServiceId
+	retval.VolumeId = v.VolumeInstanceFields.VolumeId
+	retval.Volume = v.VolumeInstanceFields.Volume
+	return &retval, nil
+}
+
+// BulkVolumeInstanceEdge includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnectionEdge.
+type BulkVolumeInstanceEdge struct {
+	Node BulkVolumeInstance `json:"node"`
+}
+
+// GetNode returns BulkVolumeInstanceEdge.Node, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstanceEdge) GetNode() BulkVolumeInstance { return v.Node }
+
+// BulkVolumeInstances includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
+type BulkVolumeInstances struct {
+	Edges []BulkVolumeInstanceEdge `json:"edges"`
+}
+
+// GetEdges returns BulkVolumeInstances.Edges, and is useful for accessing the field via an interface.
+func (v *BulkVolumeInstances) GetEdges() []BulkVolumeInstanceEdge { return v.Edges }
+
+// ConnectedService includes the requested fields of the GraphQL type Service.
+type ConnectedService struct {
+	Id string `json:"id"`
+}
+
+// GetId returns ConnectedService.Id, and is useful for accessing the field via an interface.
+func (v *ConnectedService) GetId() string { return v.Id }
+
+// CreatedBucket includes the requested fields of the GraphQL type Bucket.
+type CreatedBucket struct {
+	BucketSummaryFields `json:"-"`
+}
+
+// GetId returns CreatedBucket.Id, and is useful for accessing the field via an interface.
+func (v *CreatedBucket) GetId() string { return v.BucketSummaryFields.Id }
+
+// GetName returns CreatedBucket.Name, and is useful for accessing the field via an interface.
+func (v *CreatedBucket) GetName() string { return v.BucketSummaryFields.Name }
+
+func (v *CreatedBucket) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedBucket
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedBucket = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.BucketSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedBucket struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *CreatedBucket) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedBucket) __premarshalJSON() (*__premarshalCreatedBucket, error) {
+	var retval __premarshalCreatedBucket
+
+	retval.Id = v.BucketSummaryFields.Id
+	retval.Name = v.BucketSummaryFields.Name
+	return &retval, nil
+}
+
+// CreatedCustomDomain includes the requested fields of the GraphQL type CustomDomain.
+type CreatedCustomDomain struct {
+	CustomDomainFields `json:"-"`
+}
+
+// GetId returns CreatedCustomDomain.Id, and is useful for accessing the field via an interface.
+func (v *CreatedCustomDomain) GetId() string { return v.CustomDomainFields.Id }
+
+// GetDomain returns CreatedCustomDomain.Domain, and is useful for accessing the field via an interface.
+func (v *CreatedCustomDomain) GetDomain() string { return v.CustomDomainFields.Domain }
+
+// GetTargetPort returns CreatedCustomDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *CreatedCustomDomain) GetTargetPort() *int { return v.CustomDomainFields.TargetPort }
+
+func (v *CreatedCustomDomain) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedCustomDomain
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedCustomDomain = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -540,7 +963,7 @@ func (v *CustomDomainCreateCustomDomainCreateCustomDomain) UnmarshalJSON(b []byt
 	return nil
 }
 
-type __premarshalCustomDomainCreateCustomDomainCreateCustomDomain struct {
+type __premarshalCreatedCustomDomain struct {
 	Id string `json:"id"`
 
 	Domain string `json:"domain"`
@@ -548,7 +971,7 @@ type __premarshalCustomDomainCreateCustomDomainCreateCustomDomain struct {
 	TargetPort *int `json:"targetPort"`
 }
 
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) MarshalJSON() ([]byte, error) {
+func (v *CreatedCustomDomain) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -556,12 +979,586 @@ func (v *CustomDomainCreateCustomDomainCreateCustomDomain) MarshalJSON() ([]byte
 	return json.Marshal(premarshaled)
 }
 
-func (v *CustomDomainCreateCustomDomainCreateCustomDomain) __premarshalJSON() (*__premarshalCustomDomainCreateCustomDomainCreateCustomDomain, error) {
-	var retval __premarshalCustomDomainCreateCustomDomainCreateCustomDomain
+func (v *CreatedCustomDomain) __premarshalJSON() (*__premarshalCreatedCustomDomain, error) {
+	var retval __premarshalCreatedCustomDomain
 
 	retval.Id = v.CustomDomainFields.Id
 	retval.Domain = v.CustomDomainFields.Domain
 	retval.TargetPort = v.CustomDomainFields.TargetPort
+	return &retval, nil
+}
+
+// CreatedEgressGateway includes the requested fields of the GraphQL type EgressGateway.
+type CreatedEgressGateway struct {
+	EgressGatewayFields `json:"-"`
+}
+
+// GetIpv4 returns CreatedEgressGateway.Ipv4, and is useful for accessing the field via an interface.
+func (v *CreatedEgressGateway) GetIpv4() string { return v.EgressGatewayFields.Ipv4 }
+
+// GetRegion returns CreatedEgressGateway.Region, and is useful for accessing the field via an interface.
+func (v *CreatedEgressGateway) GetRegion() string { return v.EgressGatewayFields.Region }
+
+func (v *CreatedEgressGateway) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedEgressGateway
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedEgressGateway = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.EgressGatewayFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedEgressGateway struct {
+	Ipv4 string `json:"ipv4"`
+
+	Region string `json:"region"`
+}
+
+func (v *CreatedEgressGateway) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedEgressGateway) __premarshalJSON() (*__premarshalCreatedEgressGateway, error) {
+	var retval __premarshalCreatedEgressGateway
+
+	retval.Ipv4 = v.EgressGatewayFields.Ipv4
+	retval.Region = v.EgressGatewayFields.Region
+	return &retval, nil
+}
+
+// CreatedEnvironment includes the requested fields of the GraphQL type Environment.
+type CreatedEnvironment struct {
+	EnvironmentSummaryFields `json:"-"`
+}
+
+// GetId returns CreatedEnvironment.Id, and is useful for accessing the field via an interface.
+func (v *CreatedEnvironment) GetId() string { return v.EnvironmentSummaryFields.Id }
+
+// GetName returns CreatedEnvironment.Name, and is useful for accessing the field via an interface.
+func (v *CreatedEnvironment) GetName() string { return v.EnvironmentSummaryFields.Name }
+
+func (v *CreatedEnvironment) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedEnvironment
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedEnvironment = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.EnvironmentSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedEnvironment struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *CreatedEnvironment) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedEnvironment) __premarshalJSON() (*__premarshalCreatedEnvironment, error) {
+	var retval __premarshalCreatedEnvironment
+
+	retval.Id = v.EnvironmentSummaryFields.Id
+	retval.Name = v.EnvironmentSummaryFields.Name
+	return &retval, nil
+}
+
+// CreatedNetworkEndpoint includes the requested fields of the GraphQL type PrivateNetworkEndpoint.
+type CreatedNetworkEndpoint struct {
+	PrivateNetworkEndpointFields `json:"-"`
+}
+
+// GetPublicId returns CreatedNetworkEndpoint.PublicId, and is useful for accessing the field via an interface.
+func (v *CreatedNetworkEndpoint) GetPublicId() string { return v.PrivateNetworkEndpointFields.PublicId }
+
+// GetDnsName returns CreatedNetworkEndpoint.DnsName, and is useful for accessing the field via an interface.
+func (v *CreatedNetworkEndpoint) GetDnsName() string { return v.PrivateNetworkEndpointFields.DnsName }
+
+// GetServiceInstanceId returns CreatedNetworkEndpoint.ServiceInstanceId, and is useful for accessing the field via an interface.
+func (v *CreatedNetworkEndpoint) GetServiceInstanceId() string {
+	return v.PrivateNetworkEndpointFields.ServiceInstanceId
+}
+
+func (v *CreatedNetworkEndpoint) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedNetworkEndpoint
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedNetworkEndpoint = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkEndpointFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedNetworkEndpoint struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	ServiceInstanceId string `json:"serviceInstanceId"`
+}
+
+func (v *CreatedNetworkEndpoint) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedNetworkEndpoint) __premarshalJSON() (*__premarshalCreatedNetworkEndpoint, error) {
+	var retval __premarshalCreatedNetworkEndpoint
+
+	retval.PublicId = v.PrivateNetworkEndpointFields.PublicId
+	retval.DnsName = v.PrivateNetworkEndpointFields.DnsName
+	retval.ServiceInstanceId = v.PrivateNetworkEndpointFields.ServiceInstanceId
+	return &retval, nil
+}
+
+// CreatedPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
+type CreatedPrivateNetwork struct {
+	PrivateNetworkFields `json:"-"`
+}
+
+// GetPublicId returns CreatedPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
+func (v *CreatedPrivateNetwork) GetPublicId() string { return v.PrivateNetworkFields.PublicId }
+
+// GetDnsName returns CreatedPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
+func (v *CreatedPrivateNetwork) GetDnsName() string { return v.PrivateNetworkFields.DnsName }
+
+// GetName returns CreatedPrivateNetwork.Name, and is useful for accessing the field via an interface.
+func (v *CreatedPrivateNetwork) GetName() string { return v.PrivateNetworkFields.Name }
+
+func (v *CreatedPrivateNetwork) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedPrivateNetwork
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedPrivateNetwork = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedPrivateNetwork struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	Name string `json:"name"`
+}
+
+func (v *CreatedPrivateNetwork) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedPrivateNetwork) __premarshalJSON() (*__premarshalCreatedPrivateNetwork, error) {
+	var retval __premarshalCreatedPrivateNetwork
+
+	retval.PublicId = v.PrivateNetworkFields.PublicId
+	retval.DnsName = v.PrivateNetworkFields.DnsName
+	retval.Name = v.PrivateNetworkFields.Name
+	return &retval, nil
+}
+
+// CreatedProject includes the requested fields of the GraphQL type Project.
+type CreatedProject struct {
+	ProjectSummaryFields `json:"-"`
+}
+
+// GetId returns CreatedProject.Id, and is useful for accessing the field via an interface.
+func (v *CreatedProject) GetId() string { return v.ProjectSummaryFields.Id }
+
+// GetName returns CreatedProject.Name, and is useful for accessing the field via an interface.
+func (v *CreatedProject) GetName() string { return v.ProjectSummaryFields.Name }
+
+func (v *CreatedProject) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedProject
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedProject = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ProjectSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedProject struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *CreatedProject) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedProject) __premarshalJSON() (*__premarshalCreatedProject, error) {
+	var retval __premarshalCreatedProject
+
+	retval.Id = v.ProjectSummaryFields.Id
+	retval.Name = v.ProjectSummaryFields.Name
+	return &retval, nil
+}
+
+// CreatedService includes the requested fields of the GraphQL type Service.
+type CreatedService struct {
+	ServiceSummaryFields `json:"-"`
+}
+
+// GetId returns CreatedService.Id, and is useful for accessing the field via an interface.
+func (v *CreatedService) GetId() string { return v.ServiceSummaryFields.Id }
+
+// GetName returns CreatedService.Name, and is useful for accessing the field via an interface.
+func (v *CreatedService) GetName() string { return v.ServiceSummaryFields.Name }
+
+// GetIcon returns CreatedService.Icon, and is useful for accessing the field via an interface.
+func (v *CreatedService) GetIcon() *string { return v.ServiceSummaryFields.Icon }
+
+func (v *CreatedService) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedService
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedService = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedService struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Icon *string `json:"icon"`
+}
+
+func (v *CreatedService) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedService) __premarshalJSON() (*__premarshalCreatedService, error) {
+	var retval __premarshalCreatedService
+
+	retval.Id = v.ServiceSummaryFields.Id
+	retval.Name = v.ServiceSummaryFields.Name
+	retval.Icon = v.ServiceSummaryFields.Icon
+	return &retval, nil
+}
+
+// CreatedServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
+type CreatedServiceDomain struct {
+	ServiceDomainFields `json:"-"`
+}
+
+// GetId returns CreatedServiceDomain.Id, and is useful for accessing the field via an interface.
+func (v *CreatedServiceDomain) GetId() string { return v.ServiceDomainFields.Id }
+
+// GetDomain returns CreatedServiceDomain.Domain, and is useful for accessing the field via an interface.
+func (v *CreatedServiceDomain) GetDomain() string { return v.ServiceDomainFields.Domain }
+
+// GetTargetPort returns CreatedServiceDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *CreatedServiceDomain) GetTargetPort() *int { return v.ServiceDomainFields.TargetPort }
+
+// GetSuffix returns CreatedServiceDomain.Suffix, and is useful for accessing the field via an interface.
+func (v *CreatedServiceDomain) GetSuffix() *string { return v.ServiceDomainFields.Suffix }
+
+func (v *CreatedServiceDomain) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedServiceDomain
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedServiceDomain = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceDomainFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedServiceDomain struct {
+	Id string `json:"id"`
+
+	Domain string `json:"domain"`
+
+	TargetPort *int `json:"targetPort"`
+
+	Suffix *string `json:"suffix"`
+}
+
+func (v *CreatedServiceDomain) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedServiceDomain) __premarshalJSON() (*__premarshalCreatedServiceDomain, error) {
+	var retval __premarshalCreatedServiceDomain
+
+	retval.Id = v.ServiceDomainFields.Id
+	retval.Domain = v.ServiceDomainFields.Domain
+	retval.TargetPort = v.ServiceDomainFields.TargetPort
+	retval.Suffix = v.ServiceDomainFields.Suffix
+	return &retval, nil
+}
+
+// CreatedTCPProxy includes the requested fields of the GraphQL type TCPProxy.
+type CreatedTCPProxy struct {
+	TCPProxyFields `json:"-"`
+}
+
+// GetId returns CreatedTCPProxy.Id, and is useful for accessing the field via an interface.
+func (v *CreatedTCPProxy) GetId() string { return v.TCPProxyFields.Id }
+
+// GetApplicationPort returns CreatedTCPProxy.ApplicationPort, and is useful for accessing the field via an interface.
+func (v *CreatedTCPProxy) GetApplicationPort() int { return v.TCPProxyFields.ApplicationPort }
+
+// GetProxyPort returns CreatedTCPProxy.ProxyPort, and is useful for accessing the field via an interface.
+func (v *CreatedTCPProxy) GetProxyPort() int { return v.TCPProxyFields.ProxyPort }
+
+// GetDomain returns CreatedTCPProxy.Domain, and is useful for accessing the field via an interface.
+func (v *CreatedTCPProxy) GetDomain() string { return v.TCPProxyFields.Domain }
+
+func (v *CreatedTCPProxy) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedTCPProxy
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedTCPProxy = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.TCPProxyFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedTCPProxy struct {
+	Id string `json:"id"`
+
+	ApplicationPort int `json:"applicationPort"`
+
+	ProxyPort int `json:"proxyPort"`
+
+	Domain string `json:"domain"`
+}
+
+func (v *CreatedTCPProxy) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedTCPProxy) __premarshalJSON() (*__premarshalCreatedTCPProxy, error) {
+	var retval __premarshalCreatedTCPProxy
+
+	retval.Id = v.TCPProxyFields.Id
+	retval.ApplicationPort = v.TCPProxyFields.ApplicationPort
+	retval.ProxyPort = v.TCPProxyFields.ProxyPort
+	retval.Domain = v.TCPProxyFields.Domain
+	return &retval, nil
+}
+
+// CreatedTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
+type CreatedTrigger struct {
+	Id string `json:"id"`
+}
+
+// GetId returns CreatedTrigger.Id, and is useful for accessing the field via an interface.
+func (v *CreatedTrigger) GetId() string { return v.Id }
+
+// CreatedVolume includes the requested fields of the GraphQL type Volume.
+type CreatedVolume struct {
+	VolumeSummaryFields `json:"-"`
+}
+
+// GetId returns CreatedVolume.Id, and is useful for accessing the field via an interface.
+func (v *CreatedVolume) GetId() string { return v.VolumeSummaryFields.Id }
+
+// GetName returns CreatedVolume.Name, and is useful for accessing the field via an interface.
+func (v *CreatedVolume) GetName() string { return v.VolumeSummaryFields.Name }
+
+func (v *CreatedVolume) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreatedVolume
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreatedVolume = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.VolumeSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreatedVolume struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *CreatedVolume) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreatedVolume) __premarshalJSON() (*__premarshalCreatedVolume, error) {
+	var retval __premarshalCreatedVolume
+
+	retval.Id = v.VolumeSummaryFields.Id
+	retval.Name = v.VolumeSummaryFields.Name
 	return &retval, nil
 }
 
@@ -591,11 +1588,11 @@ func (v *CustomDomainCreateInput) GetTargetPort() *int { return v.TargetPort }
 // CustomDomainCreateResponse is returned by CustomDomainCreate on success.
 type CustomDomainCreateResponse struct {
 	// Creates a new custom domain.
-	CustomDomainCreate CustomDomainCreateCustomDomainCreateCustomDomain `json:"customDomainCreate"`
+	CustomDomainCreate CreatedCustomDomain `json:"customDomainCreate"`
 }
 
 // GetCustomDomainCreate returns CustomDomainCreateResponse.CustomDomainCreate, and is useful for accessing the field via an interface.
-func (v *CustomDomainCreateResponse) GetCustomDomainCreate() CustomDomainCreateCustomDomainCreateCustomDomain {
+func (v *CustomDomainCreateResponse) GetCustomDomainCreate() CreatedCustomDomain {
 	return v.CustomDomainCreate
 }
 
@@ -633,6 +1630,26 @@ type DeploymentCancelResponse struct {
 // GetDeploymentCancel returns DeploymentCancelResponse.DeploymentCancel, and is useful for accessing the field via an interface.
 func (v *DeploymentCancelResponse) GetDeploymentCancel() bool { return v.DeploymentCancel }
 
+// DeploymentList includes the requested fields of the GraphQL type QueryDeploymentsConnection.
+type DeploymentList struct {
+	Edges    []DeploymentListEdge   `json:"edges"`
+	PageInfo DeploymentListPageInfo `json:"pageInfo"`
+}
+
+// GetEdges returns DeploymentList.Edges, and is useful for accessing the field via an interface.
+func (v *DeploymentList) GetEdges() []DeploymentListEdge { return v.Edges }
+
+// GetPageInfo returns DeploymentList.PageInfo, and is useful for accessing the field via an interface.
+func (v *DeploymentList) GetPageInfo() DeploymentListPageInfo { return v.PageInfo }
+
+// DeploymentListEdge includes the requested fields of the GraphQL type QueryDeploymentsConnectionEdge.
+type DeploymentListEdge struct {
+	Node DeploymentListItem `json:"node"`
+}
+
+// GetNode returns DeploymentListEdge.Node, and is useful for accessing the field via an interface.
+func (v *DeploymentListEdge) GetNode() DeploymentListItem { return v.Node }
+
 type DeploymentListInput struct {
 	EnvironmentId  *string                `json:"environmentId"`
 	IncludeDeleted *bool                  `json:"includeDeleted"`
@@ -656,120 +1673,34 @@ func (v *DeploymentListInput) GetServiceId() *string { return v.ServiceId }
 // GetStatus returns DeploymentListInput.Status, and is useful for accessing the field via an interface.
 func (v *DeploymentListInput) GetStatus() *DeploymentStatusInput { return v.Status }
 
-// DeploymentLogsDeploymentLogsLog includes the requested fields of the GraphQL type Log.
-// The GraphQL type's documentation follows.
-//
-// The result of a logs query.
-type DeploymentLogsDeploymentLogsLog struct {
-	LogEntryFields `json:"-"`
-}
-
-// GetMessage returns DeploymentLogsDeploymentLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetMessage() string { return v.LogEntryFields.Message }
-
-// GetSeverity returns DeploymentLogsDeploymentLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
-
-// GetTimestamp returns DeploymentLogsDeploymentLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsDeploymentLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
-
-func (v *DeploymentLogsDeploymentLogsLog) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*DeploymentLogsDeploymentLogsLog
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.DeploymentLogsDeploymentLogsLog = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.LogEntryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalDeploymentLogsDeploymentLogsLog struct {
-	Message string `json:"message"`
-
-	Severity *string `json:"severity"`
-
-	Timestamp string `json:"timestamp"`
-}
-
-func (v *DeploymentLogsDeploymentLogsLog) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *DeploymentLogsDeploymentLogsLog) __premarshalJSON() (*__premarshalDeploymentLogsDeploymentLogsLog, error) {
-	var retval __premarshalDeploymentLogsDeploymentLogsLog
-
-	retval.Message = v.LogEntryFields.Message
-	retval.Severity = v.LogEntryFields.Severity
-	retval.Timestamp = v.LogEntryFields.Timestamp
-	return &retval, nil
-}
-
-// DeploymentLogsResponse is returned by DeploymentLogs on success.
-type DeploymentLogsResponse struct {
-	// Fetch logs for a deployment
-	DeploymentLogs []DeploymentLogsDeploymentLogsLog `json:"deploymentLogs"`
-}
-
-// GetDeploymentLogs returns DeploymentLogsResponse.DeploymentLogs, and is useful for accessing the field via an interface.
-func (v *DeploymentLogsResponse) GetDeploymentLogs() []DeploymentLogsDeploymentLogsLog {
-	return v.DeploymentLogs
-}
-
-// DeploymentRedeployDeploymentRedeployDeployment includes the requested fields of the GraphQL type Deployment.
-type DeploymentRedeployDeploymentRedeployDeployment struct {
+// DeploymentListItem includes the requested fields of the GraphQL type Deployment.
+type DeploymentListItem struct {
 	DeploymentSummaryFields `json:"-"`
 }
 
-// GetId returns DeploymentRedeployDeploymentRedeployDeployment.Id, and is useful for accessing the field via an interface.
-func (v *DeploymentRedeployDeploymentRedeployDeployment) GetId() string {
-	return v.DeploymentSummaryFields.Id
-}
+// GetId returns DeploymentListItem.Id, and is useful for accessing the field via an interface.
+func (v *DeploymentListItem) GetId() string { return v.DeploymentSummaryFields.Id }
 
-// GetStatus returns DeploymentRedeployDeploymentRedeployDeployment.Status, and is useful for accessing the field via an interface.
-func (v *DeploymentRedeployDeploymentRedeployDeployment) GetStatus() DeploymentStatus {
-	return v.DeploymentSummaryFields.Status
-}
+// GetStatus returns DeploymentListItem.Status, and is useful for accessing the field via an interface.
+func (v *DeploymentListItem) GetStatus() DeploymentStatus { return v.DeploymentSummaryFields.Status }
 
-// GetCreatedAt returns DeploymentRedeployDeploymentRedeployDeployment.CreatedAt, and is useful for accessing the field via an interface.
-func (v *DeploymentRedeployDeploymentRedeployDeployment) GetCreatedAt() time.Time {
-	return v.DeploymentSummaryFields.CreatedAt
-}
+// GetCreatedAt returns DeploymentListItem.CreatedAt, and is useful for accessing the field via an interface.
+func (v *DeploymentListItem) GetCreatedAt() time.Time { return v.DeploymentSummaryFields.CreatedAt }
 
-// GetStaticUrl returns DeploymentRedeployDeploymentRedeployDeployment.StaticUrl, and is useful for accessing the field via an interface.
-func (v *DeploymentRedeployDeploymentRedeployDeployment) GetStaticUrl() *string {
-	return v.DeploymentSummaryFields.StaticUrl
-}
+// GetStaticUrl returns DeploymentListItem.StaticUrl, and is useful for accessing the field via an interface.
+func (v *DeploymentListItem) GetStaticUrl() *string { return v.DeploymentSummaryFields.StaticUrl }
 
-func (v *DeploymentRedeployDeploymentRedeployDeployment) UnmarshalJSON(b []byte) error {
+func (v *DeploymentListItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*DeploymentRedeployDeploymentRedeployDeployment
+		*DeploymentListItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.DeploymentRedeployDeploymentRedeployDeployment = v
+	firstPass.DeploymentListItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -784,7 +1715,7 @@ func (v *DeploymentRedeployDeploymentRedeployDeployment) UnmarshalJSON(b []byte)
 	return nil
 }
 
-type __premarshalDeploymentRedeployDeploymentRedeployDeployment struct {
+type __premarshalDeploymentListItem struct {
 	Id string `json:"id"`
 
 	Status DeploymentStatus `json:"status"`
@@ -794,7 +1725,7 @@ type __premarshalDeploymentRedeployDeploymentRedeployDeployment struct {
 	StaticUrl *string `json:"staticUrl"`
 }
 
-func (v *DeploymentRedeployDeploymentRedeployDeployment) MarshalJSON() ([]byte, error) {
+func (v *DeploymentListItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -802,8 +1733,8 @@ func (v *DeploymentRedeployDeploymentRedeployDeployment) MarshalJSON() ([]byte, 
 	return json.Marshal(premarshaled)
 }
 
-func (v *DeploymentRedeployDeploymentRedeployDeployment) __premarshalJSON() (*__premarshalDeploymentRedeployDeploymentRedeployDeployment, error) {
-	var retval __premarshalDeploymentRedeployDeploymentRedeployDeployment
+func (v *DeploymentListItem) __premarshalJSON() (*__premarshalDeploymentListItem, error) {
+	var retval __premarshalDeploymentListItem
 
 	retval.Id = v.DeploymentSummaryFields.Id
 	retval.Status = v.DeploymentSummaryFields.Status
@@ -812,14 +1743,102 @@ func (v *DeploymentRedeployDeploymentRedeployDeployment) __premarshalJSON() (*__
 	return &retval, nil
 }
 
+// DeploymentListPageInfo includes the requested fields of the GraphQL type PageInfo.
+type DeploymentListPageInfo struct {
+	HasNextPage bool    `json:"hasNextPage"`
+	EndCursor   *string `json:"endCursor"`
+}
+
+// GetHasNextPage returns DeploymentListPageInfo.HasNextPage, and is useful for accessing the field via an interface.
+func (v *DeploymentListPageInfo) GetHasNextPage() bool { return v.HasNextPage }
+
+// GetEndCursor returns DeploymentListPageInfo.EndCursor, and is useful for accessing the field via an interface.
+func (v *DeploymentListPageInfo) GetEndCursor() *string { return v.EndCursor }
+
+// DeploymentLogEntry includes the requested fields of the GraphQL type Log.
+// The GraphQL type's documentation follows.
+//
+// The result of a logs query.
+type DeploymentLogEntry struct {
+	LogEntryFields `json:"-"`
+}
+
+// GetMessage returns DeploymentLogEntry.Message, and is useful for accessing the field via an interface.
+func (v *DeploymentLogEntry) GetMessage() string { return v.LogEntryFields.Message }
+
+// GetSeverity returns DeploymentLogEntry.Severity, and is useful for accessing the field via an interface.
+func (v *DeploymentLogEntry) GetSeverity() *string { return v.LogEntryFields.Severity }
+
+// GetTimestamp returns DeploymentLogEntry.Timestamp, and is useful for accessing the field via an interface.
+func (v *DeploymentLogEntry) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+
+func (v *DeploymentLogEntry) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DeploymentLogEntry
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DeploymentLogEntry = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.LogEntryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDeploymentLogEntry struct {
+	Message string `json:"message"`
+
+	Severity *string `json:"severity"`
+
+	Timestamp string `json:"timestamp"`
+}
+
+func (v *DeploymentLogEntry) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DeploymentLogEntry) __premarshalJSON() (*__premarshalDeploymentLogEntry, error) {
+	var retval __premarshalDeploymentLogEntry
+
+	retval.Message = v.LogEntryFields.Message
+	retval.Severity = v.LogEntryFields.Severity
+	retval.Timestamp = v.LogEntryFields.Timestamp
+	return &retval, nil
+}
+
+// DeploymentLogsResponse is returned by DeploymentLogs on success.
+type DeploymentLogsResponse struct {
+	// Fetch logs for a deployment
+	DeploymentLogs []DeploymentLogEntry `json:"deploymentLogs"`
+}
+
+// GetDeploymentLogs returns DeploymentLogsResponse.DeploymentLogs, and is useful for accessing the field via an interface.
+func (v *DeploymentLogsResponse) GetDeploymentLogs() []DeploymentLogEntry { return v.DeploymentLogs }
+
 // DeploymentRedeployResponse is returned by DeploymentRedeploy on success.
 type DeploymentRedeployResponse struct {
 	// Redeploys a deployment.
-	DeploymentRedeploy DeploymentRedeployDeploymentRedeployDeployment `json:"deploymentRedeploy"`
+	DeploymentRedeploy RedeployedDeployment `json:"deploymentRedeploy"`
 }
 
 // GetDeploymentRedeploy returns DeploymentRedeployResponse.DeploymentRedeploy, and is useful for accessing the field via an interface.
-func (v *DeploymentRedeployResponse) GetDeploymentRedeploy() DeploymentRedeployDeploymentRedeployDeployment {
+func (v *DeploymentRedeployResponse) GetDeploymentRedeploy() RedeployedDeployment {
 	return v.DeploymentRedeploy
 }
 
@@ -906,14 +1925,6 @@ func (v *DeploymentSummaryFields) GetCreatedAt() time.Time { return v.CreatedAt 
 // GetStaticUrl returns DeploymentSummaryFields.StaticUrl, and is useful for accessing the field via an interface.
 func (v *DeploymentSummaryFields) GetStaticUrl() *string { return v.StaticUrl }
 
-// DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
-type DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger struct {
-	Id string `json:"id"`
-}
-
-// GetId returns DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger.Id, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger) GetId() string { return v.Id }
-
 type DeploymentTriggerCreateInput struct {
 	Branch        string  `json:"branch"`
 	CheckSuites   *bool   `json:"checkSuites"`
@@ -952,11 +1963,11 @@ func (v *DeploymentTriggerCreateInput) GetServiceId() string { return v.ServiceI
 // DeploymentTriggerCreateResponse is returned by DeploymentTriggerCreate on success.
 type DeploymentTriggerCreateResponse struct {
 	// Creates a deployment trigger.
-	DeploymentTriggerCreate DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger `json:"deploymentTriggerCreate"`
+	DeploymentTriggerCreate CreatedTrigger `json:"deploymentTriggerCreate"`
 }
 
 // GetDeploymentTriggerCreate returns DeploymentTriggerCreateResponse.DeploymentTriggerCreate, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerCreateResponse) GetDeploymentTriggerCreate() DeploymentTriggerCreateDeploymentTriggerCreateDeploymentTrigger {
+func (v *DeploymentTriggerCreateResponse) GetDeploymentTriggerCreate() CreatedTrigger {
 	return v.DeploymentTriggerCreate
 }
 
@@ -999,14 +2010,6 @@ func (v *DeploymentTriggerFields) GetProvider() string { return v.Provider }
 // GetCheckSuites returns DeploymentTriggerFields.CheckSuites, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggerFields) GetCheckSuites() bool { return v.CheckSuites }
 
-// DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
-type DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger struct {
-	Id string `json:"id"`
-}
-
-// GetId returns DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger.Id, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger) GetId() string { return v.Id }
-
 type DeploymentTriggerUpdateInput struct {
 	Branch        *string `json:"branch"`
 	CheckSuites   *bool   `json:"checkSuites"`
@@ -1029,340 +2032,40 @@ func (v *DeploymentTriggerUpdateInput) GetRootDirectory() *string { return v.Roo
 // DeploymentTriggerUpdateResponse is returned by DeploymentTriggerUpdate on success.
 type DeploymentTriggerUpdateResponse struct {
 	// Updates a deployment trigger.
-	DeploymentTriggerUpdate DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger `json:"deploymentTriggerUpdate"`
+	DeploymentTriggerUpdate UpdatedTrigger `json:"deploymentTriggerUpdate"`
 }
 
 // GetDeploymentTriggerUpdate returns DeploymentTriggerUpdateResponse.DeploymentTriggerUpdate, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateResponse) GetDeploymentTriggerUpdate() DeploymentTriggerUpdateDeploymentTriggerUpdateDeploymentTrigger {
+func (v *DeploymentTriggerUpdateResponse) GetDeploymentTriggerUpdate() UpdatedTrigger {
 	return v.DeploymentTriggerUpdate
-}
-
-// DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection includes the requested fields of the GraphQL type QueryDeploymentTriggersConnection.
-type DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection struct {
-	Edges []DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection.Edges, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection) GetEdges() []DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge {
-	return v.Edges
-}
-
-// DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge includes the requested fields of the GraphQL type QueryDeploymentTriggersConnectionEdge.
-type DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge struct {
-	Node DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger `json:"node"`
-}
-
-// GetNode returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdge) GetNode() DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger {
-	return v.Node
-}
-
-// DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
-type DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	DeploymentTriggerFields `json:"-"`
-}
-
-// GetId returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Id, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetId() string {
-	return v.DeploymentTriggerFields.Id
-}
-
-// GetServiceId returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.ServiceId, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetServiceId() *string {
-	return v.DeploymentTriggerFields.ServiceId
-}
-
-// GetBranch returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Branch, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetBranch() string {
-	return v.DeploymentTriggerFields.Branch
-}
-
-// GetRepository returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Repository, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetRepository() string {
-	return v.DeploymentTriggerFields.Repository
-}
-
-// GetProvider returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Provider, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetProvider() string {
-	return v.DeploymentTriggerFields.Provider
-}
-
-// GetCheckSuites returns DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.CheckSuites, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetCheckSuites() bool {
-	return v.DeploymentTriggerFields.CheckSuites
-}
-
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.DeploymentTriggerFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	Id string `json:"id"`
-
-	ServiceId *string `json:"serviceId"`
-
-	Branch string `json:"branch"`
-
-	Repository string `json:"repository"`
-
-	Provider string `json:"provider"`
-
-	CheckSuites bool `json:"checkSuites"`
-}
-
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) __premarshalJSON() (*__premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger, error) {
-	var retval __premarshalDeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnectionEdgesQueryDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
-
-	retval.Id = v.DeploymentTriggerFields.Id
-	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
-	retval.Branch = v.DeploymentTriggerFields.Branch
-	retval.Repository = v.DeploymentTriggerFields.Repository
-	retval.Provider = v.DeploymentTriggerFields.Provider
-	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
-	return &retval, nil
 }
 
 // DeploymentTriggersResponse is returned by DeploymentTriggers on success.
 type DeploymentTriggersResponse struct {
 	// All deployment triggers.
-	DeploymentTriggers DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection `json:"deploymentTriggers"`
+	DeploymentTriggers TriggerList `json:"deploymentTriggers"`
 }
 
 // GetDeploymentTriggers returns DeploymentTriggersResponse.DeploymentTriggers, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersResponse) GetDeploymentTriggers() DeploymentTriggersDeploymentTriggersQueryDeploymentTriggersConnection {
-	return v.DeploymentTriggers
-}
-
-// DeploymentsDeploymentsQueryDeploymentsConnection includes the requested fields of the GraphQL type QueryDeploymentsConnection.
-type DeploymentsDeploymentsQueryDeploymentsConnection struct {
-	Edges    []DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge `json:"edges"`
-	PageInfo DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo                              `json:"pageInfo"`
-}
-
-// GetEdges returns DeploymentsDeploymentsQueryDeploymentsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnection) GetEdges() []DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge {
-	return v.Edges
-}
-
-// GetPageInfo returns DeploymentsDeploymentsQueryDeploymentsConnection.PageInfo, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnection) GetPageInfo() DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo {
-	return v.PageInfo
-}
-
-// DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge includes the requested fields of the GraphQL type QueryDeploymentsConnectionEdge.
-type DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge struct {
-	Node DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment `json:"node"`
-}
-
-// GetNode returns DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdge) GetNode() DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment {
-	return v.Node
-}
-
-// DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment includes the requested fields of the GraphQL type Deployment.
-type DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment struct {
-	DeploymentSummaryFields `json:"-"`
-}
-
-// GetId returns DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment.Id, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) GetId() string {
-	return v.DeploymentSummaryFields.Id
-}
-
-// GetStatus returns DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment.Status, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) GetStatus() DeploymentStatus {
-	return v.DeploymentSummaryFields.Status
-}
-
-// GetCreatedAt returns DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment.CreatedAt, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) GetCreatedAt() time.Time {
-	return v.DeploymentSummaryFields.CreatedAt
-}
-
-// GetStaticUrl returns DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment.StaticUrl, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) GetStaticUrl() *string {
-	return v.DeploymentSummaryFields.StaticUrl
-}
-
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.DeploymentSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalDeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment struct {
-	Id string `json:"id"`
-
-	Status DeploymentStatus `json:"status"`
-
-	CreatedAt time.Time `json:"createdAt"`
-
-	StaticUrl *string `json:"staticUrl"`
-}
-
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment) __premarshalJSON() (*__premarshalDeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment, error) {
-	var retval __premarshalDeploymentsDeploymentsQueryDeploymentsConnectionEdgesQueryDeploymentsConnectionEdgeNodeDeployment
-
-	retval.Id = v.DeploymentSummaryFields.Id
-	retval.Status = v.DeploymentSummaryFields.Status
-	retval.CreatedAt = v.DeploymentSummaryFields.CreatedAt
-	retval.StaticUrl = v.DeploymentSummaryFields.StaticUrl
-	return &retval, nil
-}
-
-// DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo includes the requested fields of the GraphQL type PageInfo.
-type DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo struct {
-	HasNextPage bool    `json:"hasNextPage"`
-	EndCursor   *string `json:"endCursor"`
-}
-
-// GetHasNextPage returns DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo.HasNextPage, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo) GetHasNextPage() bool {
-	return v.HasNextPage
-}
-
-// GetEndCursor returns DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo.EndCursor, and is useful for accessing the field via an interface.
-func (v *DeploymentsDeploymentsQueryDeploymentsConnectionPageInfo) GetEndCursor() *string {
-	return v.EndCursor
-}
+func (v *DeploymentTriggersResponse) GetDeploymentTriggers() TriggerList { return v.DeploymentTriggers }
 
 // DeploymentsResponse is returned by Deployments on success.
 type DeploymentsResponse struct {
 	// Get all deployments
-	Deployments DeploymentsDeploymentsQueryDeploymentsConnection `json:"deployments"`
+	Deployments DeploymentList `json:"deployments"`
 }
 
 // GetDeployments returns DeploymentsResponse.Deployments, and is useful for accessing the field via an interface.
-func (v *DeploymentsResponse) GetDeployments() DeploymentsDeploymentsQueryDeploymentsConnection {
-	return v.Deployments
-}
-
-// EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway includes the requested fields of the GraphQL type EgressGateway.
-type EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway struct {
-	EgressGatewayFields `json:"-"`
-}
-
-// GetIpv4 returns EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway.Ipv4, and is useful for accessing the field via an interface.
-func (v *EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway) GetIpv4() string {
-	return v.EgressGatewayFields.Ipv4
-}
-
-// GetRegion returns EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway.Region, and is useful for accessing the field via an interface.
-func (v *EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway) GetRegion() string {
-	return v.EgressGatewayFields.Region
-}
-
-func (v *EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.EgressGatewayFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway struct {
-	Ipv4 string `json:"ipv4"`
-
-	Region string `json:"region"`
-}
-
-func (v *EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway) __premarshalJSON() (*__premarshalEgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway, error) {
-	var retval __premarshalEgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway
-
-	retval.Ipv4 = v.EgressGatewayFields.Ipv4
-	retval.Region = v.EgressGatewayFields.Region
-	return &retval, nil
-}
+func (v *DeploymentsResponse) GetDeployments() DeploymentList { return v.Deployments }
 
 // EgressGatewayAssociationCreateResponse is returned by EgressGatewayAssociationCreate on success.
 type EgressGatewayAssociationCreateResponse struct {
 	// Create a new egress gateway association for a service instance
-	EgressGatewayAssociationCreate []EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway `json:"egressGatewayAssociationCreate"`
+	EgressGatewayAssociationCreate []CreatedEgressGateway `json:"egressGatewayAssociationCreate"`
 }
 
 // GetEgressGatewayAssociationCreate returns EgressGatewayAssociationCreateResponse.EgressGatewayAssociationCreate, and is useful for accessing the field via an interface.
-func (v *EgressGatewayAssociationCreateResponse) GetEgressGatewayAssociationCreate() []EgressGatewayAssociationCreateEgressGatewayAssociationCreateEgressGateway {
+func (v *EgressGatewayAssociationCreateResponse) GetEgressGatewayAssociationCreate() []CreatedEgressGateway {
 	return v.EgressGatewayAssociationCreate
 }
 
@@ -1404,43 +2107,28 @@ func (v *EgressGatewayFields) GetIpv4() string { return v.Ipv4 }
 // GetRegion returns EgressGatewayFields.Region, and is useful for accessing the field via an interface.
 func (v *EgressGatewayFields) GetRegion() string { return v.Region }
 
-type EgressGatewayServiceTargetInput struct {
-	EnvironmentId string `json:"environmentId"`
-	ServiceId     string `json:"serviceId"`
-}
-
-// GetEnvironmentId returns EgressGatewayServiceTargetInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *EgressGatewayServiceTargetInput) GetEnvironmentId() string { return v.EnvironmentId }
-
-// GetServiceId returns EgressGatewayServiceTargetInput.ServiceId, and is useful for accessing the field via an interface.
-func (v *EgressGatewayServiceTargetInput) GetServiceId() string { return v.ServiceId }
-
-// EgressGatewaysEgressGatewaysEgressGateway includes the requested fields of the GraphQL type EgressGateway.
-type EgressGatewaysEgressGatewaysEgressGateway struct {
+// EgressGatewayItem includes the requested fields of the GraphQL type EgressGateway.
+type EgressGatewayItem struct {
 	EgressGatewayFields `json:"-"`
 }
 
-// GetIpv4 returns EgressGatewaysEgressGatewaysEgressGateway.Ipv4, and is useful for accessing the field via an interface.
-func (v *EgressGatewaysEgressGatewaysEgressGateway) GetIpv4() string {
-	return v.EgressGatewayFields.Ipv4
-}
+// GetIpv4 returns EgressGatewayItem.Ipv4, and is useful for accessing the field via an interface.
+func (v *EgressGatewayItem) GetIpv4() string { return v.EgressGatewayFields.Ipv4 }
 
-// GetRegion returns EgressGatewaysEgressGatewaysEgressGateway.Region, and is useful for accessing the field via an interface.
-func (v *EgressGatewaysEgressGatewaysEgressGateway) GetRegion() string {
-	return v.EgressGatewayFields.Region
-}
+// GetRegion returns EgressGatewayItem.Region, and is useful for accessing the field via an interface.
+func (v *EgressGatewayItem) GetRegion() string { return v.EgressGatewayFields.Region }
 
-func (v *EgressGatewaysEgressGatewaysEgressGateway) UnmarshalJSON(b []byte) error {
+func (v *EgressGatewayItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*EgressGatewaysEgressGatewaysEgressGateway
+		*EgressGatewayItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.EgressGatewaysEgressGatewaysEgressGateway = v
+	firstPass.EgressGatewayItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -1455,13 +2143,13 @@ func (v *EgressGatewaysEgressGatewaysEgressGateway) UnmarshalJSON(b []byte) erro
 	return nil
 }
 
-type __premarshalEgressGatewaysEgressGatewaysEgressGateway struct {
+type __premarshalEgressGatewayItem struct {
 	Ipv4 string `json:"ipv4"`
 
 	Region string `json:"region"`
 }
 
-func (v *EgressGatewaysEgressGatewaysEgressGateway) MarshalJSON() ([]byte, error) {
+func (v *EgressGatewayItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -1469,656 +2157,47 @@ func (v *EgressGatewaysEgressGatewaysEgressGateway) MarshalJSON() ([]byte, error
 	return json.Marshal(premarshaled)
 }
 
-func (v *EgressGatewaysEgressGatewaysEgressGateway) __premarshalJSON() (*__premarshalEgressGatewaysEgressGatewaysEgressGateway, error) {
-	var retval __premarshalEgressGatewaysEgressGatewaysEgressGateway
+func (v *EgressGatewayItem) __premarshalJSON() (*__premarshalEgressGatewayItem, error) {
+	var retval __premarshalEgressGatewayItem
 
 	retval.Ipv4 = v.EgressGatewayFields.Ipv4
 	retval.Region = v.EgressGatewayFields.Region
 	return &retval, nil
 }
 
+type EgressGatewayServiceTargetInput struct {
+	EnvironmentId string `json:"environmentId"`
+	ServiceId     string `json:"serviceId"`
+}
+
+// GetEnvironmentId returns EgressGatewayServiceTargetInput.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *EgressGatewayServiceTargetInput) GetEnvironmentId() string { return v.EnvironmentId }
+
+// GetServiceId returns EgressGatewayServiceTargetInput.ServiceId, and is useful for accessing the field via an interface.
+func (v *EgressGatewayServiceTargetInput) GetServiceId() string { return v.ServiceId }
+
 // EgressGatewaysResponse is returned by EgressGateways on success.
 type EgressGatewaysResponse struct {
 	// All egress gateways assigned to a service instance
-	EgressGateways []EgressGatewaysEgressGatewaysEgressGateway `json:"egressGateways"`
+	EgressGateways []EgressGatewayItem `json:"egressGateways"`
 }
 
 // GetEgressGateways returns EgressGatewaysResponse.EgressGateways, and is useful for accessing the field via an interface.
-func (v *EgressGatewaysResponse) GetEgressGateways() []EgressGatewaysEgressGatewaysEgressGateway {
-	return v.EgressGateways
-}
-
-// EnvironmentBulkEnvironment includes the requested fields of the GraphQL type Environment.
-type EnvironmentBulkEnvironment struct {
-	ServiceInstances   EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection     `json:"serviceInstances"`
-	DeploymentTriggers EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection `json:"deploymentTriggers"`
-	VolumeInstances    EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection       `json:"volumeInstances"`
-}
-
-// GetServiceInstances returns EnvironmentBulkEnvironment.ServiceInstances, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironment) GetServiceInstances() EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection {
-	return v.ServiceInstances
-}
-
-// GetDeploymentTriggers returns EnvironmentBulkEnvironment.DeploymentTriggers, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironment) GetDeploymentTriggers() EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection {
-	return v.DeploymentTriggers
-}
-
-// GetVolumeInstances returns EnvironmentBulkEnvironment.VolumeInstances, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironment) GetVolumeInstances() EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection {
-	return v.VolumeInstances
-}
-
-// EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnection.
-type EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection struct {
-	Edges []EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection) GetEdges() []EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge {
-	return v.Edges
-}
-
-// EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnectionEdge.
-type EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge struct {
-	Node EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger `json:"node"`
-}
-
-// GetNode returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge) GetNode() EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger {
-	return v.Node
-}
-
-// EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
-type EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	DeploymentTriggerFields `json:"-"`
-}
-
-// GetId returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetId() string {
-	return v.DeploymentTriggerFields.Id
-}
-
-// GetServiceId returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.ServiceId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetServiceId() *string {
-	return v.DeploymentTriggerFields.ServiceId
-}
-
-// GetBranch returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Branch, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetBranch() string {
-	return v.DeploymentTriggerFields.Branch
-}
-
-// GetRepository returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Repository, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetRepository() string {
-	return v.DeploymentTriggerFields.Repository
-}
-
-// GetProvider returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Provider, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetProvider() string {
-	return v.DeploymentTriggerFields.Provider
-}
-
-// GetCheckSuites returns EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.CheckSuites, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetCheckSuites() bool {
-	return v.DeploymentTriggerFields.CheckSuites
-}
-
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.DeploymentTriggerFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
-	Id string `json:"id"`
-
-	ServiceId *string `json:"serviceId"`
-
-	Branch string `json:"branch"`
-
-	Repository string `json:"repository"`
-
-	Provider string `json:"provider"`
-
-	CheckSuites bool `json:"checkSuites"`
-}
-
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger, error) {
-	var retval __premarshalEnvironmentBulkEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger
-
-	retval.Id = v.DeploymentTriggerFields.Id
-	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
-	retval.Branch = v.DeploymentTriggerFields.Branch
-	retval.Repository = v.DeploymentTriggerFields.Repository
-	retval.Provider = v.DeploymentTriggerFields.Provider
-	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
-	return &retval, nil
-}
-
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnection.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection struct {
-	Edges []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnection) GetEdges() []EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge {
-	return v.Edges
-}
-
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnectionEdge.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge struct {
-	Node EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance `json:"node"`
-}
-
-// GetNode returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge) GetNode() EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance {
-	return v.Node
-}
-
-// EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
-type EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance struct {
-	ServiceInstanceFields `json:"-"`
-}
-
-// GetServiceId returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.ServiceId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetServiceId() string {
-	return v.ServiceInstanceFields.ServiceId
-}
-
-// GetBuilder returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Builder, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuilder() Builder {
-	return v.ServiceInstanceFields.Builder
-}
-
-// GetBuildCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuildCommand() *string {
-	return v.ServiceInstanceFields.BuildCommand
-}
-
-// GetStartCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.StartCommand, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetStartCommand() *string {
-	return v.ServiceInstanceFields.StartCommand
-}
-
-// GetDockerfilePath returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDockerfilePath() *string {
-	return v.ServiceInstanceFields.DockerfilePath
-}
-
-// GetRootDirectory returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRootDirectory() *string {
-	return v.ServiceInstanceFields.RootDirectory
-}
-
-// GetHealthcheckPath returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckPath() *string {
-	return v.ServiceInstanceFields.HealthcheckPath
-}
-
-// GetHealthcheckTimeout returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckTimeout() *int {
-	return v.ServiceInstanceFields.HealthcheckTimeout
-}
-
-// GetCronSchedule returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetCronSchedule() *string {
-	return v.ServiceInstanceFields.CronSchedule
-}
-
-// GetNumReplicas returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetNumReplicas() *int {
-	return v.ServiceInstanceFields.NumReplicas
-}
-
-// GetRegion returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Region, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRegion() *string {
-	return v.ServiceInstanceFields.Region
-}
-
-// GetRestartPolicyType returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyType() RestartPolicyType {
-	return v.ServiceInstanceFields.RestartPolicyType
-}
-
-// GetRestartPolicyMaxRetries returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyMaxRetries() int {
-	return v.ServiceInstanceFields.RestartPolicyMaxRetries
-}
-
-// GetDrainingSeconds returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDrainingSeconds() *int {
-	return v.ServiceInstanceFields.DrainingSeconds
-}
-
-// GetOverlapSeconds returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetOverlapSeconds() *int {
-	return v.ServiceInstanceFields.OverlapSeconds
-}
-
-// GetSleepApplication returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSleepApplication() *bool {
-	return v.ServiceInstanceFields.SleepApplication
-}
-
-// GetIpv6EgressEnabled returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetIpv6EgressEnabled() *bool {
-	return v.ServiceInstanceFields.Ipv6EgressEnabled
-}
-
-// GetWatchPatterns returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetWatchPatterns() []string {
-	return v.ServiceInstanceFields.WatchPatterns
-}
-
-// GetPreDeployCommand returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetPreDeployCommand() *map[string]interface{} {
-	return v.ServiceInstanceFields.PreDeployCommand
-}
-
-// GetSource returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Source, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSource() *ServiceInstanceFieldsSourceServiceSource {
-	return v.ServiceInstanceFields.Source
-}
-
-// GetDomains returns EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Domains, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDomains() ServiceInstanceFieldsDomainsAllDomains {
-	return v.ServiceInstanceFields.Domains
-}
-
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceInstanceFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance struct {
-	ServiceId string `json:"serviceId"`
-
-	Builder Builder `json:"builder"`
-
-	BuildCommand *string `json:"buildCommand"`
-
-	StartCommand *string `json:"startCommand"`
-
-	DockerfilePath *string `json:"dockerfilePath"`
-
-	RootDirectory *string `json:"rootDirectory"`
-
-	HealthcheckPath *string `json:"healthcheckPath"`
-
-	HealthcheckTimeout *int `json:"healthcheckTimeout"`
-
-	CronSchedule *string `json:"cronSchedule"`
-
-	NumReplicas *int `json:"numReplicas"`
-
-	Region *string `json:"region"`
-
-	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
-
-	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
-
-	DrainingSeconds *int `json:"drainingSeconds"`
-
-	OverlapSeconds *int `json:"overlapSeconds"`
-
-	SleepApplication *bool `json:"sleepApplication"`
-
-	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
-
-	WatchPatterns []string `json:"watchPatterns"`
-
-	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
-
-	Source *ServiceInstanceFieldsSourceServiceSource `json:"source"`
-
-	Domains ServiceInstanceFieldsDomainsAllDomains `json:"domains"`
-}
-
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance, error) {
-	var retval __premarshalEnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
-
-	retval.ServiceId = v.ServiceInstanceFields.ServiceId
-	retval.Builder = v.ServiceInstanceFields.Builder
-	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
-	retval.StartCommand = v.ServiceInstanceFields.StartCommand
-	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
-	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
-	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
-	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
-	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
-	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
-	retval.Region = v.ServiceInstanceFields.Region
-	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
-	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
-	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
-	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
-	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
-	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
-	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
-	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
-	retval.Source = v.ServiceInstanceFields.Source
-	retval.Domains = v.ServiceInstanceFields.Domains
-	return &retval, nil
-}
-
-// EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
-type EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection struct {
-	Edges []EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection) GetEdges() []EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge {
-	return v.Edges
-}
-
-// EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnectionEdge.
-type EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge struct {
-	Node EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance `json:"node"`
-}
-
-// GetNode returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge) GetNode() EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance {
-	return v.Node
-}
-
-// EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance includes the requested fields of the GraphQL type VolumeInstance.
-type EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
-	VolumeInstanceFields `json:"-"`
-}
-
-// GetId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetId() string {
-	return v.VolumeInstanceFields.Id
-}
-
-// GetMountPath returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.MountPath, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetMountPath() string {
-	return v.VolumeInstanceFields.MountPath
-}
-
-// GetRegion returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Region, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetRegion() *string {
-	return v.VolumeInstanceFields.Region
-}
-
-// GetServiceId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.ServiceId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetServiceId() *string {
-	return v.VolumeInstanceFields.ServiceId
-}
-
-// GetVolumeId returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.VolumeId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolumeId() string {
-	return v.VolumeInstanceFields.VolumeId
-}
-
-// GetVolume returns EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Volume, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() VolumeInstanceFieldsVolume {
-	return v.VolumeInstanceFields.Volume
-}
-
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.VolumeInstanceFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
-	Id string `json:"id"`
-
-	MountPath string `json:"mountPath"`
-
-	Region *string `json:"region"`
-
-	ServiceId *string `json:"serviceId"`
-
-	VolumeId string `json:"volumeId"`
-
-	Volume VolumeInstanceFieldsVolume `json:"volume"`
-}
-
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) __premarshalJSON() (*__premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance, error) {
-	var retval __premarshalEnvironmentBulkEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
-
-	retval.Id = v.VolumeInstanceFields.Id
-	retval.MountPath = v.VolumeInstanceFields.MountPath
-	retval.Region = v.VolumeInstanceFields.Region
-	retval.ServiceId = v.VolumeInstanceFields.ServiceId
-	retval.VolumeId = v.VolumeInstanceFields.VolumeId
-	retval.Volume = v.VolumeInstanceFields.Volume
-	return &retval, nil
-}
-
-// EnvironmentBulkPrivateNetworksPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
-type EnvironmentBulkPrivateNetworksPrivateNetwork struct {
-	PrivateNetworkFields `json:"-"`
-}
-
-// GetPublicId returns EnvironmentBulkPrivateNetworksPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetPublicId() string {
-	return v.PrivateNetworkFields.PublicId
-}
-
-// GetDnsName returns EnvironmentBulkPrivateNetworksPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetDnsName() string {
-	return v.PrivateNetworkFields.DnsName
-}
-
-// GetName returns EnvironmentBulkPrivateNetworksPrivateNetwork.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) GetName() string {
-	return v.PrivateNetworkFields.Name
-}
-
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EnvironmentBulkPrivateNetworksPrivateNetwork
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EnvironmentBulkPrivateNetworksPrivateNetwork = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.PrivateNetworkFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEnvironmentBulkPrivateNetworksPrivateNetwork struct {
-	PublicId string `json:"publicId"`
-
-	DnsName string `json:"dnsName"`
-
-	Name string `json:"name"`
-}
-
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EnvironmentBulkPrivateNetworksPrivateNetwork) __premarshalJSON() (*__premarshalEnvironmentBulkPrivateNetworksPrivateNetwork, error) {
-	var retval __premarshalEnvironmentBulkPrivateNetworksPrivateNetwork
-
-	retval.PublicId = v.PrivateNetworkFields.PublicId
-	retval.DnsName = v.PrivateNetworkFields.DnsName
-	retval.Name = v.PrivateNetworkFields.Name
-	return &retval, nil
-}
+func (v *EgressGatewaysResponse) GetEgressGateways() []EgressGatewayItem { return v.EgressGateways }
 
 // EnvironmentBulkResponse is returned by EnvironmentBulk on success.
 type EnvironmentBulkResponse struct {
 	// Find a single environment
-	Environment EnvironmentBulkEnvironment `json:"environment"`
+	Environment BulkEnvironment `json:"environment"`
 	// List private networks for an environment.
-	PrivateNetworks []EnvironmentBulkPrivateNetworksPrivateNetwork `json:"privateNetworks"`
+	PrivateNetworks []BulkPrivateNetwork `json:"privateNetworks"`
 }
 
 // GetEnvironment returns EnvironmentBulkResponse.Environment, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkResponse) GetEnvironment() EnvironmentBulkEnvironment { return v.Environment }
+func (v *EnvironmentBulkResponse) GetEnvironment() BulkEnvironment { return v.Environment }
 
 // GetPrivateNetworks returns EnvironmentBulkResponse.PrivateNetworks, and is useful for accessing the field via an interface.
-func (v *EnvironmentBulkResponse) GetPrivateNetworks() []EnvironmentBulkPrivateNetworksPrivateNetwork {
-	return v.PrivateNetworks
-}
-
-// EnvironmentCreateEnvironmentCreateEnvironment includes the requested fields of the GraphQL type Environment.
-type EnvironmentCreateEnvironmentCreateEnvironment struct {
-	EnvironmentSummaryFields `json:"-"`
-}
-
-// GetId returns EnvironmentCreateEnvironmentCreateEnvironment.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentCreateEnvironmentCreateEnvironment) GetId() string {
-	return v.EnvironmentSummaryFields.Id
-}
-
-// GetName returns EnvironmentCreateEnvironmentCreateEnvironment.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentCreateEnvironmentCreateEnvironment) GetName() string {
-	return v.EnvironmentSummaryFields.Name
-}
-
-func (v *EnvironmentCreateEnvironmentCreateEnvironment) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*EnvironmentCreateEnvironmentCreateEnvironment
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.EnvironmentCreateEnvironmentCreateEnvironment = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.EnvironmentSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalEnvironmentCreateEnvironmentCreateEnvironment struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *EnvironmentCreateEnvironmentCreateEnvironment) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *EnvironmentCreateEnvironmentCreateEnvironment) __premarshalJSON() (*__premarshalEnvironmentCreateEnvironmentCreateEnvironment, error) {
-	var retval __premarshalEnvironmentCreateEnvironmentCreateEnvironment
-
-	retval.Id = v.EnvironmentSummaryFields.Id
-	retval.Name = v.EnvironmentSummaryFields.Name
-	return &retval, nil
-}
+func (v *EnvironmentBulkResponse) GetPrivateNetworks() []BulkPrivateNetwork { return v.PrivateNetworks }
 
 type EnvironmentCreateInput struct {
 	// If true, the changes will be applied in the background and the mutation will return immediately. If false, the mutation will wait for the changes to be applied before returning.
@@ -2160,11 +2239,11 @@ func (v *EnvironmentCreateInput) GetStageInitialChanges() *bool { return v.Stage
 // EnvironmentCreateResponse is returned by EnvironmentCreate on success.
 type EnvironmentCreateResponse struct {
 	// Creates a new environment.
-	EnvironmentCreate EnvironmentCreateEnvironmentCreateEnvironment `json:"environmentCreate"`
+	EnvironmentCreate CreatedEnvironment `json:"environmentCreate"`
 }
 
 // GetEnvironmentCreate returns EnvironmentCreateResponse.EnvironmentCreate, and is useful for accessing the field via an interface.
-func (v *EnvironmentCreateResponse) GetEnvironmentCreate() EnvironmentCreateEnvironmentCreateEnvironment {
+func (v *EnvironmentCreateResponse) GetEnvironmentCreate() CreatedEnvironment {
 	return v.EnvironmentCreate
 }
 
@@ -2177,34 +2256,108 @@ type EnvironmentDeleteResponse struct {
 // GetEnvironmentDelete returns EnvironmentDeleteResponse.EnvironmentDelete, and is useful for accessing the field via an interface.
 func (v *EnvironmentDeleteResponse) GetEnvironmentDelete() bool { return v.EnvironmentDelete }
 
-// EnvironmentLogsEnvironmentLogsLog includes the requested fields of the GraphQL type Log.
-// The GraphQL type's documentation follows.
-//
-// The result of a logs query.
-type EnvironmentLogsEnvironmentLogsLog struct {
-	LogEntryFields `json:"-"`
+// EnvironmentList includes the requested fields of the GraphQL type QueryEnvironmentsConnection.
+type EnvironmentList struct {
+	Edges []EnvironmentListEdge `json:"edges"`
 }
 
-// GetMessage returns EnvironmentLogsEnvironmentLogsLog.Message, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetMessage() string { return v.LogEntryFields.Message }
+// GetEdges returns EnvironmentList.Edges, and is useful for accessing the field via an interface.
+func (v *EnvironmentList) GetEdges() []EnvironmentListEdge { return v.Edges }
 
-// GetSeverity returns EnvironmentLogsEnvironmentLogsLog.Severity, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetSeverity() *string { return v.LogEntryFields.Severity }
+// EnvironmentListEdge includes the requested fields of the GraphQL type QueryEnvironmentsConnectionEdge.
+type EnvironmentListEdge struct {
+	Node EnvironmentListItem `json:"node"`
+}
 
-// GetTimestamp returns EnvironmentLogsEnvironmentLogsLog.Timestamp, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsEnvironmentLogsLog) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+// GetNode returns EnvironmentListEdge.Node, and is useful for accessing the field via an interface.
+func (v *EnvironmentListEdge) GetNode() EnvironmentListItem { return v.Node }
 
-func (v *EnvironmentLogsEnvironmentLogsLog) UnmarshalJSON(b []byte) error {
+// EnvironmentListItem includes the requested fields of the GraphQL type Environment.
+type EnvironmentListItem struct {
+	EnvironmentSummaryFields `json:"-"`
+}
+
+// GetId returns EnvironmentListItem.Id, and is useful for accessing the field via an interface.
+func (v *EnvironmentListItem) GetId() string { return v.EnvironmentSummaryFields.Id }
+
+// GetName returns EnvironmentListItem.Name, and is useful for accessing the field via an interface.
+func (v *EnvironmentListItem) GetName() string { return v.EnvironmentSummaryFields.Name }
+
+func (v *EnvironmentListItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*EnvironmentLogsEnvironmentLogsLog
+		*EnvironmentListItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.EnvironmentLogsEnvironmentLogsLog = v
+	firstPass.EnvironmentListItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.EnvironmentSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalEnvironmentListItem struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *EnvironmentListItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *EnvironmentListItem) __premarshalJSON() (*__premarshalEnvironmentListItem, error) {
+	var retval __premarshalEnvironmentListItem
+
+	retval.Id = v.EnvironmentSummaryFields.Id
+	retval.Name = v.EnvironmentSummaryFields.Name
+	return &retval, nil
+}
+
+// EnvironmentLogEntry includes the requested fields of the GraphQL type Log.
+// The GraphQL type's documentation follows.
+//
+// The result of a logs query.
+type EnvironmentLogEntry struct {
+	LogEntryFields `json:"-"`
+}
+
+// GetMessage returns EnvironmentLogEntry.Message, and is useful for accessing the field via an interface.
+func (v *EnvironmentLogEntry) GetMessage() string { return v.LogEntryFields.Message }
+
+// GetSeverity returns EnvironmentLogEntry.Severity, and is useful for accessing the field via an interface.
+func (v *EnvironmentLogEntry) GetSeverity() *string { return v.LogEntryFields.Severity }
+
+// GetTimestamp returns EnvironmentLogEntry.Timestamp, and is useful for accessing the field via an interface.
+func (v *EnvironmentLogEntry) GetTimestamp() string { return v.LogEntryFields.Timestamp }
+
+func (v *EnvironmentLogEntry) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*EnvironmentLogEntry
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.EnvironmentLogEntry = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -2219,7 +2372,7 @@ func (v *EnvironmentLogsEnvironmentLogsLog) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type __premarshalEnvironmentLogsEnvironmentLogsLog struct {
+type __premarshalEnvironmentLogEntry struct {
 	Message string `json:"message"`
 
 	Severity *string `json:"severity"`
@@ -2227,7 +2380,7 @@ type __premarshalEnvironmentLogsEnvironmentLogsLog struct {
 	Timestamp string `json:"timestamp"`
 }
 
-func (v *EnvironmentLogsEnvironmentLogsLog) MarshalJSON() ([]byte, error) {
+func (v *EnvironmentLogEntry) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -2235,8 +2388,8 @@ func (v *EnvironmentLogsEnvironmentLogsLog) MarshalJSON() ([]byte, error) {
 	return json.Marshal(premarshaled)
 }
 
-func (v *EnvironmentLogsEnvironmentLogsLog) __premarshalJSON() (*__premarshalEnvironmentLogsEnvironmentLogsLog, error) {
-	var retval __premarshalEnvironmentLogsEnvironmentLogsLog
+func (v *EnvironmentLogEntry) __premarshalJSON() (*__premarshalEnvironmentLogEntry, error) {
+	var retval __premarshalEnvironmentLogEntry
 
 	retval.Message = v.LogEntryFields.Message
 	retval.Severity = v.LogEntryFields.Severity
@@ -2247,11 +2400,11 @@ func (v *EnvironmentLogsEnvironmentLogsLog) __premarshalJSON() (*__premarshalEnv
 // EnvironmentLogsResponse is returned by EnvironmentLogs on success.
 type EnvironmentLogsResponse struct {
 	// Fetch logs for a project environment. Build logs are excluded unless a snapshot ID is explicitly provided in the filter
-	EnvironmentLogs []EnvironmentLogsEnvironmentLogsLog `json:"environmentLogs"`
+	EnvironmentLogs []EnvironmentLogEntry `json:"environmentLogs"`
 }
 
 // GetEnvironmentLogs returns EnvironmentLogsResponse.EnvironmentLogs, and is useful for accessing the field via an interface.
-func (v *EnvironmentLogsResponse) GetEnvironmentLogs() []EnvironmentLogsEnvironmentLogsLog {
+func (v *EnvironmentLogsResponse) GetEnvironmentLogs() []EnvironmentLogEntry {
 	return v.EnvironmentLogs
 }
 
@@ -2267,82 +2420,50 @@ func (v *EnvironmentSummaryFields) GetId() string { return v.Id }
 // GetName returns EnvironmentSummaryFields.Name, and is useful for accessing the field via an interface.
 func (v *EnvironmentSummaryFields) GetName() string { return v.Name }
 
-// EnvironmentVolumesEnvironment includes the requested fields of the GraphQL type Environment.
-type EnvironmentVolumesEnvironment struct {
-	VolumeInstances EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection `json:"volumeInstances"`
+// EnvironmentVolumeEdge includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnectionEdge.
+type EnvironmentVolumeEdge struct {
+	Node EnvironmentVolumeItem `json:"node"`
 }
 
-// GetVolumeInstances returns EnvironmentVolumesEnvironment.VolumeInstances, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironment) GetVolumeInstances() EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection {
-	return v.VolumeInstances
-}
+// GetNode returns EnvironmentVolumeEdge.Node, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeEdge) GetNode() EnvironmentVolumeItem { return v.Node }
 
-// EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
-type EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection struct {
-	Edges []EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnection) GetEdges() []EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge {
-	return v.Edges
-}
-
-// EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnectionEdge.
-type EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge struct {
-	Node EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance `json:"node"`
-}
-
-// GetNode returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdge) GetNode() EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance {
-	return v.Node
-}
-
-// EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance includes the requested fields of the GraphQL type VolumeInstance.
-type EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
+// EnvironmentVolumeItem includes the requested fields of the GraphQL type VolumeInstance.
+type EnvironmentVolumeItem struct {
 	VolumeInstanceFields `json:"-"`
 }
 
-// GetId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetId() string {
-	return v.VolumeInstanceFields.Id
-}
+// GetId returns EnvironmentVolumeItem.Id, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetId() string { return v.VolumeInstanceFields.Id }
 
-// GetMountPath returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.MountPath, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetMountPath() string {
-	return v.VolumeInstanceFields.MountPath
-}
+// GetMountPath returns EnvironmentVolumeItem.MountPath, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetMountPath() string { return v.VolumeInstanceFields.MountPath }
 
-// GetRegion returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Region, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetRegion() *string {
-	return v.VolumeInstanceFields.Region
-}
+// GetRegion returns EnvironmentVolumeItem.Region, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetRegion() *string { return v.VolumeInstanceFields.Region }
 
-// GetServiceId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.ServiceId, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetServiceId() *string {
-	return v.VolumeInstanceFields.ServiceId
-}
+// GetServiceId returns EnvironmentVolumeItem.ServiceId, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetServiceId() *string { return v.VolumeInstanceFields.ServiceId }
 
-// GetVolumeId returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.VolumeId, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolumeId() string {
-	return v.VolumeInstanceFields.VolumeId
-}
+// GetVolumeId returns EnvironmentVolumeItem.VolumeId, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetVolumeId() string { return v.VolumeInstanceFields.VolumeId }
 
-// GetVolume returns EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance.Volume, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) GetVolume() VolumeInstanceFieldsVolume {
+// GetVolume returns EnvironmentVolumeItem.Volume, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeItem) GetVolume() VolumeInstanceFieldsVolume {
 	return v.VolumeInstanceFields.Volume
 }
 
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) UnmarshalJSON(b []byte) error {
+func (v *EnvironmentVolumeItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+		*EnvironmentVolumeItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance = v
+	firstPass.EnvironmentVolumeItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -2357,7 +2478,7 @@ func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesC
 	return nil
 }
 
-type __premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance struct {
+type __premarshalEnvironmentVolumeItem struct {
 	Id string `json:"id"`
 
 	MountPath string `json:"mountPath"`
@@ -2371,7 +2492,7 @@ type __premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeIn
 	Volume VolumeInstanceFieldsVolume `json:"volume"`
 }
 
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) MarshalJSON() ([]byte, error) {
+func (v *EnvironmentVolumeItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -2379,8 +2500,8 @@ func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesC
 	return json.Marshal(premarshaled)
 }
 
-func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance) __premarshalJSON() (*__premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance, error) {
-	var retval __premarshalEnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesConnectionEdgesEnvironmentVolumeInstancesConnectionEdgeNodeVolumeInstance
+func (v *EnvironmentVolumeItem) __premarshalJSON() (*__premarshalEnvironmentVolumeItem, error) {
+	var retval __premarshalEnvironmentVolumeItem
 
 	retval.Id = v.VolumeInstanceFields.Id
 	retval.MountPath = v.VolumeInstanceFields.MountPath
@@ -2391,63 +2512,149 @@ func (v *EnvironmentVolumesEnvironmentVolumeInstancesEnvironmentVolumeInstancesC
 	return &retval, nil
 }
 
+// EnvironmentVolumeList includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
+type EnvironmentVolumeList struct {
+	Edges []EnvironmentVolumeEdge `json:"edges"`
+}
+
+// GetEdges returns EnvironmentVolumeList.Edges, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumeList) GetEdges() []EnvironmentVolumeEdge { return v.Edges }
+
+// EnvironmentVolumesEnv includes the requested fields of the GraphQL type Environment.
+type EnvironmentVolumesEnv struct {
+	VolumeInstances EnvironmentVolumeList `json:"volumeInstances"`
+}
+
+// GetVolumeInstances returns EnvironmentVolumesEnv.VolumeInstances, and is useful for accessing the field via an interface.
+func (v *EnvironmentVolumesEnv) GetVolumeInstances() EnvironmentVolumeList { return v.VolumeInstances }
+
 // EnvironmentVolumesResponse is returned by EnvironmentVolumes on success.
 type EnvironmentVolumesResponse struct {
 	// Find a single environment
-	Environment EnvironmentVolumesEnvironment `json:"environment"`
+	Environment EnvironmentVolumesEnv `json:"environment"`
 }
 
 // GetEnvironment returns EnvironmentVolumesResponse.Environment, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesResponse) GetEnvironment() EnvironmentVolumesEnvironment {
-	return v.Environment
+func (v *EnvironmentVolumesResponse) GetEnvironment() EnvironmentVolumesEnv { return v.Environment }
+
+// EnvironmentsResponse is returned by Environments on success.
+type EnvironmentsResponse struct {
+	// Gets all environments for a project.
+	Environments EnvironmentList `json:"environments"`
 }
 
-// EnvironmentsEnvironmentsQueryEnvironmentsConnection includes the requested fields of the GraphQL type QueryEnvironmentsConnection.
-type EnvironmentsEnvironmentsQueryEnvironmentsConnection struct {
-	Edges []EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge `json:"edges"`
+// GetEnvironments returns EnvironmentsResponse.Environments, and is useful for accessing the field via an interface.
+func (v *EnvironmentsResponse) GetEnvironments() EnvironmentList { return v.Environments }
+
+// FetchedServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
+type FetchedServiceInstance struct {
+	ServiceInstanceFields `json:"-"`
 }
 
-// GetEdges returns EnvironmentsEnvironmentsQueryEnvironmentsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnection) GetEdges() []EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge {
-	return v.Edges
+// GetServiceId returns FetchedServiceInstance.ServiceId, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetServiceId() string { return v.ServiceInstanceFields.ServiceId }
+
+// GetBuilder returns FetchedServiceInstance.Builder, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetBuilder() Builder { return v.ServiceInstanceFields.Builder }
+
+// GetBuildCommand returns FetchedServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetBuildCommand() *string {
+	return v.ServiceInstanceFields.BuildCommand
 }
 
-// EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge includes the requested fields of the GraphQL type QueryEnvironmentsConnectionEdge.
-type EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge struct {
-	Node EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment `json:"node"`
+// GetStartCommand returns FetchedServiceInstance.StartCommand, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetStartCommand() *string {
+	return v.ServiceInstanceFields.StartCommand
 }
 
-// GetNode returns EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdge) GetNode() EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment {
-	return v.Node
+// GetDockerfilePath returns FetchedServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetDockerfilePath() *string {
+	return v.ServiceInstanceFields.DockerfilePath
 }
 
-// EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment includes the requested fields of the GraphQL type Environment.
-type EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment struct {
-	EnvironmentSummaryFields `json:"-"`
+// GetRootDirectory returns FetchedServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetRootDirectory() *string {
+	return v.ServiceInstanceFields.RootDirectory
 }
 
-// GetId returns EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment.Id, and is useful for accessing the field via an interface.
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment) GetId() string {
-	return v.EnvironmentSummaryFields.Id
+// GetHealthcheckPath returns FetchedServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetHealthcheckPath() *string {
+	return v.ServiceInstanceFields.HealthcheckPath
 }
 
-// GetName returns EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment.Name, and is useful for accessing the field via an interface.
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment) GetName() string {
-	return v.EnvironmentSummaryFields.Name
+// GetHealthcheckTimeout returns FetchedServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetHealthcheckTimeout() *int {
+	return v.ServiceInstanceFields.HealthcheckTimeout
 }
 
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment) UnmarshalJSON(b []byte) error {
+// GetCronSchedule returns FetchedServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetCronSchedule() *string {
+	return v.ServiceInstanceFields.CronSchedule
+}
+
+// GetNumReplicas returns FetchedServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetNumReplicas() *int { return v.ServiceInstanceFields.NumReplicas }
+
+// GetRegion returns FetchedServiceInstance.Region, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetRegion() *string { return v.ServiceInstanceFields.Region }
+
+// GetRestartPolicyType returns FetchedServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetRestartPolicyType() RestartPolicyType {
+	return v.ServiceInstanceFields.RestartPolicyType
+}
+
+// GetRestartPolicyMaxRetries returns FetchedServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetRestartPolicyMaxRetries() int {
+	return v.ServiceInstanceFields.RestartPolicyMaxRetries
+}
+
+// GetDrainingSeconds returns FetchedServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetDrainingSeconds() *int {
+	return v.ServiceInstanceFields.DrainingSeconds
+}
+
+// GetOverlapSeconds returns FetchedServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetOverlapSeconds() *int {
+	return v.ServiceInstanceFields.OverlapSeconds
+}
+
+// GetSleepApplication returns FetchedServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetSleepApplication() *bool {
+	return v.ServiceInstanceFields.SleepApplication
+}
+
+// GetIpv6EgressEnabled returns FetchedServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetIpv6EgressEnabled() *bool {
+	return v.ServiceInstanceFields.Ipv6EgressEnabled
+}
+
+// GetWatchPatterns returns FetchedServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetWatchPatterns() []string {
+	return v.ServiceInstanceFields.WatchPatterns
+}
+
+// GetPreDeployCommand returns FetchedServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetPreDeployCommand() *map[string]interface{} {
+	return v.ServiceInstanceFields.PreDeployCommand
+}
+
+// GetSource returns FetchedServiceInstance.Source, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetSource() *ServiceSource { return v.ServiceInstanceFields.Source }
+
+// GetDomains returns FetchedServiceInstance.Domains, and is useful for accessing the field via an interface.
+func (v *FetchedServiceInstance) GetDomains() ServiceDomains { return v.ServiceInstanceFields.Domains }
+
+func (v *FetchedServiceInstance) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment
+		*FetchedServiceInstance
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment = v
+	firstPass.FetchedServiceInstance = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -2455,20 +2662,58 @@ func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmen
 	}
 
 	err = json.Unmarshal(
-		b, &v.EnvironmentSummaryFields)
+		b, &v.ServiceInstanceFields)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type __premarshalEnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment struct {
-	Id string `json:"id"`
+type __premarshalFetchedServiceInstance struct {
+	ServiceId string `json:"serviceId"`
 
-	Name string `json:"name"`
+	Builder Builder `json:"builder"`
+
+	BuildCommand *string `json:"buildCommand"`
+
+	StartCommand *string `json:"startCommand"`
+
+	DockerfilePath *string `json:"dockerfilePath"`
+
+	RootDirectory *string `json:"rootDirectory"`
+
+	HealthcheckPath *string `json:"healthcheckPath"`
+
+	HealthcheckTimeout *int `json:"healthcheckTimeout"`
+
+	CronSchedule *string `json:"cronSchedule"`
+
+	NumReplicas *int `json:"numReplicas"`
+
+	Region *string `json:"region"`
+
+	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
+
+	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
+
+	DrainingSeconds *int `json:"drainingSeconds"`
+
+	OverlapSeconds *int `json:"overlapSeconds"`
+
+	SleepApplication *bool `json:"sleepApplication"`
+
+	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
+
+	WatchPatterns []string `json:"watchPatterns"`
+
+	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
+
+	Source *ServiceSource `json:"source"`
+
+	Domains ServiceDomains `json:"domains"`
 }
 
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment) MarshalJSON() ([]byte, error) {
+func (v *FetchedServiceInstance) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -2476,23 +2721,31 @@ func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmen
 	return json.Marshal(premarshaled)
 }
 
-func (v *EnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment) __premarshalJSON() (*__premarshalEnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment, error) {
-	var retval __premarshalEnvironmentsEnvironmentsQueryEnvironmentsConnectionEdgesQueryEnvironmentsConnectionEdgeNodeEnvironment
+func (v *FetchedServiceInstance) __premarshalJSON() (*__premarshalFetchedServiceInstance, error) {
+	var retval __premarshalFetchedServiceInstance
 
-	retval.Id = v.EnvironmentSummaryFields.Id
-	retval.Name = v.EnvironmentSummaryFields.Name
+	retval.ServiceId = v.ServiceInstanceFields.ServiceId
+	retval.Builder = v.ServiceInstanceFields.Builder
+	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
+	retval.StartCommand = v.ServiceInstanceFields.StartCommand
+	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
+	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
+	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
+	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
+	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
+	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
+	retval.Region = v.ServiceInstanceFields.Region
+	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
+	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
+	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
+	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
+	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
+	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
+	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
+	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
+	retval.Source = v.ServiceInstanceFields.Source
+	retval.Domains = v.ServiceInstanceFields.Domains
 	return &retval, nil
-}
-
-// EnvironmentsResponse is returned by Environments on success.
-type EnvironmentsResponse struct {
-	// Gets all environments for a project.
-	Environments EnvironmentsEnvironmentsQueryEnvironmentsConnection `json:"environments"`
-}
-
-// GetEnvironments returns EnvironmentsResponse.Environments, and is useful for accessing the field via an interface.
-func (v *EnvironmentsResponse) GetEnvironments() EnvironmentsEnvironmentsQueryEnvironmentsConnection {
-	return v.Environments
 }
 
 // LogEntryFields includes the GraphQL fields of Log requested by the fragment LogEntryFields.
@@ -2517,6 +2770,72 @@ func (v *LogEntryFields) GetSeverity() *string { return v.Severity }
 // GetTimestamp returns LogEntryFields.Timestamp, and is useful for accessing the field via an interface.
 func (v *LogEntryFields) GetTimestamp() string { return v.Timestamp }
 
+// NetworkEndpoint includes the requested fields of the GraphQL type PrivateNetworkEndpoint.
+type NetworkEndpoint struct {
+	PrivateNetworkEndpointFields `json:"-"`
+}
+
+// GetPublicId returns NetworkEndpoint.PublicId, and is useful for accessing the field via an interface.
+func (v *NetworkEndpoint) GetPublicId() string { return v.PrivateNetworkEndpointFields.PublicId }
+
+// GetDnsName returns NetworkEndpoint.DnsName, and is useful for accessing the field via an interface.
+func (v *NetworkEndpoint) GetDnsName() string { return v.PrivateNetworkEndpointFields.DnsName }
+
+// GetServiceInstanceId returns NetworkEndpoint.ServiceInstanceId, and is useful for accessing the field via an interface.
+func (v *NetworkEndpoint) GetServiceInstanceId() string {
+	return v.PrivateNetworkEndpointFields.ServiceInstanceId
+}
+
+func (v *NetworkEndpoint) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*NetworkEndpoint
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.NetworkEndpoint = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.PrivateNetworkEndpointFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalNetworkEndpoint struct {
+	PublicId string `json:"publicId"`
+
+	DnsName string `json:"dnsName"`
+
+	ServiceInstanceId string `json:"serviceInstanceId"`
+}
+
+func (v *NetworkEndpoint) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *NetworkEndpoint) __premarshalJSON() (*__premarshalNetworkEndpoint, error) {
+	var retval __premarshalNetworkEndpoint
+
+	retval.PublicId = v.PrivateNetworkEndpointFields.PublicId
+	retval.DnsName = v.PrivateNetworkEndpointFields.DnsName
+	retval.ServiceInstanceId = v.PrivateNetworkEndpointFields.ServiceInstanceId
+	return &retval, nil
+}
+
 type PrivateNetworkCreateOrGetInput struct {
 	EnvironmentId string   `json:"environmentId"`
 	Name          string   `json:"name"`
@@ -2536,84 +2855,14 @@ func (v *PrivateNetworkCreateOrGetInput) GetProjectId() string { return v.Projec
 // GetTags returns PrivateNetworkCreateOrGetInput.Tags, and is useful for accessing the field via an interface.
 func (v *PrivateNetworkCreateOrGetInput) GetTags() []string { return v.Tags }
 
-// PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
-type PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork struct {
-	PrivateNetworkFields `json:"-"`
-}
-
-// GetPublicId returns PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) GetPublicId() string {
-	return v.PrivateNetworkFields.PublicId
-}
-
-// GetDnsName returns PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) GetDnsName() string {
-	return v.PrivateNetworkFields.DnsName
-}
-
-// GetName returns PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork.Name, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) GetName() string {
-	return v.PrivateNetworkFields.Name
-}
-
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.PrivateNetworkFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalPrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork struct {
-	PublicId string `json:"publicId"`
-
-	DnsName string `json:"dnsName"`
-
-	Name string `json:"name"`
-}
-
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork) __premarshalJSON() (*__premarshalPrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork, error) {
-	var retval __premarshalPrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork
-
-	retval.PublicId = v.PrivateNetworkFields.PublicId
-	retval.DnsName = v.PrivateNetworkFields.DnsName
-	retval.Name = v.PrivateNetworkFields.Name
-	return &retval, nil
-}
-
 // PrivateNetworkCreateOrGetResponse is returned by PrivateNetworkCreateOrGet on success.
 type PrivateNetworkCreateOrGetResponse struct {
 	// Create or get a private network.
-	PrivateNetworkCreateOrGet PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork `json:"privateNetworkCreateOrGet"`
+	PrivateNetworkCreateOrGet CreatedPrivateNetwork `json:"privateNetworkCreateOrGet"`
 }
 
 // GetPrivateNetworkCreateOrGet returns PrivateNetworkCreateOrGetResponse.PrivateNetworkCreateOrGet, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetResponse) GetPrivateNetworkCreateOrGet() PrivateNetworkCreateOrGetPrivateNetworkCreateOrGetPrivateNetwork {
+func (v *PrivateNetworkCreateOrGetResponse) GetPrivateNetworkCreateOrGet() CreatedPrivateNetwork {
 	return v.PrivateNetworkCreateOrGet
 }
 
@@ -2642,84 +2891,14 @@ func (v *PrivateNetworkEndpointCreateOrGetInput) GetServiceName() string { retur
 // GetTags returns PrivateNetworkEndpointCreateOrGetInput.Tags, and is useful for accessing the field via an interface.
 func (v *PrivateNetworkEndpointCreateOrGetInput) GetTags() []string { return v.Tags }
 
-// PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint includes the requested fields of the GraphQL type PrivateNetworkEndpoint.
-type PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint struct {
-	PrivateNetworkEndpointFields `json:"-"`
-}
-
-// GetPublicId returns PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint.PublicId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) GetPublicId() string {
-	return v.PrivateNetworkEndpointFields.PublicId
-}
-
-// GetDnsName returns PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint.DnsName, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) GetDnsName() string {
-	return v.PrivateNetworkEndpointFields.DnsName
-}
-
-// GetServiceInstanceId returns PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint.ServiceInstanceId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) GetServiceInstanceId() string {
-	return v.PrivateNetworkEndpointFields.ServiceInstanceId
-}
-
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.PrivateNetworkEndpointFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint struct {
-	PublicId string `json:"publicId"`
-
-	DnsName string `json:"dnsName"`
-
-	ServiceInstanceId string `json:"serviceInstanceId"`
-}
-
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint) __premarshalJSON() (*__premarshalPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint, error) {
-	var retval __premarshalPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint
-
-	retval.PublicId = v.PrivateNetworkEndpointFields.PublicId
-	retval.DnsName = v.PrivateNetworkEndpointFields.DnsName
-	retval.ServiceInstanceId = v.PrivateNetworkEndpointFields.ServiceInstanceId
-	return &retval, nil
-}
-
 // PrivateNetworkEndpointCreateOrGetResponse is returned by PrivateNetworkEndpointCreateOrGet on success.
 type PrivateNetworkEndpointCreateOrGetResponse struct {
 	// Create or get a private network endpoint.
-	PrivateNetworkEndpointCreateOrGet PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint `json:"privateNetworkEndpointCreateOrGet"`
+	PrivateNetworkEndpointCreateOrGet CreatedNetworkEndpoint `json:"privateNetworkEndpointCreateOrGet"`
 }
 
 // GetPrivateNetworkEndpointCreateOrGet returns PrivateNetworkEndpointCreateOrGetResponse.PrivateNetworkEndpointCreateOrGet, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointCreateOrGetResponse) GetPrivateNetworkEndpointCreateOrGet() PrivateNetworkEndpointCreateOrGetPrivateNetworkEndpointCreateOrGetPrivateNetworkEndpoint {
+func (v *PrivateNetworkEndpointCreateOrGetResponse) GetPrivateNetworkEndpointCreateOrGet() CreatedNetworkEndpoint {
 	return v.PrivateNetworkEndpointCreateOrGet
 }
 
@@ -2750,84 +2929,14 @@ func (v *PrivateNetworkEndpointFields) GetDnsName() string { return v.DnsName }
 // GetServiceInstanceId returns PrivateNetworkEndpointFields.ServiceInstanceId, and is useful for accessing the field via an interface.
 func (v *PrivateNetworkEndpointFields) GetServiceInstanceId() string { return v.ServiceInstanceId }
 
-// PrivateNetworkEndpointPrivateNetworkEndpoint includes the requested fields of the GraphQL type PrivateNetworkEndpoint.
-type PrivateNetworkEndpointPrivateNetworkEndpoint struct {
-	PrivateNetworkEndpointFields `json:"-"`
-}
-
-// GetPublicId returns PrivateNetworkEndpointPrivateNetworkEndpoint.PublicId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) GetPublicId() string {
-	return v.PrivateNetworkEndpointFields.PublicId
-}
-
-// GetDnsName returns PrivateNetworkEndpointPrivateNetworkEndpoint.DnsName, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) GetDnsName() string {
-	return v.PrivateNetworkEndpointFields.DnsName
-}
-
-// GetServiceInstanceId returns PrivateNetworkEndpointPrivateNetworkEndpoint.ServiceInstanceId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) GetServiceInstanceId() string {
-	return v.PrivateNetworkEndpointFields.ServiceInstanceId
-}
-
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*PrivateNetworkEndpointPrivateNetworkEndpoint
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.PrivateNetworkEndpointPrivateNetworkEndpoint = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.PrivateNetworkEndpointFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalPrivateNetworkEndpointPrivateNetworkEndpoint struct {
-	PublicId string `json:"publicId"`
-
-	DnsName string `json:"dnsName"`
-
-	ServiceInstanceId string `json:"serviceInstanceId"`
-}
-
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *PrivateNetworkEndpointPrivateNetworkEndpoint) __premarshalJSON() (*__premarshalPrivateNetworkEndpointPrivateNetworkEndpoint, error) {
-	var retval __premarshalPrivateNetworkEndpointPrivateNetworkEndpoint
-
-	retval.PublicId = v.PrivateNetworkEndpointFields.PublicId
-	retval.DnsName = v.PrivateNetworkEndpointFields.DnsName
-	retval.ServiceInstanceId = v.PrivateNetworkEndpointFields.ServiceInstanceId
-	return &retval, nil
-}
-
 // PrivateNetworkEndpointResponse is returned by PrivateNetworkEndpoint on success.
 type PrivateNetworkEndpointResponse struct {
 	// Get a private network endpoint for a service instance.
-	PrivateNetworkEndpoint *PrivateNetworkEndpointPrivateNetworkEndpoint `json:"privateNetworkEndpoint"`
+	PrivateNetworkEndpoint *NetworkEndpoint `json:"privateNetworkEndpoint"`
 }
 
 // GetPrivateNetworkEndpoint returns PrivateNetworkEndpointResponse.PrivateNetworkEndpoint, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkEndpointResponse) GetPrivateNetworkEndpoint() *PrivateNetworkEndpointPrivateNetworkEndpoint {
+func (v *PrivateNetworkEndpointResponse) GetPrivateNetworkEndpoint() *NetworkEndpoint {
 	return v.PrivateNetworkEndpoint
 }
 
@@ -2847,37 +2956,31 @@ func (v *PrivateNetworkFields) GetDnsName() string { return v.DnsName }
 // GetName returns PrivateNetworkFields.Name, and is useful for accessing the field via an interface.
 func (v *PrivateNetworkFields) GetName() string { return v.Name }
 
-// PrivateNetworksPrivateNetworksPrivateNetwork includes the requested fields of the GraphQL type PrivateNetwork.
-type PrivateNetworksPrivateNetworksPrivateNetwork struct {
+// PrivateNetworkItem includes the requested fields of the GraphQL type PrivateNetwork.
+type PrivateNetworkItem struct {
 	PrivateNetworkFields `json:"-"`
 }
 
-// GetPublicId returns PrivateNetworksPrivateNetworksPrivateNetwork.PublicId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetPublicId() string {
-	return v.PrivateNetworkFields.PublicId
-}
+// GetPublicId returns PrivateNetworkItem.PublicId, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkItem) GetPublicId() string { return v.PrivateNetworkFields.PublicId }
 
-// GetDnsName returns PrivateNetworksPrivateNetworksPrivateNetwork.DnsName, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetDnsName() string {
-	return v.PrivateNetworkFields.DnsName
-}
+// GetDnsName returns PrivateNetworkItem.DnsName, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkItem) GetDnsName() string { return v.PrivateNetworkFields.DnsName }
 
-// GetName returns PrivateNetworksPrivateNetworksPrivateNetwork.Name, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) GetName() string {
-	return v.PrivateNetworkFields.Name
-}
+// GetName returns PrivateNetworkItem.Name, and is useful for accessing the field via an interface.
+func (v *PrivateNetworkItem) GetName() string { return v.PrivateNetworkFields.Name }
 
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) UnmarshalJSON(b []byte) error {
+func (v *PrivateNetworkItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*PrivateNetworksPrivateNetworksPrivateNetwork
+		*PrivateNetworkItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.PrivateNetworksPrivateNetworksPrivateNetwork = v
+	firstPass.PrivateNetworkItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -2892,7 +2995,7 @@ func (v *PrivateNetworksPrivateNetworksPrivateNetwork) UnmarshalJSON(b []byte) e
 	return nil
 }
 
-type __premarshalPrivateNetworksPrivateNetworksPrivateNetwork struct {
+type __premarshalPrivateNetworkItem struct {
 	PublicId string `json:"publicId"`
 
 	DnsName string `json:"dnsName"`
@@ -2900,7 +3003,7 @@ type __premarshalPrivateNetworksPrivateNetworksPrivateNetwork struct {
 	Name string `json:"name"`
 }
 
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) MarshalJSON() ([]byte, error) {
+func (v *PrivateNetworkItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -2908,8 +3011,8 @@ func (v *PrivateNetworksPrivateNetworksPrivateNetwork) MarshalJSON() ([]byte, er
 	return json.Marshal(premarshaled)
 }
 
-func (v *PrivateNetworksPrivateNetworksPrivateNetwork) __premarshalJSON() (*__premarshalPrivateNetworksPrivateNetworksPrivateNetwork, error) {
-	var retval __premarshalPrivateNetworksPrivateNetworksPrivateNetwork
+func (v *PrivateNetworkItem) __premarshalJSON() (*__premarshalPrivateNetworkItem, error) {
+	var retval __premarshalPrivateNetworkItem
 
 	retval.PublicId = v.PrivateNetworkFields.PublicId
 	retval.DnsName = v.PrivateNetworkFields.DnsName
@@ -2920,114 +3023,19 @@ func (v *PrivateNetworksPrivateNetworksPrivateNetwork) __premarshalJSON() (*__pr
 // PrivateNetworksResponse is returned by PrivateNetworks on success.
 type PrivateNetworksResponse struct {
 	// List private networks for an environment.
-	PrivateNetworks []PrivateNetworksPrivateNetworksPrivateNetwork `json:"privateNetworks"`
+	PrivateNetworks []PrivateNetworkItem `json:"privateNetworks"`
 }
 
 // GetPrivateNetworks returns PrivateNetworksResponse.PrivateNetworks, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksResponse) GetPrivateNetworks() []PrivateNetworksPrivateNetworksPrivateNetwork {
-	return v.PrivateNetworks
-}
+func (v *PrivateNetworksResponse) GetPrivateNetworks() []PrivateNetworkItem { return v.PrivateNetworks }
 
 // ProjectBucketsProject includes the requested fields of the GraphQL type Project.
 type ProjectBucketsProject struct {
-	Buckets ProjectBucketsProjectBucketsProjectBucketsConnection `json:"buckets"`
+	Buckets BucketList `json:"buckets"`
 }
 
 // GetBuckets returns ProjectBucketsProject.Buckets, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProject) GetBuckets() ProjectBucketsProjectBucketsProjectBucketsConnection {
-	return v.Buckets
-}
-
-// ProjectBucketsProjectBucketsProjectBucketsConnection includes the requested fields of the GraphQL type ProjectBucketsConnection.
-type ProjectBucketsProjectBucketsProjectBucketsConnection struct {
-	Edges []ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectBucketsProjectBucketsProjectBucketsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnection) GetEdges() []ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge {
-	return v.Edges
-}
-
-// ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge includes the requested fields of the GraphQL type ProjectBucketsConnectionEdge.
-type ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge struct {
-	Node ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket `json:"node"`
-}
-
-// GetNode returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdge) GetNode() ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket {
-	return v.Node
-}
-
-// ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket includes the requested fields of the GraphQL type Bucket.
-type ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket struct {
-	BucketSummaryFields `json:"-"`
-	ProjectId           string `json:"projectId"`
-}
-
-// GetProjectId returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.ProjectId, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetProjectId() string {
-	return v.ProjectId
-}
-
-// GetId returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.Id, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetId() string {
-	return v.BucketSummaryFields.Id
-}
-
-// GetName returns ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket.Name, and is useful for accessing the field via an interface.
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) GetName() string {
-	return v.BucketSummaryFields.Name
-}
-
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.BucketSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket struct {
-	ProjectId string `json:"projectId"`
-
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket) __premarshalJSON() (*__premarshalProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket, error) {
-	var retval __premarshalProjectBucketsProjectBucketsProjectBucketsConnectionEdgesProjectBucketsConnectionEdgeNodeBucket
-
-	retval.ProjectId = v.ProjectId
-	retval.Id = v.BucketSummaryFields.Id
-	retval.Name = v.BucketSummaryFields.Name
-	return &retval, nil
-}
+func (v *ProjectBucketsProject) GetBuckets() BucketList { return v.Buckets }
 
 // ProjectBucketsResponse is returned by ProjectBuckets on success.
 type ProjectBucketsResponse struct {
@@ -3085,64 +3093,6 @@ func (v *ProjectCreateInput) GetTeamId() *string { return v.TeamId }
 // GetWorkspaceId returns ProjectCreateInput.WorkspaceId, and is useful for accessing the field via an interface.
 func (v *ProjectCreateInput) GetWorkspaceId() *string { return v.WorkspaceId }
 
-// ProjectCreateProjectCreateProject includes the requested fields of the GraphQL type Project.
-type ProjectCreateProjectCreateProject struct {
-	ProjectSummaryFields `json:"-"`
-}
-
-// GetId returns ProjectCreateProjectCreateProject.Id, and is useful for accessing the field via an interface.
-func (v *ProjectCreateProjectCreateProject) GetId() string { return v.ProjectSummaryFields.Id }
-
-// GetName returns ProjectCreateProjectCreateProject.Name, and is useful for accessing the field via an interface.
-func (v *ProjectCreateProjectCreateProject) GetName() string { return v.ProjectSummaryFields.Name }
-
-func (v *ProjectCreateProjectCreateProject) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectCreateProjectCreateProject
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectCreateProjectCreateProject = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ProjectSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectCreateProjectCreateProject struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectCreateProjectCreateProject) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectCreateProjectCreateProject) __premarshalJSON() (*__premarshalProjectCreateProjectCreateProject, error) {
-	var retval __premarshalProjectCreateProjectCreateProject
-
-	retval.Id = v.ProjectSummaryFields.Id
-	retval.Name = v.ProjectSummaryFields.Name
-	return &retval, nil
-}
-
 type ProjectCreateRepo struct {
 	Branch       string `json:"branch"`
 	FullRepoName string `json:"fullRepoName"`
@@ -3157,13 +3107,11 @@ func (v *ProjectCreateRepo) GetFullRepoName() string { return v.FullRepoName }
 // ProjectCreateResponse is returned by ProjectCreate on success.
 type ProjectCreateResponse struct {
 	// Creates a new project.
-	ProjectCreate ProjectCreateProjectCreateProject `json:"projectCreate"`
+	ProjectCreate CreatedProject `json:"projectCreate"`
 }
 
 // GetProjectCreate returns ProjectCreateResponse.ProjectCreate, and is useful for accessing the field via an interface.
-func (v *ProjectCreateResponse) GetProjectCreate() ProjectCreateProjectCreateProject {
-	return v.ProjectCreate
-}
+func (v *ProjectCreateResponse) GetProjectCreate() CreatedProject { return v.ProjectCreate }
 
 // ProjectDeleteResponse is returned by ProjectDelete on success.
 type ProjectDeleteResponse struct {
@@ -3174,67 +3122,44 @@ type ProjectDeleteResponse struct {
 // GetProjectDelete returns ProjectDeleteResponse.ProjectDelete, and is useful for accessing the field via an interface.
 func (v *ProjectDeleteResponse) GetProjectDelete() bool { return v.ProjectDelete }
 
-// ProjectServicesProject includes the requested fields of the GraphQL type Project.
-type ProjectServicesProject struct {
-	Services ProjectServicesProjectServicesProjectServicesConnection `json:"services"`
+// ProjectList includes the requested fields of the GraphQL type QueryProjectsConnection.
+type ProjectList struct {
+	Edges []ProjectListEdge `json:"edges"`
 }
 
-// GetServices returns ProjectServicesProject.Services, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProject) GetServices() ProjectServicesProjectServicesProjectServicesConnection {
-	return v.Services
+// GetEdges returns ProjectList.Edges, and is useful for accessing the field via an interface.
+func (v *ProjectList) GetEdges() []ProjectListEdge { return v.Edges }
+
+// ProjectListEdge includes the requested fields of the GraphQL type QueryProjectsConnectionEdge.
+type ProjectListEdge struct {
+	Node ProjectListItem `json:"node"`
 }
 
-// ProjectServicesProjectServicesProjectServicesConnection includes the requested fields of the GraphQL type ProjectServicesConnection.
-type ProjectServicesProjectServicesProjectServicesConnection struct {
-	Edges []ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge `json:"edges"`
+// GetNode returns ProjectListEdge.Node, and is useful for accessing the field via an interface.
+func (v *ProjectListEdge) GetNode() ProjectListItem { return v.Node }
+
+// ProjectListItem includes the requested fields of the GraphQL type Project.
+type ProjectListItem struct {
+	ProjectSummaryFields `json:"-"`
 }
 
-// GetEdges returns ProjectServicesProjectServicesProjectServicesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProjectServicesProjectServicesConnection) GetEdges() []ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge {
-	return v.Edges
-}
+// GetId returns ProjectListItem.Id, and is useful for accessing the field via an interface.
+func (v *ProjectListItem) GetId() string { return v.ProjectSummaryFields.Id }
 
-// ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge includes the requested fields of the GraphQL type ProjectServicesConnectionEdge.
-type ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge struct {
-	Node ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService `json:"node"`
-}
+// GetName returns ProjectListItem.Name, and is useful for accessing the field via an interface.
+func (v *ProjectListItem) GetName() string { return v.ProjectSummaryFields.Name }
 
-// GetNode returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge) GetNode() ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService {
-	return v.Node
-}
-
-// ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService includes the requested fields of the GraphQL type Service.
-type ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService struct {
-	ServiceSummaryFields `json:"-"`
-}
-
-// GetId returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Id, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetId() string {
-	return v.ServiceSummaryFields.Id
-}
-
-// GetName returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Name, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetName() string {
-	return v.ServiceSummaryFields.Name
-}
-
-// GetIcon returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Icon, and is useful for accessing the field via an interface.
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetIcon() *string {
-	return v.ServiceSummaryFields.Icon
-}
-
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) UnmarshalJSON(b []byte) error {
+func (v *ProjectListItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService
+		*ProjectListItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService = v
+	firstPass.ProjectListItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -3242,22 +3167,20 @@ func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServ
 	}
 
 	err = json.Unmarshal(
-		b, &v.ServiceSummaryFields)
+		b, &v.ProjectSummaryFields)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type __premarshalProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService struct {
+type __premarshalProjectListItem struct {
 	Id string `json:"id"`
 
 	Name string `json:"name"`
-
-	Icon *string `json:"icon"`
 }
 
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) MarshalJSON() ([]byte, error) {
+func (v *ProjectListItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -3265,14 +3188,21 @@ func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServ
 	return json.Marshal(premarshaled)
 }
 
-func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) __premarshalJSON() (*__premarshalProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService, error) {
-	var retval __premarshalProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService
+func (v *ProjectListItem) __premarshalJSON() (*__premarshalProjectListItem, error) {
+	var retval __premarshalProjectListItem
 
-	retval.Id = v.ServiceSummaryFields.Id
-	retval.Name = v.ServiceSummaryFields.Name
-	retval.Icon = v.ServiceSummaryFields.Icon
+	retval.Id = v.ProjectSummaryFields.Id
+	retval.Name = v.ProjectSummaryFields.Name
 	return &retval, nil
 }
+
+// ProjectServicesProject includes the requested fields of the GraphQL type Project.
+type ProjectServicesProject struct {
+	Services ServiceList `json:"services"`
+}
+
+// GetServices returns ProjectServicesProject.Services, and is useful for accessing the field via an interface.
+func (v *ProjectServicesProject) GetServices() ServiceList { return v.Services }
 
 // ProjectServicesResponse is returned by ProjectServices on success.
 type ProjectServicesResponse struct {
@@ -3295,127 +3225,22 @@ func (v *ProjectSummaryFields) GetId() string { return v.Id }
 // GetName returns ProjectSummaryFields.Name, and is useful for accessing the field via an interface.
 func (v *ProjectSummaryFields) GetName() string { return v.Name }
 
-// ProjectTokenProjectToken includes the requested fields of the GraphQL type ProjectToken.
-type ProjectTokenProjectToken struct {
-	ProjectId     string `json:"projectId"`
-	EnvironmentId string `json:"environmentId"`
-}
-
-// GetProjectId returns ProjectTokenProjectToken.ProjectId, and is useful for accessing the field via an interface.
-func (v *ProjectTokenProjectToken) GetProjectId() string { return v.ProjectId }
-
-// GetEnvironmentId returns ProjectTokenProjectToken.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *ProjectTokenProjectToken) GetEnvironmentId() string { return v.EnvironmentId }
-
 // ProjectTokenResponse is returned by ProjectToken on success.
 type ProjectTokenResponse struct {
 	// Get a single project token by the value in the header
-	ProjectToken ProjectTokenProjectToken `json:"projectToken"`
+	ProjectToken TokenScope `json:"projectToken"`
 }
 
 // GetProjectToken returns ProjectTokenResponse.ProjectToken, and is useful for accessing the field via an interface.
-func (v *ProjectTokenResponse) GetProjectToken() ProjectTokenProjectToken { return v.ProjectToken }
+func (v *ProjectTokenResponse) GetProjectToken() TokenScope { return v.ProjectToken }
 
 // ProjectVolumesProject includes the requested fields of the GraphQL type Project.
 type ProjectVolumesProject struct {
-	Volumes ProjectVolumesProjectVolumesProjectVolumesConnection `json:"volumes"`
+	Volumes VolumeList `json:"volumes"`
 }
 
 // GetVolumes returns ProjectVolumesProject.Volumes, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProject) GetVolumes() ProjectVolumesProjectVolumesProjectVolumesConnection {
-	return v.Volumes
-}
-
-// ProjectVolumesProjectVolumesProjectVolumesConnection includes the requested fields of the GraphQL type ProjectVolumesConnection.
-type ProjectVolumesProjectVolumesProjectVolumesConnection struct {
-	Edges []ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectVolumesProjectVolumesProjectVolumesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnection) GetEdges() []ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge {
-	return v.Edges
-}
-
-// ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge includes the requested fields of the GraphQL type ProjectVolumesConnectionEdge.
-type ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge struct {
-	Node ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume `json:"node"`
-}
-
-// GetNode returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdge) GetNode() ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume {
-	return v.Node
-}
-
-// ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume includes the requested fields of the GraphQL type Volume.
-type ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume struct {
-	VolumeSummaryFields `json:"-"`
-	ProjectId           string `json:"projectId"`
-}
-
-// GetProjectId returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.ProjectId, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetProjectId() string {
-	return v.ProjectId
-}
-
-// GetId returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.Id, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetId() string {
-	return v.VolumeSummaryFields.Id
-}
-
-// GetName returns ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume.Name, and is useful for accessing the field via an interface.
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) GetName() string {
-	return v.VolumeSummaryFields.Name
-}
-
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.VolumeSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume struct {
-	ProjectId string `json:"projectId"`
-
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume) __premarshalJSON() (*__premarshalProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume, error) {
-	var retval __premarshalProjectVolumesProjectVolumesProjectVolumesConnectionEdgesProjectVolumesConnectionEdgeNodeVolume
-
-	retval.ProjectId = v.ProjectId
-	retval.Id = v.VolumeSummaryFields.Id
-	retval.Name = v.VolumeSummaryFields.Name
-	return &retval, nil
-}
+func (v *ProjectVolumesProject) GetVolumes() VolumeList { return v.Volumes }
 
 // ProjectVolumesResponse is returned by ProjectVolumes on success.
 type ProjectVolumesResponse struct {
@@ -3426,379 +3251,23 @@ type ProjectVolumesResponse struct {
 // GetProject returns ProjectVolumesResponse.Project, and is useful for accessing the field via an interface.
 func (v *ProjectVolumesResponse) GetProject() ProjectVolumesProject { return v.Project }
 
-// ProjectsProjectsQueryProjectsConnection includes the requested fields of the GraphQL type QueryProjectsConnection.
-type ProjectsProjectsQueryProjectsConnection struct {
-	Edges []ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectsProjectsQueryProjectsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectsProjectsQueryProjectsConnection) GetEdges() []ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge {
-	return v.Edges
-}
-
-// ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge includes the requested fields of the GraphQL type QueryProjectsConnectionEdge.
-type ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge struct {
-	Node ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject `json:"node"`
-}
-
-// GetNode returns ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge) GetNode() ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject {
-	return v.Node
-}
-
-// ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject includes the requested fields of the GraphQL type Project.
-type ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject struct {
-	ProjectSummaryFields `json:"-"`
-}
-
-// GetId returns ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Id, and is useful for accessing the field via an interface.
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetId() string {
-	return v.ProjectSummaryFields.Id
-}
-
-// GetName returns ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Name, and is useful for accessing the field via an interface.
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetName() string {
-	return v.ProjectSummaryFields.Name
-}
-
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ProjectSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) __premarshalJSON() (*__premarshalProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject, error) {
-	var retval __premarshalProjectsProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-
-	retval.Id = v.ProjectSummaryFields.Id
-	retval.Name = v.ProjectSummaryFields.Name
-	return &retval, nil
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnection includes the requested fields of the GraphQL type QueryProjectsConnection.
-type ProjectsResolutionProjectsQueryProjectsConnection struct {
-	Edges []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectsResolutionProjectsQueryProjectsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnection) GetEdges() []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge {
-	return v.Edges
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge includes the requested fields of the GraphQL type QueryProjectsConnectionEdge.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge struct {
-	Node ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject `json:"node"`
-}
-
-// GetNode returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdge) GetNode() ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject {
-	return v.Node
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject includes the requested fields of the GraphQL type Project.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject struct {
-	ProjectSummaryFields `json:"-"`
-	Environments         ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection `json:"environments"`
-	Services             ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection         `json:"services"`
-}
-
-// GetEnvironments returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Environments, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetEnvironments() ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection {
-	return v.Environments
-}
-
-// GetServices returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Services, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetServices() ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection {
-	return v.Services
-}
-
-// GetId returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Id, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetId() string {
-	return v.ProjectSummaryFields.Id
-}
-
-// GetName returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject.Name, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) GetName() string {
-	return v.ProjectSummaryFields.Name
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ProjectSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject struct {
-	Environments ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection `json:"environments"`
-
-	Services ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection `json:"services"`
-
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject) __premarshalJSON() (*__premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject, error) {
-	var retval __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-
-	retval.Environments = v.Environments
-	retval.Services = v.Services
-	retval.Id = v.ProjectSummaryFields.Id
-	retval.Name = v.ProjectSummaryFields.Name
-	return &retval, nil
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection includes the requested fields of the GraphQL type ProjectEnvironmentsConnection.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection struct {
-	Edges []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnection) GetEdges() []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge {
-	return v.Edges
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge includes the requested fields of the GraphQL type ProjectEnvironmentsConnectionEdge.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge struct {
-	Node ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment `json:"node"`
-}
-
-// GetNode returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdge) GetNode() ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment {
-	return v.Node
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment includes the requested fields of the GraphQL type Environment.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment struct {
-	EnvironmentSummaryFields `json:"-"`
-}
-
-// GetId returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment.Id, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment) GetId() string {
-	return v.EnvironmentSummaryFields.Id
-}
-
-// GetName returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment.Name, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment) GetName() string {
-	return v.EnvironmentSummaryFields.Name
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.EnvironmentSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment) __premarshalJSON() (*__premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment, error) {
-	var retval __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectEnvironmentsProjectEnvironmentsConnectionEdgesProjectEnvironmentsConnectionEdgeNodeEnvironment
-
-	retval.Id = v.EnvironmentSummaryFields.Id
-	retval.Name = v.EnvironmentSummaryFields.Name
-	return &retval, nil
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection includes the requested fields of the GraphQL type ProjectServicesConnection.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection struct {
-	Edges []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge `json:"edges"`
-}
-
-// GetEdges returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection.Edges, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnection) GetEdges() []ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge {
-	return v.Edges
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge includes the requested fields of the GraphQL type ProjectServicesConnectionEdge.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge struct {
-	Node ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService `json:"node"`
-}
-
-// GetNode returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge.Node, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdge) GetNode() ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService {
-	return v.Node
-}
-
-// ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService includes the requested fields of the GraphQL type Service.
-type ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService struct {
-	ServiceSummaryFields `json:"-"`
-}
-
-// GetId returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Id, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetId() string {
-	return v.ServiceSummaryFields.Id
-}
-
-// GetName returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Name, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetName() string {
-	return v.ServiceSummaryFields.Name
-}
-
-// GetIcon returns ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Icon, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetIcon() *string {
-	return v.ServiceSummaryFields.Icon
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-
-	Icon *string `json:"icon"`
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) __premarshalJSON() (*__premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService, error) {
-	var retval __premarshalProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService
-
-	retval.Id = v.ServiceSummaryFields.Id
-	retval.Name = v.ServiceSummaryFields.Name
-	retval.Icon = v.ServiceSummaryFields.Icon
-	return &retval, nil
-}
-
 // ProjectsResolutionResponse is returned by ProjectsResolution on success.
 type ProjectsResolutionResponse struct {
 	// Gets all projects for a user or workspace.
-	Projects ProjectsResolutionProjectsQueryProjectsConnection `json:"projects"`
+	Projects ResolutionProjects `json:"projects"`
 }
 
 // GetProjects returns ProjectsResolutionResponse.Projects, and is useful for accessing the field via an interface.
-func (v *ProjectsResolutionResponse) GetProjects() ProjectsResolutionProjectsQueryProjectsConnection {
-	return v.Projects
-}
+func (v *ProjectsResolutionResponse) GetProjects() ResolutionProjects { return v.Projects }
 
 // ProjectsResponse is returned by Projects on success.
 type ProjectsResponse struct {
 	// Gets all projects for a user or workspace.
-	Projects ProjectsProjectsQueryProjectsConnection `json:"projects"`
+	Projects ProjectList `json:"projects"`
 }
 
 // GetProjects returns ProjectsResponse.Projects, and is useful for accessing the field via an interface.
-func (v *ProjectsResponse) GetProjects() ProjectsProjectsQueryProjectsConnection { return v.Projects }
+func (v *ProjectsResponse) GetProjects() ProjectList { return v.Projects }
 
 type PublicRuntime string
 
@@ -3814,6 +3283,76 @@ var AllPublicRuntime = []PublicRuntime{
 	PublicRuntimeV2,
 }
 
+// RedeployedDeployment includes the requested fields of the GraphQL type Deployment.
+type RedeployedDeployment struct {
+	DeploymentSummaryFields `json:"-"`
+}
+
+// GetId returns RedeployedDeployment.Id, and is useful for accessing the field via an interface.
+func (v *RedeployedDeployment) GetId() string { return v.DeploymentSummaryFields.Id }
+
+// GetStatus returns RedeployedDeployment.Status, and is useful for accessing the field via an interface.
+func (v *RedeployedDeployment) GetStatus() DeploymentStatus { return v.DeploymentSummaryFields.Status }
+
+// GetCreatedAt returns RedeployedDeployment.CreatedAt, and is useful for accessing the field via an interface.
+func (v *RedeployedDeployment) GetCreatedAt() time.Time { return v.DeploymentSummaryFields.CreatedAt }
+
+// GetStaticUrl returns RedeployedDeployment.StaticUrl, and is useful for accessing the field via an interface.
+func (v *RedeployedDeployment) GetStaticUrl() *string { return v.DeploymentSummaryFields.StaticUrl }
+
+func (v *RedeployedDeployment) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*RedeployedDeployment
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.RedeployedDeployment = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DeploymentSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalRedeployedDeployment struct {
+	Id string `json:"id"`
+
+	Status DeploymentStatus `json:"status"`
+
+	CreatedAt time.Time `json:"createdAt"`
+
+	StaticUrl *string `json:"staticUrl"`
+}
+
+func (v *RedeployedDeployment) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *RedeployedDeployment) __premarshalJSON() (*__premarshalRedeployedDeployment, error) {
+	var retval __premarshalRedeployedDeployment
+
+	retval.Id = v.DeploymentSummaryFields.Id
+	retval.Status = v.DeploymentSummaryFields.Status
+	retval.CreatedAt = v.DeploymentSummaryFields.CreatedAt
+	retval.StaticUrl = v.DeploymentSummaryFields.StaticUrl
+	return &retval, nil
+}
+
 // Private Docker registry credentials. Only available for Pro plan deployments.
 type RegistryCredentialsInput struct {
 	Password string `json:"password"`
@@ -3825,6 +3364,248 @@ func (v *RegistryCredentialsInput) GetPassword() string { return v.Password }
 
 // GetUsername returns RegistryCredentialsInput.Username, and is useful for accessing the field via an interface.
 func (v *RegistryCredentialsInput) GetUsername() string { return v.Username }
+
+// ResolutionEnvironment includes the requested fields of the GraphQL type Environment.
+type ResolutionEnvironment struct {
+	EnvironmentSummaryFields `json:"-"`
+}
+
+// GetId returns ResolutionEnvironment.Id, and is useful for accessing the field via an interface.
+func (v *ResolutionEnvironment) GetId() string { return v.EnvironmentSummaryFields.Id }
+
+// GetName returns ResolutionEnvironment.Name, and is useful for accessing the field via an interface.
+func (v *ResolutionEnvironment) GetName() string { return v.EnvironmentSummaryFields.Name }
+
+func (v *ResolutionEnvironment) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ResolutionEnvironment
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ResolutionEnvironment = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.EnvironmentSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalResolutionEnvironment struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *ResolutionEnvironment) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ResolutionEnvironment) __premarshalJSON() (*__premarshalResolutionEnvironment, error) {
+	var retval __premarshalResolutionEnvironment
+
+	retval.Id = v.EnvironmentSummaryFields.Id
+	retval.Name = v.EnvironmentSummaryFields.Name
+	return &retval, nil
+}
+
+// ResolutionEnvironmentEdge includes the requested fields of the GraphQL type ProjectEnvironmentsConnectionEdge.
+type ResolutionEnvironmentEdge struct {
+	Node ResolutionEnvironment `json:"node"`
+}
+
+// GetNode returns ResolutionEnvironmentEdge.Node, and is useful for accessing the field via an interface.
+func (v *ResolutionEnvironmentEdge) GetNode() ResolutionEnvironment { return v.Node }
+
+// ResolutionEnvironments includes the requested fields of the GraphQL type ProjectEnvironmentsConnection.
+type ResolutionEnvironments struct {
+	Edges []ResolutionEnvironmentEdge `json:"edges"`
+}
+
+// GetEdges returns ResolutionEnvironments.Edges, and is useful for accessing the field via an interface.
+func (v *ResolutionEnvironments) GetEdges() []ResolutionEnvironmentEdge { return v.Edges }
+
+// ResolutionProject includes the requested fields of the GraphQL type Project.
+type ResolutionProject struct {
+	ProjectSummaryFields `json:"-"`
+	Environments         ResolutionEnvironments `json:"environments"`
+	Services             ResolutionServices     `json:"services"`
+}
+
+// GetEnvironments returns ResolutionProject.Environments, and is useful for accessing the field via an interface.
+func (v *ResolutionProject) GetEnvironments() ResolutionEnvironments { return v.Environments }
+
+// GetServices returns ResolutionProject.Services, and is useful for accessing the field via an interface.
+func (v *ResolutionProject) GetServices() ResolutionServices { return v.Services }
+
+// GetId returns ResolutionProject.Id, and is useful for accessing the field via an interface.
+func (v *ResolutionProject) GetId() string { return v.ProjectSummaryFields.Id }
+
+// GetName returns ResolutionProject.Name, and is useful for accessing the field via an interface.
+func (v *ResolutionProject) GetName() string { return v.ProjectSummaryFields.Name }
+
+func (v *ResolutionProject) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ResolutionProject
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ResolutionProject = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ProjectSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalResolutionProject struct {
+	Environments ResolutionEnvironments `json:"environments"`
+
+	Services ResolutionServices `json:"services"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *ResolutionProject) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ResolutionProject) __premarshalJSON() (*__premarshalResolutionProject, error) {
+	var retval __premarshalResolutionProject
+
+	retval.Environments = v.Environments
+	retval.Services = v.Services
+	retval.Id = v.ProjectSummaryFields.Id
+	retval.Name = v.ProjectSummaryFields.Name
+	return &retval, nil
+}
+
+// ResolutionProjectEdge includes the requested fields of the GraphQL type QueryProjectsConnectionEdge.
+type ResolutionProjectEdge struct {
+	Node ResolutionProject `json:"node"`
+}
+
+// GetNode returns ResolutionProjectEdge.Node, and is useful for accessing the field via an interface.
+func (v *ResolutionProjectEdge) GetNode() ResolutionProject { return v.Node }
+
+// ResolutionProjects includes the requested fields of the GraphQL type QueryProjectsConnection.
+type ResolutionProjects struct {
+	Edges []ResolutionProjectEdge `json:"edges"`
+}
+
+// GetEdges returns ResolutionProjects.Edges, and is useful for accessing the field via an interface.
+func (v *ResolutionProjects) GetEdges() []ResolutionProjectEdge { return v.Edges }
+
+// ResolutionService includes the requested fields of the GraphQL type Service.
+type ResolutionService struct {
+	ServiceSummaryFields `json:"-"`
+}
+
+// GetId returns ResolutionService.Id, and is useful for accessing the field via an interface.
+func (v *ResolutionService) GetId() string { return v.ServiceSummaryFields.Id }
+
+// GetName returns ResolutionService.Name, and is useful for accessing the field via an interface.
+func (v *ResolutionService) GetName() string { return v.ServiceSummaryFields.Name }
+
+// GetIcon returns ResolutionService.Icon, and is useful for accessing the field via an interface.
+func (v *ResolutionService) GetIcon() *string { return v.ServiceSummaryFields.Icon }
+
+func (v *ResolutionService) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ResolutionService
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ResolutionService = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalResolutionService struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Icon *string `json:"icon"`
+}
+
+func (v *ResolutionService) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ResolutionService) __premarshalJSON() (*__premarshalResolutionService, error) {
+	var retval __premarshalResolutionService
+
+	retval.Id = v.ServiceSummaryFields.Id
+	retval.Name = v.ServiceSummaryFields.Name
+	retval.Icon = v.ServiceSummaryFields.Icon
+	return &retval, nil
+}
+
+// ResolutionServiceEdge includes the requested fields of the GraphQL type ProjectServicesConnectionEdge.
+type ResolutionServiceEdge struct {
+	Node ResolutionService `json:"node"`
+}
+
+// GetNode returns ResolutionServiceEdge.Node, and is useful for accessing the field via an interface.
+func (v *ResolutionServiceEdge) GetNode() ResolutionService { return v.Node }
+
+// ResolutionServices includes the requested fields of the GraphQL type ProjectServicesConnection.
+type ResolutionServices struct {
+	Edges []ResolutionServiceEdge `json:"edges"`
+}
+
+// GetEdges returns ResolutionServices.Edges, and is useful for accessing the field via an interface.
+func (v *ResolutionServices) GetEdges() []ResolutionServiceEdge { return v.Edges }
 
 type RestartPolicyType string
 
@@ -3861,21 +3642,11 @@ func (v *ServiceConnectInput) GetRepo() *string { return v.Repo }
 // ServiceConnectResponse is returned by ServiceConnect on success.
 type ServiceConnectResponse struct {
 	// Connect a service to a source
-	ServiceConnect ServiceConnectServiceConnectService `json:"serviceConnect"`
+	ServiceConnect ConnectedService `json:"serviceConnect"`
 }
 
 // GetServiceConnect returns ServiceConnectResponse.ServiceConnect, and is useful for accessing the field via an interface.
-func (v *ServiceConnectResponse) GetServiceConnect() ServiceConnectServiceConnectService {
-	return v.ServiceConnect
-}
-
-// ServiceConnectServiceConnectService includes the requested fields of the GraphQL type Service.
-type ServiceConnectServiceConnectService struct {
-	Id string `json:"id"`
-}
-
-// GetId returns ServiceConnectServiceConnectService.Id, and is useful for accessing the field via an interface.
-func (v *ServiceConnectServiceConnectService) GetId() string { return v.Id }
+func (v *ServiceConnectResponse) GetServiceConnect() ConnectedService { return v.ServiceConnect }
 
 type ServiceCreateInput struct {
 	Branch *string `json:"branch"`
@@ -3928,39 +3699,37 @@ func (v *ServiceCreateInput) GetVariables() *map[string]interface{} { return v.V
 // ServiceCreateResponse is returned by ServiceCreate on success.
 type ServiceCreateResponse struct {
 	// Creates a new service.
-	ServiceCreate ServiceCreateServiceCreateService `json:"serviceCreate"`
+	ServiceCreate CreatedService `json:"serviceCreate"`
 }
 
 // GetServiceCreate returns ServiceCreateResponse.ServiceCreate, and is useful for accessing the field via an interface.
-func (v *ServiceCreateResponse) GetServiceCreate() ServiceCreateServiceCreateService {
-	return v.ServiceCreate
+func (v *ServiceCreateResponse) GetServiceCreate() CreatedService { return v.ServiceCreate }
+
+// ServiceCustomDomain includes the requested fields of the GraphQL type CustomDomain.
+type ServiceCustomDomain struct {
+	CustomDomainFields `json:"-"`
 }
 
-// ServiceCreateServiceCreateService includes the requested fields of the GraphQL type Service.
-type ServiceCreateServiceCreateService struct {
-	ServiceSummaryFields `json:"-"`
-}
+// GetId returns ServiceCustomDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceCustomDomain) GetId() string { return v.CustomDomainFields.Id }
 
-// GetId returns ServiceCreateServiceCreateService.Id, and is useful for accessing the field via an interface.
-func (v *ServiceCreateServiceCreateService) GetId() string { return v.ServiceSummaryFields.Id }
+// GetDomain returns ServiceCustomDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceCustomDomain) GetDomain() string { return v.CustomDomainFields.Domain }
 
-// GetName returns ServiceCreateServiceCreateService.Name, and is useful for accessing the field via an interface.
-func (v *ServiceCreateServiceCreateService) GetName() string { return v.ServiceSummaryFields.Name }
+// GetTargetPort returns ServiceCustomDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceCustomDomain) GetTargetPort() *int { return v.CustomDomainFields.TargetPort }
 
-// GetIcon returns ServiceCreateServiceCreateService.Icon, and is useful for accessing the field via an interface.
-func (v *ServiceCreateServiceCreateService) GetIcon() *string { return v.ServiceSummaryFields.Icon }
-
-func (v *ServiceCreateServiceCreateService) UnmarshalJSON(b []byte) error {
+func (v *ServiceCustomDomain) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*ServiceCreateServiceCreateService
+		*ServiceCustomDomain
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.ServiceCreateServiceCreateService = v
+	firstPass.ServiceCustomDomain = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -3968,22 +3737,22 @@ func (v *ServiceCreateServiceCreateService) UnmarshalJSON(b []byte) error {
 	}
 
 	err = json.Unmarshal(
-		b, &v.ServiceSummaryFields)
+		b, &v.CustomDomainFields)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-type __premarshalServiceCreateServiceCreateService struct {
+type __premarshalServiceCustomDomain struct {
 	Id string `json:"id"`
 
-	Name string `json:"name"`
+	Domain string `json:"domain"`
 
-	Icon *string `json:"icon"`
+	TargetPort *int `json:"targetPort"`
 }
 
-func (v *ServiceCreateServiceCreateService) MarshalJSON() ([]byte, error) {
+func (v *ServiceCustomDomain) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -3991,12 +3760,12 @@ func (v *ServiceCreateServiceCreateService) MarshalJSON() ([]byte, error) {
 	return json.Marshal(premarshaled)
 }
 
-func (v *ServiceCreateServiceCreateService) __premarshalJSON() (*__premarshalServiceCreateServiceCreateService, error) {
-	var retval __premarshalServiceCreateServiceCreateService
+func (v *ServiceCustomDomain) __premarshalJSON() (*__premarshalServiceCustomDomain, error) {
+	var retval __premarshalServiceCustomDomain
 
-	retval.Id = v.ServiceSummaryFields.Id
-	retval.Name = v.ServiceSummaryFields.Name
-	retval.Icon = v.ServiceSummaryFields.Icon
+	retval.Id = v.CustomDomainFields.Id
+	retval.Domain = v.CustomDomainFields.Domain
+	retval.TargetPort = v.CustomDomainFields.TargetPort
 	return &retval, nil
 }
 
@@ -4027,90 +3796,12 @@ func (v *ServiceDomainCreateInput) GetTargetPort() *int { return v.TargetPort }
 // ServiceDomainCreateResponse is returned by ServiceDomainCreate on success.
 type ServiceDomainCreateResponse struct {
 	// Creates a new service domain.
-	ServiceDomainCreate ServiceDomainCreateServiceDomainCreateServiceDomain `json:"serviceDomainCreate"`
+	ServiceDomainCreate CreatedServiceDomain `json:"serviceDomainCreate"`
 }
 
 // GetServiceDomainCreate returns ServiceDomainCreateResponse.ServiceDomainCreate, and is useful for accessing the field via an interface.
-func (v *ServiceDomainCreateResponse) GetServiceDomainCreate() ServiceDomainCreateServiceDomainCreateServiceDomain {
+func (v *ServiceDomainCreateResponse) GetServiceDomainCreate() CreatedServiceDomain {
 	return v.ServiceDomainCreate
-}
-
-// ServiceDomainCreateServiceDomainCreateServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
-type ServiceDomainCreateServiceDomainCreateServiceDomain struct {
-	ServiceDomainFields `json:"-"`
-}
-
-// GetId returns ServiceDomainCreateServiceDomainCreateServiceDomain.Id, and is useful for accessing the field via an interface.
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) GetId() string {
-	return v.ServiceDomainFields.Id
-}
-
-// GetDomain returns ServiceDomainCreateServiceDomainCreateServiceDomain.Domain, and is useful for accessing the field via an interface.
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) GetDomain() string {
-	return v.ServiceDomainFields.Domain
-}
-
-// GetTargetPort returns ServiceDomainCreateServiceDomainCreateServiceDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) GetTargetPort() *int {
-	return v.ServiceDomainFields.TargetPort
-}
-
-// GetSuffix returns ServiceDomainCreateServiceDomainCreateServiceDomain.Suffix, and is useful for accessing the field via an interface.
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) GetSuffix() *string {
-	return v.ServiceDomainFields.Suffix
-}
-
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ServiceDomainCreateServiceDomainCreateServiceDomain
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ServiceDomainCreateServiceDomainCreateServiceDomain = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceDomainFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalServiceDomainCreateServiceDomainCreateServiceDomain struct {
-	Id string `json:"id"`
-
-	Domain string `json:"domain"`
-
-	TargetPort *int `json:"targetPort"`
-
-	Suffix *string `json:"suffix"`
-}
-
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ServiceDomainCreateServiceDomainCreateServiceDomain) __premarshalJSON() (*__premarshalServiceDomainCreateServiceDomainCreateServiceDomain, error) {
-	var retval __premarshalServiceDomainCreateServiceDomainCreateServiceDomain
-
-	retval.Id = v.ServiceDomainFields.Id
-	retval.Domain = v.ServiceDomainFields.Domain
-	retval.TargetPort = v.ServiceDomainFields.TargetPort
-	retval.Suffix = v.ServiceDomainFields.Suffix
-	return &retval, nil
 }
 
 // ServiceDomainDeleteResponse is returned by ServiceDomainDelete on success.
@@ -4142,6 +3833,18 @@ func (v *ServiceDomainFields) GetTargetPort() *int { return v.TargetPort }
 // GetSuffix returns ServiceDomainFields.Suffix, and is useful for accessing the field via an interface.
 func (v *ServiceDomainFields) GetSuffix() *string { return v.Suffix }
 
+// ServiceDomains includes the requested fields of the GraphQL type AllDomains.
+type ServiceDomains struct {
+	CustomDomains  []ServiceCustomDomain  `json:"customDomains"`
+	ServiceDomains []ServiceServiceDomain `json:"serviceDomains"`
+}
+
+// GetCustomDomains returns ServiceDomains.CustomDomains, and is useful for accessing the field via an interface.
+func (v *ServiceDomains) GetCustomDomains() []ServiceCustomDomain { return v.CustomDomains }
+
+// GetServiceDomains returns ServiceDomains.ServiceDomains, and is useful for accessing the field via an interface.
+func (v *ServiceDomains) GetServiceDomains() []ServiceServiceDomain { return v.ServiceDomains }
+
 // ServiceInstanceDeployV2Response is returned by ServiceInstanceDeployV2 on success.
 type ServiceInstanceDeployV2Response struct {
 	// Deploy a service instance. Returns a deployment ID
@@ -4155,27 +3858,27 @@ func (v *ServiceInstanceDeployV2Response) GetServiceInstanceDeployV2() string {
 
 // Deploy settings and domains for a single service instance.
 type ServiceInstanceFields struct {
-	ServiceId               string                                    `json:"serviceId"`
-	Builder                 Builder                                   `json:"builder"`
-	BuildCommand            *string                                   `json:"buildCommand"`
-	StartCommand            *string                                   `json:"startCommand"`
-	DockerfilePath          *string                                   `json:"dockerfilePath"`
-	RootDirectory           *string                                   `json:"rootDirectory"`
-	HealthcheckPath         *string                                   `json:"healthcheckPath"`
-	HealthcheckTimeout      *int                                      `json:"healthcheckTimeout"`
-	CronSchedule            *string                                   `json:"cronSchedule"`
-	NumReplicas             *int                                      `json:"numReplicas"`
-	Region                  *string                                   `json:"region"`
-	RestartPolicyType       RestartPolicyType                         `json:"restartPolicyType"`
-	RestartPolicyMaxRetries int                                       `json:"restartPolicyMaxRetries"`
-	DrainingSeconds         *int                                      `json:"drainingSeconds"`
-	OverlapSeconds          *int                                      `json:"overlapSeconds"`
-	SleepApplication        *bool                                     `json:"sleepApplication"`
-	Ipv6EgressEnabled       *bool                                     `json:"ipv6EgressEnabled"`
-	WatchPatterns           []string                                  `json:"watchPatterns"`
-	PreDeployCommand        *map[string]interface{}                   `json:"preDeployCommand"`
-	Source                  *ServiceInstanceFieldsSourceServiceSource `json:"source"`
-	Domains                 ServiceInstanceFieldsDomainsAllDomains    `json:"domains"`
+	ServiceId               string                  `json:"serviceId"`
+	Builder                 Builder                 `json:"builder"`
+	BuildCommand            *string                 `json:"buildCommand"`
+	StartCommand            *string                 `json:"startCommand"`
+	DockerfilePath          *string                 `json:"dockerfilePath"`
+	RootDirectory           *string                 `json:"rootDirectory"`
+	HealthcheckPath         *string                 `json:"healthcheckPath"`
+	HealthcheckTimeout      *int                    `json:"healthcheckTimeout"`
+	CronSchedule            *string                 `json:"cronSchedule"`
+	NumReplicas             *int                    `json:"numReplicas"`
+	Region                  *string                 `json:"region"`
+	RestartPolicyType       RestartPolicyType       `json:"restartPolicyType"`
+	RestartPolicyMaxRetries int                     `json:"restartPolicyMaxRetries"`
+	DrainingSeconds         *int                    `json:"drainingSeconds"`
+	OverlapSeconds          *int                    `json:"overlapSeconds"`
+	SleepApplication        *bool                   `json:"sleepApplication"`
+	Ipv6EgressEnabled       *bool                   `json:"ipv6EgressEnabled"`
+	WatchPatterns           []string                `json:"watchPatterns"`
+	PreDeployCommand        *map[string]interface{} `json:"preDeployCommand"`
+	Source                  *ServiceSource          `json:"source"`
+	Domains                 ServiceDomains          `json:"domains"`
 }
 
 // GetServiceId returns ServiceInstanceFields.ServiceId, and is useful for accessing the field via an interface.
@@ -4238,188 +3941,10 @@ func (v *ServiceInstanceFields) GetPreDeployCommand() *map[string]interface{} {
 }
 
 // GetSource returns ServiceInstanceFields.Source, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFields) GetSource() *ServiceInstanceFieldsSourceServiceSource {
-	return v.Source
-}
+func (v *ServiceInstanceFields) GetSource() *ServiceSource { return v.Source }
 
 // GetDomains returns ServiceInstanceFields.Domains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFields) GetDomains() ServiceInstanceFieldsDomainsAllDomains { return v.Domains }
-
-// ServiceInstanceFieldsDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
-type ServiceInstanceFieldsDomainsAllDomains struct {
-	CustomDomains  []ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
-	ServiceDomains []ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
-}
-
-// GetCustomDomains returns ServiceInstanceFieldsDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomains) GetCustomDomains() []ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain {
-	return v.CustomDomains
-}
-
-// GetServiceDomains returns ServiceInstanceFieldsDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomains) GetServiceDomains() []ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain {
-	return v.ServiceDomains
-}
-
-// ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
-type ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain struct {
-	CustomDomainFields `json:"-"`
-}
-
-// GetId returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetId() string {
-	return v.CustomDomainFields.Id
-}
-
-// GetDomain returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
-	return v.CustomDomainFields.Domain
-}
-
-// GetTargetPort returns ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
-	return v.CustomDomainFields.TargetPort
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.CustomDomainFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain struct {
-	Id string `json:"id"`
-
-	Domain string `json:"domain"`
-
-	TargetPort *int `json:"targetPort"`
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain) __premarshalJSON() (*__premarshalServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain, error) {
-	var retval __premarshalServiceInstanceFieldsDomainsAllDomainsCustomDomainsCustomDomain
-
-	retval.Id = v.CustomDomainFields.Id
-	retval.Domain = v.CustomDomainFields.Domain
-	retval.TargetPort = v.CustomDomainFields.TargetPort
-	return &retval, nil
-}
-
-// ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
-type ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain struct {
-	ServiceDomainFields `json:"-"`
-}
-
-// GetId returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
-	return v.ServiceDomainFields.Id
-}
-
-// GetDomain returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
-	return v.ServiceDomainFields.Domain
-}
-
-// GetTargetPort returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
-	return v.ServiceDomainFields.TargetPort
-}
-
-// GetSuffix returns ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
-	return v.ServiceDomainFields.Suffix
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceDomainFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain struct {
-	Id string `json:"id"`
-
-	Domain string `json:"domain"`
-
-	TargetPort *int `json:"targetPort"`
-
-	Suffix *string `json:"suffix"`
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain) __premarshalJSON() (*__premarshalServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain, error) {
-	var retval __premarshalServiceInstanceFieldsDomainsAllDomainsServiceDomainsServiceDomain
-
-	retval.Id = v.ServiceDomainFields.Id
-	retval.Domain = v.ServiceDomainFields.Domain
-	retval.TargetPort = v.ServiceDomainFields.TargetPort
-	retval.Suffix = v.ServiceDomainFields.Suffix
-	return &retval, nil
-}
-
-// ServiceInstanceFieldsSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
-type ServiceInstanceFieldsSourceServiceSource struct {
-	Image *string `json:"image"`
-	Repo  *string `json:"repo"`
-}
-
-// GetImage returns ServiceInstanceFieldsSourceServiceSource.Image, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsSourceServiceSource) GetImage() *string { return v.Image }
-
-// GetRepo returns ServiceInstanceFieldsSourceServiceSource.Repo, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceFieldsSourceServiceSource) GetRepo() *string { return v.Repo }
+func (v *ServiceInstanceFields) GetDomains() ServiceDomains { return v.Domains }
 
 // ServiceInstanceLimitsResponse is returned by ServiceInstanceLimits on success.
 type ServiceInstanceLimitsResponse struct {
@@ -4467,222 +3992,12 @@ func (v *ServiceInstanceLimitsUpdateResponse) GetServiceInstanceLimitsUpdate() b
 // ServiceInstanceResponse is returned by ServiceInstance on success.
 type ServiceInstanceResponse struct {
 	// Get a service instance belonging to a service and environment
-	ServiceInstance ServiceInstanceServiceInstance `json:"serviceInstance"`
+	ServiceInstance FetchedServiceInstance `json:"serviceInstance"`
 }
 
 // GetServiceInstance returns ServiceInstanceResponse.ServiceInstance, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceResponse) GetServiceInstance() ServiceInstanceServiceInstance {
+func (v *ServiceInstanceResponse) GetServiceInstance() FetchedServiceInstance {
 	return v.ServiceInstance
-}
-
-// ServiceInstanceServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
-type ServiceInstanceServiceInstance struct {
-	ServiceInstanceFields `json:"-"`
-}
-
-// GetServiceId returns ServiceInstanceServiceInstance.ServiceId, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetServiceId() string {
-	return v.ServiceInstanceFields.ServiceId
-}
-
-// GetBuilder returns ServiceInstanceServiceInstance.Builder, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetBuilder() Builder { return v.ServiceInstanceFields.Builder }
-
-// GetBuildCommand returns ServiceInstanceServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetBuildCommand() *string {
-	return v.ServiceInstanceFields.BuildCommand
-}
-
-// GetStartCommand returns ServiceInstanceServiceInstance.StartCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetStartCommand() *string {
-	return v.ServiceInstanceFields.StartCommand
-}
-
-// GetDockerfilePath returns ServiceInstanceServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDockerfilePath() *string {
-	return v.ServiceInstanceFields.DockerfilePath
-}
-
-// GetRootDirectory returns ServiceInstanceServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRootDirectory() *string {
-	return v.ServiceInstanceFields.RootDirectory
-}
-
-// GetHealthcheckPath returns ServiceInstanceServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetHealthcheckPath() *string {
-	return v.ServiceInstanceFields.HealthcheckPath
-}
-
-// GetHealthcheckTimeout returns ServiceInstanceServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetHealthcheckTimeout() *int {
-	return v.ServiceInstanceFields.HealthcheckTimeout
-}
-
-// GetCronSchedule returns ServiceInstanceServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetCronSchedule() *string {
-	return v.ServiceInstanceFields.CronSchedule
-}
-
-// GetNumReplicas returns ServiceInstanceServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetNumReplicas() *int {
-	return v.ServiceInstanceFields.NumReplicas
-}
-
-// GetRegion returns ServiceInstanceServiceInstance.Region, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRegion() *string { return v.ServiceInstanceFields.Region }
-
-// GetRestartPolicyType returns ServiceInstanceServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRestartPolicyType() RestartPolicyType {
-	return v.ServiceInstanceFields.RestartPolicyType
-}
-
-// GetRestartPolicyMaxRetries returns ServiceInstanceServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetRestartPolicyMaxRetries() int {
-	return v.ServiceInstanceFields.RestartPolicyMaxRetries
-}
-
-// GetDrainingSeconds returns ServiceInstanceServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDrainingSeconds() *int {
-	return v.ServiceInstanceFields.DrainingSeconds
-}
-
-// GetOverlapSeconds returns ServiceInstanceServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetOverlapSeconds() *int {
-	return v.ServiceInstanceFields.OverlapSeconds
-}
-
-// GetSleepApplication returns ServiceInstanceServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetSleepApplication() *bool {
-	return v.ServiceInstanceFields.SleepApplication
-}
-
-// GetIpv6EgressEnabled returns ServiceInstanceServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetIpv6EgressEnabled() *bool {
-	return v.ServiceInstanceFields.Ipv6EgressEnabled
-}
-
-// GetWatchPatterns returns ServiceInstanceServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetWatchPatterns() []string {
-	return v.ServiceInstanceFields.WatchPatterns
-}
-
-// GetPreDeployCommand returns ServiceInstanceServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetPreDeployCommand() *map[string]interface{} {
-	return v.ServiceInstanceFields.PreDeployCommand
-}
-
-// GetSource returns ServiceInstanceServiceInstance.Source, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetSource() *ServiceInstanceFieldsSourceServiceSource {
-	return v.ServiceInstanceFields.Source
-}
-
-// GetDomains returns ServiceInstanceServiceInstance.Domains, and is useful for accessing the field via an interface.
-func (v *ServiceInstanceServiceInstance) GetDomains() ServiceInstanceFieldsDomainsAllDomains {
-	return v.ServiceInstanceFields.Domains
-}
-
-func (v *ServiceInstanceServiceInstance) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ServiceInstanceServiceInstance
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ServiceInstanceServiceInstance = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceInstanceFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalServiceInstanceServiceInstance struct {
-	ServiceId string `json:"serviceId"`
-
-	Builder Builder `json:"builder"`
-
-	BuildCommand *string `json:"buildCommand"`
-
-	StartCommand *string `json:"startCommand"`
-
-	DockerfilePath *string `json:"dockerfilePath"`
-
-	RootDirectory *string `json:"rootDirectory"`
-
-	HealthcheckPath *string `json:"healthcheckPath"`
-
-	HealthcheckTimeout *int `json:"healthcheckTimeout"`
-
-	CronSchedule *string `json:"cronSchedule"`
-
-	NumReplicas *int `json:"numReplicas"`
-
-	Region *string `json:"region"`
-
-	RestartPolicyType RestartPolicyType `json:"restartPolicyType"`
-
-	RestartPolicyMaxRetries int `json:"restartPolicyMaxRetries"`
-
-	DrainingSeconds *int `json:"drainingSeconds"`
-
-	OverlapSeconds *int `json:"overlapSeconds"`
-
-	SleepApplication *bool `json:"sleepApplication"`
-
-	Ipv6EgressEnabled *bool `json:"ipv6EgressEnabled"`
-
-	WatchPatterns []string `json:"watchPatterns"`
-
-	PreDeployCommand *map[string]interface{} `json:"preDeployCommand"`
-
-	Source *ServiceInstanceFieldsSourceServiceSource `json:"source"`
-
-	Domains ServiceInstanceFieldsDomainsAllDomains `json:"domains"`
-}
-
-func (v *ServiceInstanceServiceInstance) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ServiceInstanceServiceInstance) __premarshalJSON() (*__premarshalServiceInstanceServiceInstance, error) {
-	var retval __premarshalServiceInstanceServiceInstance
-
-	retval.ServiceId = v.ServiceInstanceFields.ServiceId
-	retval.Builder = v.ServiceInstanceFields.Builder
-	retval.BuildCommand = v.ServiceInstanceFields.BuildCommand
-	retval.StartCommand = v.ServiceInstanceFields.StartCommand
-	retval.DockerfilePath = v.ServiceInstanceFields.DockerfilePath
-	retval.RootDirectory = v.ServiceInstanceFields.RootDirectory
-	retval.HealthcheckPath = v.ServiceInstanceFields.HealthcheckPath
-	retval.HealthcheckTimeout = v.ServiceInstanceFields.HealthcheckTimeout
-	retval.CronSchedule = v.ServiceInstanceFields.CronSchedule
-	retval.NumReplicas = v.ServiceInstanceFields.NumReplicas
-	retval.Region = v.ServiceInstanceFields.Region
-	retval.RestartPolicyType = v.ServiceInstanceFields.RestartPolicyType
-	retval.RestartPolicyMaxRetries = v.ServiceInstanceFields.RestartPolicyMaxRetries
-	retval.DrainingSeconds = v.ServiceInstanceFields.DrainingSeconds
-	retval.OverlapSeconds = v.ServiceInstanceFields.OverlapSeconds
-	retval.SleepApplication = v.ServiceInstanceFields.SleepApplication
-	retval.Ipv6EgressEnabled = v.ServiceInstanceFields.Ipv6EgressEnabled
-	retval.WatchPatterns = v.ServiceInstanceFields.WatchPatterns
-	retval.PreDeployCommand = v.ServiceInstanceFields.PreDeployCommand
-	retval.Source = v.ServiceInstanceFields.Source
-	retval.Domains = v.ServiceInstanceFields.Domains
-	return &retval, nil
 }
 
 type ServiceInstanceUpdateInput struct {
@@ -4799,6 +4114,168 @@ func (v *ServiceInstanceUpdateResponse) GetServiceInstanceUpdate() bool {
 	return v.ServiceInstanceUpdate
 }
 
+// ServiceList includes the requested fields of the GraphQL type ProjectServicesConnection.
+type ServiceList struct {
+	Edges []ServiceListEdge `json:"edges"`
+}
+
+// GetEdges returns ServiceList.Edges, and is useful for accessing the field via an interface.
+func (v *ServiceList) GetEdges() []ServiceListEdge { return v.Edges }
+
+// ServiceListEdge includes the requested fields of the GraphQL type ProjectServicesConnectionEdge.
+type ServiceListEdge struct {
+	Node ServiceListItem `json:"node"`
+}
+
+// GetNode returns ServiceListEdge.Node, and is useful for accessing the field via an interface.
+func (v *ServiceListEdge) GetNode() ServiceListItem { return v.Node }
+
+// ServiceListItem includes the requested fields of the GraphQL type Service.
+type ServiceListItem struct {
+	ServiceSummaryFields `json:"-"`
+}
+
+// GetId returns ServiceListItem.Id, and is useful for accessing the field via an interface.
+func (v *ServiceListItem) GetId() string { return v.ServiceSummaryFields.Id }
+
+// GetName returns ServiceListItem.Name, and is useful for accessing the field via an interface.
+func (v *ServiceListItem) GetName() string { return v.ServiceSummaryFields.Name }
+
+// GetIcon returns ServiceListItem.Icon, and is useful for accessing the field via an interface.
+func (v *ServiceListItem) GetIcon() *string { return v.ServiceSummaryFields.Icon }
+
+func (v *ServiceListItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ServiceListItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ServiceListItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalServiceListItem struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Icon *string `json:"icon"`
+}
+
+func (v *ServiceListItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ServiceListItem) __premarshalJSON() (*__premarshalServiceListItem, error) {
+	var retval __premarshalServiceListItem
+
+	retval.Id = v.ServiceSummaryFields.Id
+	retval.Name = v.ServiceSummaryFields.Name
+	retval.Icon = v.ServiceSummaryFields.Icon
+	return &retval, nil
+}
+
+// ServiceServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
+type ServiceServiceDomain struct {
+	ServiceDomainFields `json:"-"`
+}
+
+// GetId returns ServiceServiceDomain.Id, and is useful for accessing the field via an interface.
+func (v *ServiceServiceDomain) GetId() string { return v.ServiceDomainFields.Id }
+
+// GetDomain returns ServiceServiceDomain.Domain, and is useful for accessing the field via an interface.
+func (v *ServiceServiceDomain) GetDomain() string { return v.ServiceDomainFields.Domain }
+
+// GetTargetPort returns ServiceServiceDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *ServiceServiceDomain) GetTargetPort() *int { return v.ServiceDomainFields.TargetPort }
+
+// GetSuffix returns ServiceServiceDomain.Suffix, and is useful for accessing the field via an interface.
+func (v *ServiceServiceDomain) GetSuffix() *string { return v.ServiceDomainFields.Suffix }
+
+func (v *ServiceServiceDomain) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ServiceServiceDomain
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ServiceServiceDomain = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceDomainFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalServiceServiceDomain struct {
+	Id string `json:"id"`
+
+	Domain string `json:"domain"`
+
+	TargetPort *int `json:"targetPort"`
+
+	Suffix *string `json:"suffix"`
+}
+
+func (v *ServiceServiceDomain) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ServiceServiceDomain) __premarshalJSON() (*__premarshalServiceServiceDomain, error) {
+	var retval __premarshalServiceServiceDomain
+
+	retval.Id = v.ServiceDomainFields.Id
+	retval.Domain = v.ServiceDomainFields.Domain
+	retval.TargetPort = v.ServiceDomainFields.TargetPort
+	retval.Suffix = v.ServiceDomainFields.Suffix
+	return &retval, nil
+}
+
+// ServiceSource includes the requested fields of the GraphQL type ServiceSource.
+type ServiceSource struct {
+	Image *string `json:"image"`
+	Repo  *string `json:"repo"`
+}
+
+// GetImage returns ServiceSource.Image, and is useful for accessing the field via an interface.
+func (v *ServiceSource) GetImage() *string { return v.Image }
+
+// GetRepo returns ServiceSource.Repo, and is useful for accessing the field via an interface.
+func (v *ServiceSource) GetRepo() *string { return v.Repo }
+
 type ServiceSourceInput struct {
 	Image *string `json:"image"`
 	Repo  *string `json:"repo"`
@@ -4840,158 +4317,20 @@ func (v *ServiceUpdateInput) GetName() *string { return v.Name }
 // ServiceUpdateResponse is returned by ServiceUpdate on success.
 type ServiceUpdateResponse struct {
 	// Updates a service.
-	ServiceUpdate ServiceUpdateServiceUpdateService `json:"serviceUpdate"`
+	ServiceUpdate UpdatedService `json:"serviceUpdate"`
 }
 
 // GetServiceUpdate returns ServiceUpdateResponse.ServiceUpdate, and is useful for accessing the field via an interface.
-func (v *ServiceUpdateResponse) GetServiceUpdate() ServiceUpdateServiceUpdateService {
-	return v.ServiceUpdate
-}
-
-// ServiceUpdateServiceUpdateService includes the requested fields of the GraphQL type Service.
-type ServiceUpdateServiceUpdateService struct {
-	ServiceSummaryFields `json:"-"`
-}
-
-// GetId returns ServiceUpdateServiceUpdateService.Id, and is useful for accessing the field via an interface.
-func (v *ServiceUpdateServiceUpdateService) GetId() string { return v.ServiceSummaryFields.Id }
-
-// GetName returns ServiceUpdateServiceUpdateService.Name, and is useful for accessing the field via an interface.
-func (v *ServiceUpdateServiceUpdateService) GetName() string { return v.ServiceSummaryFields.Name }
-
-// GetIcon returns ServiceUpdateServiceUpdateService.Icon, and is useful for accessing the field via an interface.
-func (v *ServiceUpdateServiceUpdateService) GetIcon() *string { return v.ServiceSummaryFields.Icon }
-
-func (v *ServiceUpdateServiceUpdateService) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*ServiceUpdateServiceUpdateService
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.ServiceUpdateServiceUpdateService = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.ServiceSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalServiceUpdateServiceUpdateService struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-
-	Icon *string `json:"icon"`
-}
-
-func (v *ServiceUpdateServiceUpdateService) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *ServiceUpdateServiceUpdateService) __premarshalJSON() (*__premarshalServiceUpdateServiceUpdateService, error) {
-	var retval __premarshalServiceUpdateServiceUpdateService
-
-	retval.Id = v.ServiceSummaryFields.Id
-	retval.Name = v.ServiceSummaryFields.Name
-	retval.Icon = v.ServiceSummaryFields.Icon
-	return &retval, nil
-}
+func (v *ServiceUpdateResponse) GetServiceUpdate() UpdatedService { return v.ServiceUpdate }
 
 // TCPProxiesResponse is returned by TCPProxies on success.
 type TCPProxiesResponse struct {
 	// All TCP proxies for a service instance
-	TcpProxies []TCPProxiesTcpProxiesTCPProxy `json:"tcpProxies"`
+	TcpProxies []TCPProxyItem `json:"tcpProxies"`
 }
 
 // GetTcpProxies returns TCPProxiesResponse.TcpProxies, and is useful for accessing the field via an interface.
-func (v *TCPProxiesResponse) GetTcpProxies() []TCPProxiesTcpProxiesTCPProxy { return v.TcpProxies }
-
-// TCPProxiesTcpProxiesTCPProxy includes the requested fields of the GraphQL type TCPProxy.
-type TCPProxiesTcpProxiesTCPProxy struct {
-	TCPProxyFields `json:"-"`
-}
-
-// GetId returns TCPProxiesTcpProxiesTCPProxy.Id, and is useful for accessing the field via an interface.
-func (v *TCPProxiesTcpProxiesTCPProxy) GetId() string { return v.TCPProxyFields.Id }
-
-// GetApplicationPort returns TCPProxiesTcpProxiesTCPProxy.ApplicationPort, and is useful for accessing the field via an interface.
-func (v *TCPProxiesTcpProxiesTCPProxy) GetApplicationPort() int {
-	return v.TCPProxyFields.ApplicationPort
-}
-
-// GetProxyPort returns TCPProxiesTcpProxiesTCPProxy.ProxyPort, and is useful for accessing the field via an interface.
-func (v *TCPProxiesTcpProxiesTCPProxy) GetProxyPort() int { return v.TCPProxyFields.ProxyPort }
-
-// GetDomain returns TCPProxiesTcpProxiesTCPProxy.Domain, and is useful for accessing the field via an interface.
-func (v *TCPProxiesTcpProxiesTCPProxy) GetDomain() string { return v.TCPProxyFields.Domain }
-
-func (v *TCPProxiesTcpProxiesTCPProxy) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*TCPProxiesTcpProxiesTCPProxy
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.TCPProxiesTcpProxiesTCPProxy = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.TCPProxyFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalTCPProxiesTcpProxiesTCPProxy struct {
-	Id string `json:"id"`
-
-	ApplicationPort int `json:"applicationPort"`
-
-	ProxyPort int `json:"proxyPort"`
-
-	Domain string `json:"domain"`
-}
-
-func (v *TCPProxiesTcpProxiesTCPProxy) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *TCPProxiesTcpProxiesTCPProxy) __premarshalJSON() (*__premarshalTCPProxiesTcpProxiesTCPProxy, error) {
-	var retval __premarshalTCPProxiesTcpProxiesTCPProxy
-
-	retval.Id = v.TCPProxyFields.Id
-	retval.ApplicationPort = v.TCPProxyFields.ApplicationPort
-	retval.ProxyPort = v.TCPProxyFields.ProxyPort
-	retval.Domain = v.TCPProxyFields.Domain
-	return &retval, nil
-}
+func (v *TCPProxiesResponse) GetTcpProxies() []TCPProxyItem { return v.TcpProxies }
 
 type TCPProxyCreateInput struct {
 	ApplicationPort int    `json:"applicationPort"`
@@ -5028,47 +4367,34 @@ func (v *TCPProxyFields) GetProxyPort() int { return v.ProxyPort }
 // GetDomain returns TCPProxyFields.Domain, and is useful for accessing the field via an interface.
 func (v *TCPProxyFields) GetDomain() string { return v.Domain }
 
-// TcpProxyCreateResponse is returned by TcpProxyCreate on success.
-type TcpProxyCreateResponse struct {
-	// Creates a new TCP proxy for a service instance.
-	TcpProxyCreate TcpProxyCreateTcpProxyCreateTCPProxy `json:"tcpProxyCreate"`
-}
-
-// GetTcpProxyCreate returns TcpProxyCreateResponse.TcpProxyCreate, and is useful for accessing the field via an interface.
-func (v *TcpProxyCreateResponse) GetTcpProxyCreate() TcpProxyCreateTcpProxyCreateTCPProxy {
-	return v.TcpProxyCreate
-}
-
-// TcpProxyCreateTcpProxyCreateTCPProxy includes the requested fields of the GraphQL type TCPProxy.
-type TcpProxyCreateTcpProxyCreateTCPProxy struct {
+// TCPProxyItem includes the requested fields of the GraphQL type TCPProxy.
+type TCPProxyItem struct {
 	TCPProxyFields `json:"-"`
 }
 
-// GetId returns TcpProxyCreateTcpProxyCreateTCPProxy.Id, and is useful for accessing the field via an interface.
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) GetId() string { return v.TCPProxyFields.Id }
+// GetId returns TCPProxyItem.Id, and is useful for accessing the field via an interface.
+func (v *TCPProxyItem) GetId() string { return v.TCPProxyFields.Id }
 
-// GetApplicationPort returns TcpProxyCreateTcpProxyCreateTCPProxy.ApplicationPort, and is useful for accessing the field via an interface.
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) GetApplicationPort() int {
-	return v.TCPProxyFields.ApplicationPort
-}
+// GetApplicationPort returns TCPProxyItem.ApplicationPort, and is useful for accessing the field via an interface.
+func (v *TCPProxyItem) GetApplicationPort() int { return v.TCPProxyFields.ApplicationPort }
 
-// GetProxyPort returns TcpProxyCreateTcpProxyCreateTCPProxy.ProxyPort, and is useful for accessing the field via an interface.
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) GetProxyPort() int { return v.TCPProxyFields.ProxyPort }
+// GetProxyPort returns TCPProxyItem.ProxyPort, and is useful for accessing the field via an interface.
+func (v *TCPProxyItem) GetProxyPort() int { return v.TCPProxyFields.ProxyPort }
 
-// GetDomain returns TcpProxyCreateTcpProxyCreateTCPProxy.Domain, and is useful for accessing the field via an interface.
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) GetDomain() string { return v.TCPProxyFields.Domain }
+// GetDomain returns TCPProxyItem.Domain, and is useful for accessing the field via an interface.
+func (v *TCPProxyItem) GetDomain() string { return v.TCPProxyFields.Domain }
 
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) UnmarshalJSON(b []byte) error {
+func (v *TCPProxyItem) UnmarshalJSON(b []byte) error {
 
 	if string(b) == "null" {
 		return nil
 	}
 
 	var firstPass struct {
-		*TcpProxyCreateTcpProxyCreateTCPProxy
+		*TCPProxyItem
 		graphql.NoUnmarshalJSON
 	}
-	firstPass.TcpProxyCreateTcpProxyCreateTCPProxy = v
+	firstPass.TCPProxyItem = v
 
 	err := json.Unmarshal(b, &firstPass)
 	if err != nil {
@@ -5083,7 +4409,7 @@ func (v *TcpProxyCreateTcpProxyCreateTCPProxy) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type __premarshalTcpProxyCreateTcpProxyCreateTCPProxy struct {
+type __premarshalTCPProxyItem struct {
 	Id string `json:"id"`
 
 	ApplicationPort int `json:"applicationPort"`
@@ -5093,7 +4419,7 @@ type __premarshalTcpProxyCreateTcpProxyCreateTCPProxy struct {
 	Domain string `json:"domain"`
 }
 
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) MarshalJSON() ([]byte, error) {
+func (v *TCPProxyItem) MarshalJSON() ([]byte, error) {
 	premarshaled, err := v.__premarshalJSON()
 	if err != nil {
 		return nil, err
@@ -5101,8 +4427,8 @@ func (v *TcpProxyCreateTcpProxyCreateTCPProxy) MarshalJSON() ([]byte, error) {
 	return json.Marshal(premarshaled)
 }
 
-func (v *TcpProxyCreateTcpProxyCreateTCPProxy) __premarshalJSON() (*__premarshalTcpProxyCreateTcpProxyCreateTCPProxy, error) {
-	var retval __premarshalTcpProxyCreateTcpProxyCreateTCPProxy
+func (v *TCPProxyItem) __premarshalJSON() (*__premarshalTCPProxyItem, error) {
+	var retval __premarshalTCPProxyItem
 
 	retval.Id = v.TCPProxyFields.Id
 	retval.ApplicationPort = v.TCPProxyFields.ApplicationPort
@@ -5110,6 +4436,15 @@ func (v *TcpProxyCreateTcpProxyCreateTCPProxy) __premarshalJSON() (*__premarshal
 	retval.Domain = v.TCPProxyFields.Domain
 	return &retval, nil
 }
+
+// TcpProxyCreateResponse is returned by TcpProxyCreate on success.
+type TcpProxyCreateResponse struct {
+	// Creates a new TCP proxy for a service instance.
+	TcpProxyCreate CreatedTCPProxy `json:"tcpProxyCreate"`
+}
+
+// GetTcpProxyCreate returns TcpProxyCreateResponse.TcpProxyCreate, and is useful for accessing the field via an interface.
+func (v *TcpProxyCreateResponse) GetTcpProxyCreate() CreatedTCPProxy { return v.TcpProxyCreate }
 
 // TcpProxyDeleteResponse is returned by TcpProxyDelete on success.
 type TcpProxyDeleteResponse struct {
@@ -5119,6 +4454,316 @@ type TcpProxyDeleteResponse struct {
 
 // GetTcpProxyDelete returns TcpProxyDeleteResponse.TcpProxyDelete, and is useful for accessing the field via an interface.
 func (v *TcpProxyDeleteResponse) GetTcpProxyDelete() bool { return v.TcpProxyDelete }
+
+// TokenContext includes the requested fields of the GraphQL type ApiTokenContext.
+// The GraphQL type's documentation follows.
+//
+// Information about the current API token and its accessible workspaces.
+type TokenContext struct {
+	// Workspaces this subject can operate on via this token or session.
+	Workspaces []TokenWorkspace `json:"workspaces"`
+}
+
+// GetWorkspaces returns TokenContext.Workspaces, and is useful for accessing the field via an interface.
+func (v *TokenContext) GetWorkspaces() []TokenWorkspace { return v.Workspaces }
+
+// TokenScope includes the requested fields of the GraphQL type ProjectToken.
+type TokenScope struct {
+	ProjectId     string `json:"projectId"`
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetProjectId returns TokenScope.ProjectId, and is useful for accessing the field via an interface.
+func (v *TokenScope) GetProjectId() string { return v.ProjectId }
+
+// GetEnvironmentId returns TokenScope.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *TokenScope) GetEnvironmentId() string { return v.EnvironmentId }
+
+// TokenWorkspace includes the requested fields of the GraphQL type ApiTokenWorkspace.
+type TokenWorkspace struct {
+	WorkspaceFields `json:"-"`
+}
+
+// GetId returns TokenWorkspace.Id, and is useful for accessing the field via an interface.
+func (v *TokenWorkspace) GetId() string { return v.WorkspaceFields.Id }
+
+// GetName returns TokenWorkspace.Name, and is useful for accessing the field via an interface.
+func (v *TokenWorkspace) GetName() string { return v.WorkspaceFields.Name }
+
+func (v *TokenWorkspace) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*TokenWorkspace
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.TokenWorkspace = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkspaceFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalTokenWorkspace struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *TokenWorkspace) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *TokenWorkspace) __premarshalJSON() (*__premarshalTokenWorkspace, error) {
+	var retval __premarshalTokenWorkspace
+
+	retval.Id = v.WorkspaceFields.Id
+	retval.Name = v.WorkspaceFields.Name
+	return &retval, nil
+}
+
+// TriggerList includes the requested fields of the GraphQL type QueryDeploymentTriggersConnection.
+type TriggerList struct {
+	Edges []TriggerListEdge `json:"edges"`
+}
+
+// GetEdges returns TriggerList.Edges, and is useful for accessing the field via an interface.
+func (v *TriggerList) GetEdges() []TriggerListEdge { return v.Edges }
+
+// TriggerListEdge includes the requested fields of the GraphQL type QueryDeploymentTriggersConnectionEdge.
+type TriggerListEdge struct {
+	Node TriggerListItem `json:"node"`
+}
+
+// GetNode returns TriggerListEdge.Node, and is useful for accessing the field via an interface.
+func (v *TriggerListEdge) GetNode() TriggerListItem { return v.Node }
+
+// TriggerListItem includes the requested fields of the GraphQL type DeploymentTrigger.
+type TriggerListItem struct {
+	DeploymentTriggerFields `json:"-"`
+}
+
+// GetId returns TriggerListItem.Id, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetId() string { return v.DeploymentTriggerFields.Id }
+
+// GetServiceId returns TriggerListItem.ServiceId, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetServiceId() *string { return v.DeploymentTriggerFields.ServiceId }
+
+// GetBranch returns TriggerListItem.Branch, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetBranch() string { return v.DeploymentTriggerFields.Branch }
+
+// GetRepository returns TriggerListItem.Repository, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetRepository() string { return v.DeploymentTriggerFields.Repository }
+
+// GetProvider returns TriggerListItem.Provider, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetProvider() string { return v.DeploymentTriggerFields.Provider }
+
+// GetCheckSuites returns TriggerListItem.CheckSuites, and is useful for accessing the field via an interface.
+func (v *TriggerListItem) GetCheckSuites() bool { return v.DeploymentTriggerFields.CheckSuites }
+
+func (v *TriggerListItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*TriggerListItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.TriggerListItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DeploymentTriggerFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalTriggerListItem struct {
+	Id string `json:"id"`
+
+	ServiceId *string `json:"serviceId"`
+
+	Branch string `json:"branch"`
+
+	Repository string `json:"repository"`
+
+	Provider string `json:"provider"`
+
+	CheckSuites bool `json:"checkSuites"`
+}
+
+func (v *TriggerListItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *TriggerListItem) __premarshalJSON() (*__premarshalTriggerListItem, error) {
+	var retval __premarshalTriggerListItem
+
+	retval.Id = v.DeploymentTriggerFields.Id
+	retval.ServiceId = v.DeploymentTriggerFields.ServiceId
+	retval.Branch = v.DeploymentTriggerFields.Branch
+	retval.Repository = v.DeploymentTriggerFields.Repository
+	retval.Provider = v.DeploymentTriggerFields.Provider
+	retval.CheckSuites = v.DeploymentTriggerFields.CheckSuites
+	return &retval, nil
+}
+
+// UpdatedBucket includes the requested fields of the GraphQL type Bucket.
+type UpdatedBucket struct {
+	BucketSummaryFields `json:"-"`
+}
+
+// GetId returns UpdatedBucket.Id, and is useful for accessing the field via an interface.
+func (v *UpdatedBucket) GetId() string { return v.BucketSummaryFields.Id }
+
+// GetName returns UpdatedBucket.Name, and is useful for accessing the field via an interface.
+func (v *UpdatedBucket) GetName() string { return v.BucketSummaryFields.Name }
+
+func (v *UpdatedBucket) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*UpdatedBucket
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.UpdatedBucket = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.BucketSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalUpdatedBucket struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *UpdatedBucket) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *UpdatedBucket) __premarshalJSON() (*__premarshalUpdatedBucket, error) {
+	var retval __premarshalUpdatedBucket
+
+	retval.Id = v.BucketSummaryFields.Id
+	retval.Name = v.BucketSummaryFields.Name
+	return &retval, nil
+}
+
+// UpdatedService includes the requested fields of the GraphQL type Service.
+type UpdatedService struct {
+	ServiceSummaryFields `json:"-"`
+}
+
+// GetId returns UpdatedService.Id, and is useful for accessing the field via an interface.
+func (v *UpdatedService) GetId() string { return v.ServiceSummaryFields.Id }
+
+// GetName returns UpdatedService.Name, and is useful for accessing the field via an interface.
+func (v *UpdatedService) GetName() string { return v.ServiceSummaryFields.Name }
+
+// GetIcon returns UpdatedService.Icon, and is useful for accessing the field via an interface.
+func (v *UpdatedService) GetIcon() *string { return v.ServiceSummaryFields.Icon }
+
+func (v *UpdatedService) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*UpdatedService
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.UpdatedService = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.ServiceSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalUpdatedService struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Icon *string `json:"icon"`
+}
+
+func (v *UpdatedService) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *UpdatedService) __premarshalJSON() (*__premarshalUpdatedService, error) {
+	var retval __premarshalUpdatedService
+
+	retval.Id = v.ServiceSummaryFields.Id
+	retval.Name = v.ServiceSummaryFields.Name
+	retval.Icon = v.ServiceSummaryFields.Icon
+	return &retval, nil
+}
+
+// UpdatedTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
+type UpdatedTrigger struct {
+	Id string `json:"id"`
+}
+
+// GetId returns UpdatedTrigger.Id, and is useful for accessing the field via an interface.
+func (v *UpdatedTrigger) GetId() string { return v.Id }
 
 type VariableCollectionUpsertInput struct {
 	EnvironmentId string `json:"environmentId"`
@@ -5265,71 +4910,11 @@ func (v *VolumeCreateInput) GetServiceId() *string { return v.ServiceId }
 // VolumeCreateResponse is returned by VolumeCreate on success.
 type VolumeCreateResponse struct {
 	// Create a persistent volume in a project
-	VolumeCreate VolumeCreateVolumeCreateVolume `json:"volumeCreate"`
+	VolumeCreate CreatedVolume `json:"volumeCreate"`
 }
 
 // GetVolumeCreate returns VolumeCreateResponse.VolumeCreate, and is useful for accessing the field via an interface.
-func (v *VolumeCreateResponse) GetVolumeCreate() VolumeCreateVolumeCreateVolume {
-	return v.VolumeCreate
-}
-
-// VolumeCreateVolumeCreateVolume includes the requested fields of the GraphQL type Volume.
-type VolumeCreateVolumeCreateVolume struct {
-	VolumeSummaryFields `json:"-"`
-}
-
-// GetId returns VolumeCreateVolumeCreateVolume.Id, and is useful for accessing the field via an interface.
-func (v *VolumeCreateVolumeCreateVolume) GetId() string { return v.VolumeSummaryFields.Id }
-
-// GetName returns VolumeCreateVolumeCreateVolume.Name, and is useful for accessing the field via an interface.
-func (v *VolumeCreateVolumeCreateVolume) GetName() string { return v.VolumeSummaryFields.Name }
-
-func (v *VolumeCreateVolumeCreateVolume) UnmarshalJSON(b []byte) error {
-
-	if string(b) == "null" {
-		return nil
-	}
-
-	var firstPass struct {
-		*VolumeCreateVolumeCreateVolume
-		graphql.NoUnmarshalJSON
-	}
-	firstPass.VolumeCreateVolumeCreateVolume = v
-
-	err := json.Unmarshal(b, &firstPass)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(
-		b, &v.VolumeSummaryFields)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type __premarshalVolumeCreateVolumeCreateVolume struct {
-	Id string `json:"id"`
-
-	Name string `json:"name"`
-}
-
-func (v *VolumeCreateVolumeCreateVolume) MarshalJSON() ([]byte, error) {
-	premarshaled, err := v.__premarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(premarshaled)
-}
-
-func (v *VolumeCreateVolumeCreateVolume) __premarshalJSON() (*__premarshalVolumeCreateVolumeCreateVolume, error) {
-	var retval __premarshalVolumeCreateVolumeCreateVolume
-
-	retval.Id = v.VolumeSummaryFields.Id
-	retval.Name = v.VolumeSummaryFields.Name
-	return &retval, nil
-}
+func (v *VolumeCreateResponse) GetVolumeCreate() CreatedVolume { return v.VolumeCreate }
 
 // VolumeDeleteResponse is returned by VolumeDelete on success.
 type VolumeDeleteResponse struct {
@@ -5452,6 +5037,87 @@ type VolumeInstanceUpdateResponse struct {
 
 // GetVolumeInstanceUpdate returns VolumeInstanceUpdateResponse.VolumeInstanceUpdate, and is useful for accessing the field via an interface.
 func (v *VolumeInstanceUpdateResponse) GetVolumeInstanceUpdate() bool { return v.VolumeInstanceUpdate }
+
+// VolumeList includes the requested fields of the GraphQL type ProjectVolumesConnection.
+type VolumeList struct {
+	Edges []VolumeListEdge `json:"edges"`
+}
+
+// GetEdges returns VolumeList.Edges, and is useful for accessing the field via an interface.
+func (v *VolumeList) GetEdges() []VolumeListEdge { return v.Edges }
+
+// VolumeListEdge includes the requested fields of the GraphQL type ProjectVolumesConnectionEdge.
+type VolumeListEdge struct {
+	Node VolumeListItem `json:"node"`
+}
+
+// GetNode returns VolumeListEdge.Node, and is useful for accessing the field via an interface.
+func (v *VolumeListEdge) GetNode() VolumeListItem { return v.Node }
+
+// VolumeListItem includes the requested fields of the GraphQL type Volume.
+type VolumeListItem struct {
+	VolumeSummaryFields `json:"-"`
+	ProjectId           string `json:"projectId"`
+}
+
+// GetProjectId returns VolumeListItem.ProjectId, and is useful for accessing the field via an interface.
+func (v *VolumeListItem) GetProjectId() string { return v.ProjectId }
+
+// GetId returns VolumeListItem.Id, and is useful for accessing the field via an interface.
+func (v *VolumeListItem) GetId() string { return v.VolumeSummaryFields.Id }
+
+// GetName returns VolumeListItem.Name, and is useful for accessing the field via an interface.
+func (v *VolumeListItem) GetName() string { return v.VolumeSummaryFields.Name }
+
+func (v *VolumeListItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*VolumeListItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.VolumeListItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.VolumeSummaryFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalVolumeListItem struct {
+	ProjectId string `json:"projectId"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+}
+
+func (v *VolumeListItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *VolumeListItem) __premarshalJSON() (*__premarshalVolumeListItem, error) {
+	var retval __premarshalVolumeListItem
+
+	retval.ProjectId = v.ProjectId
+	retval.Id = v.VolumeSummaryFields.Id
+	retval.Name = v.VolumeSummaryFields.Name
+	return &retval, nil
+}
 
 type VolumeState string
 

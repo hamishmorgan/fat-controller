@@ -118,8 +118,7 @@ func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, projec
 	}
 
 	// Resolve project from the results. Each edge node embeds ProjectSummaryFields.
-	type projEdge = ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-	var matchedProject *projEdge
+	var matchedProject *ResolutionProject
 
 	if project != "" && uuidPattern.MatchString(project) {
 		for i, edge := range resp.Projects.Edges {

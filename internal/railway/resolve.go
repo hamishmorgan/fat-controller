@@ -11,6 +11,19 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
+// ListWorkspaces returns the name/ID pairs for all workspaces the token has access to.
+func ListWorkspaces(ctx context.Context, client *Client) ([]EntityInfo, error) {
+	resp, err := ApiToken(ctx, client.GQL())
+	if err != nil {
+		return nil, err
+	}
+	workspaces := make([]EntityInfo, len(resp.ApiToken.Workspaces))
+	for i, ws := range resp.ApiToken.Workspaces {
+		workspaces[i] = EntityInfo{Name: ws.Name, ID: ws.Id}
+	}
+	return workspaces, nil
+}
+
 // uuidPattern matches Railway-style UUIDs (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 

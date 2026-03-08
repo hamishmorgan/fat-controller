@@ -6,6 +6,19 @@ import (
 	"log/slog"
 )
 
+// ListProjects returns the name/ID pairs for all projects in a workspace.
+func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]EntityInfo, error) {
+	resp, err := Projects(ctx, client.GQL(), &workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	projects := make([]EntityInfo, len(resp.Projects.Edges))
+	for i, edge := range resp.Projects.Edges {
+		projects[i] = EntityInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return projects, nil
+}
+
 // CreateProject creates a new project.
 // Returns the project ID on success.
 func CreateProject(ctx context.Context, client *Client, name string) (string, error) {

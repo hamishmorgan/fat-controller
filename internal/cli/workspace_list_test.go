@@ -7,19 +7,20 @@ import (
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 type fakeWorkspaceLister struct {
-	workspaces []cli.WorkspaceInfo
+	workspaces []railway.EntityInfo
 }
 
-func (f *fakeWorkspaceLister) ListWorkspaces(ctx context.Context) ([]cli.WorkspaceInfo, error) {
+func (f *fakeWorkspaceLister) ListWorkspaces(ctx context.Context) ([]railway.EntityInfo, error) {
 	return f.workspaces, nil
 }
 
 func TestRunWorkspaceList_Text(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []cli.WorkspaceInfo{
+		workspaces: []railway.EntityInfo{
 			{ID: "ws-1", Name: "alpha"},
 			{ID: "ws-2", Name: "beta"},
 		},
@@ -37,7 +38,7 @@ func TestRunWorkspaceList_Text(t *testing.T) {
 
 func TestRunWorkspaceList_JSON(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []cli.WorkspaceInfo{{ID: "ws-1", Name: "alpha"}},
+		workspaces: []railway.EntityInfo{{ID: "ws-1", Name: "alpha"}},
 	}
 	var buf bytes.Buffer
 	err := cli.RunWorkspaceList(context.Background(), &cli.Globals{Output: "json"}, lister, &buf)
@@ -52,7 +53,7 @@ func TestRunWorkspaceList_JSON(t *testing.T) {
 
 func TestRunWorkspaceList_TOML(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []cli.WorkspaceInfo{
+		workspaces: []railway.EntityInfo{
 			{ID: "ws-1", Name: "alpha"},
 			{ID: "ws-2", Name: "beta"},
 		},

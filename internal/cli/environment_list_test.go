@@ -8,20 +8,21 @@ import (
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 type fakeEnvironmentLister struct {
-	environments []cli.EnvironmentInfo
+	environments []railway.EntityInfo
 	err          error
 }
 
-func (f *fakeEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]cli.EnvironmentInfo, error) {
+func (f *fakeEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
 	return f.environments, f.err
 }
 
 func TestRunEnvironmentList_Text(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []cli.EnvironmentInfo{
+		environments: []railway.EntityInfo{
 			{ID: "env-1", Name: "production"},
 			{ID: "env-2", Name: "staging"},
 		},
@@ -39,7 +40,7 @@ func TestRunEnvironmentList_Text(t *testing.T) {
 
 func TestRunEnvironmentList_JSON(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []cli.EnvironmentInfo{
+		environments: []railway.EntityInfo{
 			{ID: "env-1", Name: "production"},
 		},
 	}
@@ -56,7 +57,7 @@ func TestRunEnvironmentList_JSON(t *testing.T) {
 
 func TestRunEnvironmentList_TOML(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []cli.EnvironmentInfo{
+		environments: []railway.EntityInfo{
 			{ID: "env-1", Name: "production"},
 			{ID: "env-2", Name: "staging"},
 		},

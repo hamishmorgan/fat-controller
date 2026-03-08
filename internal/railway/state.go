@@ -11,21 +11,6 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// FetchServiceList returns the name/ID pairs for all services in a project.
-// This is a lightweight query (single API call) suitable for showing a service
-// picker before fetching full live state.
-func FetchServiceList(ctx context.Context, client *Client, projectID string) ([]config.ServiceInfo, error) {
-	resp, err := ProjectServices(ctx, client.GQL(), projectID)
-	if err != nil {
-		return nil, err
-	}
-	services := make([]config.ServiceInfo, len(resp.Project.Services.Edges))
-	for i, edge := range resp.Project.Services.Edges {
-		services[i] = config.ServiceInfo{Name: edge.Node.Name, ID: edge.Node.Id}
-	}
-	return services, nil
-}
-
 // FetchLiveConfig loads shared + per-service variables and settings.
 // serviceFilter limits which services are fetched — empty means all.
 // Per-service queries run concurrently via errgroup.

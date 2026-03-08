@@ -849,8 +849,8 @@ func (e *e2eInitResolver) FetchEnvironments(ctx context.Context, projectID strin
 	return items, nil
 }
 
-func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]config.ServiceInfo, error) {
-	return railway.FetchServiceList(ctx, e.client, projectID)
+func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+	return railway.ListServices(ctx, e.client, projectID)
 }
 
 func (e *e2eInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {

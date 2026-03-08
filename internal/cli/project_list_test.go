@@ -8,20 +8,21 @@ import (
 	"testing"
 
 	"github.com/hamishmorgan/fat-controller/internal/cli"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 type fakeProjectLister struct {
-	projects []cli.ProjectInfo
+	projects []railway.EntityInfo
 	err      error
 }
 
-func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]cli.ProjectInfo, error) {
+func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error) {
 	return f.projects, f.err
 }
 
 func TestRunProjectList_Text(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []cli.ProjectInfo{
+		projects: []railway.EntityInfo{
 			{ID: "proj-1", Name: "my-app"},
 			{ID: "proj-2", Name: "my-api"},
 		},
@@ -42,7 +43,7 @@ func TestRunProjectList_Text(t *testing.T) {
 
 func TestRunProjectList_JSON(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []cli.ProjectInfo{
+		projects: []railway.EntityInfo{
 			{ID: "proj-1", Name: "my-app"},
 		},
 	}
@@ -59,7 +60,7 @@ func TestRunProjectList_JSON(t *testing.T) {
 
 func TestRunProjectList_TOML(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []cli.ProjectInfo{
+		projects: []railway.EntityInfo{
 			{ID: "proj-1", Name: "my-app"},
 			{ID: "proj-2", Name: "my-api"},
 		},

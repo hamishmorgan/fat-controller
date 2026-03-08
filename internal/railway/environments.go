@@ -6,6 +6,19 @@ import (
 	"log/slog"
 )
 
+// ListEnvironments returns the name/ID pairs for all environments in a project.
+func ListEnvironments(ctx context.Context, client *Client, projectID string) ([]EntityInfo, error) {
+	resp, err := Environments(ctx, client.GQL(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	envs := make([]EntityInfo, len(resp.Environments.Edges))
+	for i, edge := range resp.Environments.Edges {
+		envs[i] = EntityInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return envs, nil
+}
+
 // CreateEnvironment creates a new environment in a project.
 // Returns the environment ID on success.
 func CreateEnvironment(ctx context.Context, client *Client, projectID, name string) (string, error) {

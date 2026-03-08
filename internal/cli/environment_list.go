@@ -12,34 +12,17 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
-// EnvironmentInfo is a simplified environment record for display.
-type EnvironmentInfo struct {
-	ID   string `json:"id" toml:"id"`
-	Name string `json:"name" toml:"name"`
-}
-
 // environmentLister abstracts environment listing for tests.
 type environmentLister interface {
-	ListEnvironments(ctx context.Context, projectID string) ([]EnvironmentInfo, error)
+	ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error)
 }
 
 type defaultEnvironmentLister struct {
 	client *railway.Client
 }
 
-func (d *defaultEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]EnvironmentInfo, error) {
-	resp, err := railway.Environments(ctx, d.client.GQL(), projectID)
-	if err != nil {
-		return nil, err
-	}
-	envs := make([]EnvironmentInfo, 0, len(resp.Environments.Edges))
-	for _, edge := range resp.Environments.Edges {
-		envs = append(envs, EnvironmentInfo{
-			ID:   edge.Node.Id,
-			Name: edge.Node.Name,
-		})
-	}
-	return envs, nil
+func (d *defaultEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+	return railway.ListEnvironments(ctx, d.client, projectID)
 }
 
 // RunEnvironmentList is the testable core of `environment list`.
@@ -64,7 +47,7 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 		return enc.Encode(envs)
 	case "toml":
 		wrapper := struct {
-			Environments []EnvironmentInfo `toml:"environments"`
+			Environments []railway.EntityInfo `toml:"environments"`
 		}{Environments: envs}
 		return toml.NewEncoder(out).Encode(wrapper)
 	default:

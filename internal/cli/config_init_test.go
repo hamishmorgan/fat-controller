@@ -12,6 +12,7 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
+	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
 // fakeInitResolver implements initResolver for testing.
@@ -52,16 +53,16 @@ func (f *fakeInitResolver) FetchEnvironments(_ context.Context, _ string) ([]pro
 	return []prompt.Item{{Name: f.envName, ID: f.envID}}, nil
 }
 
-func (f *fakeInitResolver) FetchServiceList(_ context.Context, _ string) ([]config.ServiceInfo, error) {
+func (f *fakeInitResolver) FetchServiceList(_ context.Context, _ string) ([]railway.EntityInfo, error) {
 	if f.fetchErr != nil {
 		return nil, f.fetchErr
 	}
 	if f.cfg == nil {
 		return nil, nil
 	}
-	list := make([]config.ServiceInfo, 0, len(f.cfg.Services))
+	list := make([]railway.EntityInfo, 0, len(f.cfg.Services))
 	for name, svc := range f.cfg.Services {
-		list = append(list, config.ServiceInfo{Name: name, ID: svc.ID})
+		list = append(list, railway.EntityInfo{Name: name, ID: svc.ID})
 	}
 	return list, nil
 }

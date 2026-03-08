@@ -12,38 +12,21 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
-// ProjectInfo is a simplified project record for display.
-type ProjectInfo struct {
-	ID   string `json:"id" toml:"id"`
-	Name string `json:"name" toml:"name"`
-}
-
 // projectLister abstracts project listing for tests.
 type projectLister interface {
-	ListProjects(ctx context.Context, workspace string) ([]ProjectInfo, error)
+	ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error)
 }
 
 type defaultProjectLister struct {
 	client *railway.Client
 }
 
-func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace string) ([]ProjectInfo, error) {
+func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error) {
 	workspaceID, err := railway.ResolveWorkspaceID(ctx, d.client, workspace)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := railway.Projects(ctx, d.client.GQL(), &workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	projects := make([]ProjectInfo, 0, len(resp.Projects.Edges))
-	for _, edge := range resp.Projects.Edges {
-		projects = append(projects, ProjectInfo{
-			ID:   edge.Node.Id,
-			Name: edge.Node.Name,
-		})
-	}
-	return projects, nil
+	return railway.ListProjects(ctx, d.client, workspaceID)
 }
 
 // RunProjectList is the testable core of `project list`.
@@ -68,7 +51,7 @@ func RunProjectList(ctx context.Context, globals *Globals, workspace string, lis
 		return enc.Encode(projects)
 	case "toml":
 		wrapper := struct {
-			Projects []ProjectInfo `toml:"projects"`
+			Projects []railway.EntityInfo `toml:"projects"`
 		}{Projects: projects}
 		return toml.NewEncoder(out).Encode(wrapper)
 	default:

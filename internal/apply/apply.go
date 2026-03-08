@@ -27,6 +27,7 @@ type Applier interface {
 	DeleteVariable(ctx context.Context, service, key string) error
 
 	// Settings
+	UpdateServiceIcon(ctx context.Context, service, icon string) error
 	UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error
 	UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error
 
@@ -120,6 +121,17 @@ func Apply(ctx context.Context, desired *config.DesiredConfig, live *config.Live
 		if hasDeployChanges(sd.Settings) {
 			slog.Debug("updating service settings", "service", name)
 			if err := applier.UpdateServiceSettings(ctx, name, desiredSvc.Deploy); err != nil {
+				result.Failed++
+				if opts.FailFast {
+					return result, err
+				}
+			} else {
+				result.Applied++
+			}
+		}
+		if hasIconChange(sd.Settings) {
+			slog.Debug("updating service icon", "service", name)
+			if err := applier.UpdateServiceIcon(ctx, name, desiredSvc.Icon); err != nil {
 				result.Failed++
 				if opts.FailFast {
 					return result, err
@@ -436,9 +448,18 @@ func hasDeployChanges(changes []diff.Change) bool {
 	return false
 }
 
+func hasIconChange(changes []diff.Change) bool {
+	for _, ch := range changes {
+		if ch.Key == config.KeyIcon {
+			return true
+		}
+	}
+	return false
+}
+
 func hasResourceChanges(changes []diff.Change) bool {
 	for _, ch := range changes {
-		if ch.Key == "vcpus" || ch.Key == "memory_gb" {
+		if ch.Key == config.KeyVCPUs || ch.Key == config.KeyMemoryGB {
 			return true
 		}
 	}

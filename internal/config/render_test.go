@@ -430,6 +430,138 @@ func TestRenderInitTOML_IncludesEnvFileWhenSecretsPresent(t *testing.T) {
 	}
 }
 
+func TestRender_TOML_IncludesIcon(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `icon = "server"`) {
+		t.Errorf("expected icon in TOML output:\n%s", got)
+	}
+}
+
+func TestRender_TOML_OmitsIconWhenEmpty(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "icon") {
+		t.Errorf("icon should be omitted when empty:\n%s", got)
+	}
+}
+
+func TestRender_Text_IncludesIconWhenFull(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", ID: "svc-1", Icon: "server", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text", Full: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "icon = server") {
+		t.Errorf("expected icon in full text output:\n%s", got)
+	}
+}
+
+func TestRender_Text_OmitsIconWhenNotFull(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "icon") {
+		t.Errorf("icon should be omitted in non-full text output:\n%s", got)
+	}
+}
+
+func TestRender_JSON_IncludesIconWhenFull(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "json", Full: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	api, ok := m["api"].(map[string]any)
+	if !ok {
+		t.Fatal("expected api object in JSON")
+	}
+	if api["icon"] != "server" {
+		t.Errorf("icon = %v, want server", api["icon"])
+	}
+}
+
+func TestRender_JSON_OmitsIconWhenNotFull(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server", Variables: map[string]string{}},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "icon") {
+		t.Errorf("icon should be omitted in non-full JSON:\n%s", got)
+	}
+}
+
+func TestRenderInitTOML_IncludesIcon(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server", Variables: map[string]string{"PORT": "8080"}},
+		},
+	}
+	got := config.RenderInitTOML("", "proj", "env", cfg)
+	if !strings.Contains(got, `icon = "server"`) {
+		t.Errorf("expected icon in adopt/init TOML output:\n%s", got)
+	}
+}
+
+func TestRender_IconSurvivedMaskConfig(t *testing.T) {
+	// Icon must be copied through maskConfig so it's not lost when masking variables.
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Icon: "server",
+				Variables: map[string]string{
+					"DATABASE_PASSWORD": "hunter2",
+				},
+			},
+		},
+	}
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `icon = "server"`) {
+		t.Errorf("icon should survive maskConfig:\n%s", got)
+	}
+}
+
 func TestRenderInitTOML_OmitsToolWhenNoSecrets(t *testing.T) {
 	cfg := config.LiveConfig{
 		Services: map[string]*config.ServiceConfig{

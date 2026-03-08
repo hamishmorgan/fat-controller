@@ -58,6 +58,11 @@ func (r *recordingApplier) UpdateServiceSettings(_ context.Context, service stri
 	return nil
 }
 
+func (r *recordingApplier) UpdateServiceIcon(_ context.Context, service, icon string) error {
+	r.calls = append(r.calls, "icon:"+service+":"+icon)
+	return nil
+}
+
 func (r *recordingApplier) UpdateServiceResources(_ context.Context, service string, _ *config.DesiredResources) error {
 	r.calls = append(r.calls, "resources:"+service)
 	if r.failOn == "resources" {
@@ -352,6 +357,30 @@ func TestApply_DeleteService(t *testing.T) {
 	}
 	if len(rec.calls) != 1 || rec.calls[0] != "delete-service:svc-1" {
 		t.Errorf("unexpected calls: %v", rec.calls)
+	}
+}
+
+func TestApply_IconChange(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Icon: "server"},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "database"},
+		},
+	}
+	rec := &recordingApplier{}
+	result, err := apply.Apply(context.Background(), desired, live, rec, apply.Options{})
+	if err != nil {
+		t.Fatalf("Apply() error: %v", err)
+	}
+	if result.Applied != 1 {
+		t.Errorf("Applied = %d, want 1", result.Applied)
+	}
+	if len(rec.calls) != 1 || rec.calls[0] != "icon:api:server" {
+		t.Errorf("calls = %v, want [icon:api:server]", rec.calls)
 	}
 }
 

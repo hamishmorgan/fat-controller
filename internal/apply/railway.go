@@ -74,6 +74,14 @@ func (r *RailwayApplier) DeleteVariable(ctx context.Context, service, key string
 	return railway.DeleteVariable(ctx, r.Client, r.ProjectID, r.EnvironmentID, serviceID, key)
 }
 
+func (r *RailwayApplier) UpdateServiceIcon(ctx context.Context, service, icon string) error {
+	serviceID, err := r.resolveServiceID(ctx, service)
+	if err != nil {
+		return err
+	}
+	return railway.UpdateServiceIcon(ctx, r.Client, serviceID, icon)
+}
+
 func (r *RailwayApplier) UpdateServiceSettings(ctx context.Context, service string, deploy *config.DesiredDeploy) error {
 	if deploy == nil {
 		return nil

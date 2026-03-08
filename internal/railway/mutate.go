@@ -61,6 +61,15 @@ func DeleteVariable(ctx context.Context, client *Client, projectID, environmentI
 	return err
 }
 
+// UpdateServiceIcon updates the icon of a service. Icon is project-scoped
+// (shared across all environments for this service).
+func UpdateServiceIcon(ctx context.Context, client *Client, serviceID, icon string) error {
+	slog.Debug("updating service icon", "service_id", serviceID, "icon", icon)
+	input := ServiceUpdateInput{Icon: &icon}
+	_, err := ServiceUpdate(ctx, client.gql(), serviceID, input)
+	return err
+}
+
 // UpdateServiceLimits updates vCPU and/or memory limits.
 // Nil pointers mean "don't change".
 func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, serviceID string, vcpus, memoryGB *float64) error {

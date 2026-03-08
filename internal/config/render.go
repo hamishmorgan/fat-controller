@@ -27,6 +27,7 @@ type tomlShowConfig struct {
 type tomlService struct {
 	Name      string            `toml:"name"`
 	ID        string            `toml:"id,omitempty"`
+	Icon      string            `toml:"icon,omitempty"`
 	Variables map[string]string `toml:"variables,omitempty"`
 	Deploy    *tomlDeploy       `toml:"deploy,omitempty"`
 }
@@ -118,6 +119,7 @@ func liveToTOMLServices(cfg LiveConfig, full bool) []tomlService {
 		ts := tomlService{
 			Name:      name,
 			ID:        svc.ID,
+			Icon:      svc.Icon,
 			Variables: svc.Variables,
 		}
 		if full {
@@ -189,6 +191,7 @@ func maskConfig(cfg LiveConfig, masker *Masker) LiveConfig {
 		out.Services[name] = &ServiceConfig{
 			ID:        svc.ID,
 			Name:      svc.Name,
+			Icon:      svc.Icon,
 			Variables: maskVars(svc.Variables, masker),
 			Deploy:    svc.Deploy,
 		}
@@ -223,6 +226,9 @@ func toJSONMap(cfg LiveConfig, full bool) map[string]any {
 		svcMap := map[string]any{"variables": svc.Variables}
 		if full {
 			svcMap["id"] = svc.ID
+			if svc.Icon != "" {
+				svcMap["icon"] = svc.Icon
+			}
 			svcMap["deploy"] = deployMap(svc.Deploy)
 		}
 		m[name] = svcMap
@@ -318,6 +324,7 @@ func envRefConfig(cfg LiveConfig) LiveConfig {
 		out.Services[name] = &ServiceConfig{
 			ID:        svc.ID,
 			Name:      svc.Name,
+			Icon:      svc.Icon,
 			Variables: envRefVars(svc.Variables, masker),
 			Deploy:    svc.Deploy,
 		}
@@ -427,6 +434,9 @@ func renderText(cfg LiveConfig, full bool) string {
 		out.WriteString("name = " + name + "\n")
 		if full && svc.ID != "" {
 			out.WriteString("id = " + svc.ID + "\n")
+		}
+		if full && svc.Icon != "" {
+			out.WriteString("icon = " + svc.Icon + "\n")
 		}
 		out.WriteString("\n")
 		if len(svc.Variables) > 0 {

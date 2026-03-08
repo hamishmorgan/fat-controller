@@ -361,6 +361,91 @@ func TestComputeDiff_DeploySettingsChange(t *testing.T) {
 	}
 }
 
+func TestComputeDiff_IconUpdate(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Icon: "server"},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "database"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.Settings) != 1 {
+		t.Fatalf("expected 1 setting change, got %d: %v", len(svc.Settings), svc.Settings)
+	}
+	ch := svc.Settings[0]
+	if ch.Key != config.KeyIcon {
+		t.Errorf("key = %q, want %q", ch.Key, config.KeyIcon)
+	}
+	if ch.Action != diff.ActionUpdate {
+		t.Errorf("action = %v, want Update", ch.Action)
+	}
+	if ch.LiveValue != "database" || ch.DesiredValue != "server" {
+		t.Errorf("values: live=%q desired=%q", ch.LiveValue, ch.DesiredValue)
+	}
+}
+
+func TestComputeDiff_IconCreate(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Icon: "server"},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: ""},
+		},
+	}
+	result := diff.Compute(desired, live)
+	svc := result.Services["api"]
+	if len(svc.Settings) != 1 {
+		t.Fatalf("expected 1 setting change, got %d", len(svc.Settings))
+	}
+	if svc.Settings[0].Action != diff.ActionCreate {
+		t.Errorf("action = %v, want Create", svc.Settings[0].Action)
+	}
+}
+
+func TestComputeDiff_IconNoChange(t *testing.T) {
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Icon: "server"},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "server"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if svc, ok := result.Services["api"]; ok {
+		t.Errorf("expected no settings changes, got %v", svc.Settings)
+	}
+}
+
+func TestComputeDiff_IconNotSetInDesired_NoChange(t *testing.T) {
+	// If icon is omitted from desired (empty string), don't diff it -
+	// the user hasn't expressed intent.
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Icon: ""},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Icon: "database"},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if svc, ok := result.Services["api"]; ok {
+		t.Errorf("expected no settings changes when desired icon is empty, got %v", svc.Settings)
+	}
+}
+
 func TestComputeDiff_ResourcesChange_NoLive(t *testing.T) {
 	vcpus := 4.0
 	desired := &config.DesiredConfig{

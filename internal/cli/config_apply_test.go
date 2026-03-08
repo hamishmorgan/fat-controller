@@ -30,6 +30,10 @@ func (c *countingApplier) DeleteVariable(_ context.Context, _, _ string) error {
 	c.deletes++
 	return nil
 }
+func (c *countingApplier) UpdateServiceIcon(_ context.Context, _, _ string) error {
+	c.settings++
+	return nil
+}
 func (c *countingApplier) UpdateServiceSettings(_ context.Context, _ string, _ *config.DesiredDeploy) error {
 	c.settings++
 	return nil

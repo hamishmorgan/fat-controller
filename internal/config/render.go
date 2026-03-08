@@ -372,6 +372,12 @@ func CollectSecrets(cfg LiveConfig) map[string]string {
 // When secrets are detected, a [tool] section with env_file is included
 // so the loader knows where to find the secret values.
 func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
+	return RenderInitTOMLWithEnvFile(workspace, project, environment, cfg, DefaultEnvFile)
+}
+
+// RenderInitTOMLWithEnvFile is like RenderInitTOML, but allows callers to
+// choose the tool.env_file value written into the config.
+func RenderInitTOMLWithEnvFile(workspace, project, environment string, cfg LiveConfig, envFile string) string {
 	replaced := envRefConfig(cfg)
 
 	tc := tomlInitConfig{
@@ -384,9 +390,12 @@ func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) stri
 	if workspace != "" {
 		tc.Workspace = &tomlContextBlock{Name: workspace}
 	}
+	if envFile == "" {
+		envFile = DefaultEnvFile
+	}
 	// Include [tool] env_file when secrets were replaced with ${VAR} refs.
 	if len(CollectSecrets(cfg)) > 0 {
-		tc.Tool = &tomlToolSettings{EnvFile: DefaultEnvFile}
+		tc.Tool = &tomlToolSettings{EnvFile: envFile}
 	}
 	return marshalTOML(tc) + "\n"
 }

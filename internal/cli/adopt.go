@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
@@ -45,7 +46,7 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 
 	// Try to load an existing config. If none exists, fall back to the
 	// wizard-style init flow for first-time bootstrap.
-	result, loadErr := config.LoadCascade(config.LoadOptions{WorkDir: wd})
+	result, loadErr := config.LoadCascade(config.LoadOptions{WorkDir: wd, ConfigFile: c.ConfigFile})
 	if loadErr != nil || result == nil || result.Config == nil {
 		slog.Debug("no existing config found, using init wizard")
 		resolver := &railwayInitResolver{client: client}
@@ -116,9 +117,6 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 		envName = desired.Name
 	}
 
-	// Render the adopted config.
-	content := config.RenderInitTOML(wsName, projName, envName, *adopted)
-
 	// Summarize what changed.
 	_, _ = fmt.Fprintf(out, "  Workspace: %s\n", wsName)
 	_, _ = fmt.Fprintf(out, "  Project: %s\n", projName)
@@ -126,15 +124,49 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	_, _ = fmt.Fprintf(out, "  Services: %s (%d)\n", app.JoinServiceNames(adopted), len(adopted.Services))
 	_, _ = fmt.Fprintln(out)
 
-	envFileName := config.DefaultEnvFile
+	// Choose output paths.
+	configPath := result.PrimaryFile
+	if configPath == "" {
+		configPath = filepath.Join(wd, config.BaseConfigFile)
+	}
+	if interactive && !c.Yes {
+		p, err := prompt.Input("Save adopted config to:", configPath)
+		if err != nil {
+			return err
+		}
+		if p != "" {
+			configPath = p
+		}
+	}
+
+	envPath := defaultSecretsPath(configPath)
+	if interactive && !c.Yes {
+		p, err := prompt.Input("Save secrets to:", envPath)
+		if err != nil {
+			return err
+		}
+		if p != "" {
+			envPath = p
+		}
+	}
+	configDir := filepath.Dir(configPath)
+	envFileSetting := envPath
+	if rel, err := filepath.Rel(configDir, envPath); err == nil {
+		envFileSetting = rel
+	}
+
+	// Render the adopted config.
+	content := config.RenderInitTOMLWithEnvFile(wsName, projName, envName, *adopted, envFileSetting)
+
+	envFileName := filepath.Base(envPath)
 	envContent := app.RenderEnvFile(adopted)
 
 	if c.DryRun {
 		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n",
-			config.BaseConfigFile, len(adopted.Services), content)
+			configPath, len(adopted.Services), content)
 		if envContent != "" {
 			_, _ = fmt.Fprintf(out, "\ndry run: would write %s\n\n%s\n",
-				envFileName, envContent)
+				envPath, envContent)
 		}
 		return nil
 	}
@@ -142,16 +174,16 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	if !c.Yes {
 		if !interactive {
 			_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n",
-				config.BaseConfigFile, len(adopted.Services), content)
+				configPath, len(adopted.Services), content)
 			if envContent != "" {
-				_, _ = fmt.Fprintf(out, "\nwould write %s\n\n%s\n", envFileName, envContent)
+				_, _ = fmt.Fprintf(out, "\nwould write %s\n\n%s\n", envPath, envContent)
 			}
 			_, _ = fmt.Fprintln(out, "use --yes to write files")
 			return nil
 		}
 
 		_, _ = fmt.Fprintf(out, "Will write %s (%d services):\n\n%s\n\n",
-			config.BaseConfigFile, len(adopted.Services), content)
+			configPath, len(adopted.Services), content)
 		confirmed, err := prompt.Confirm("Write changes?", true)
 		if err != nil {
 			return fmt.Errorf("reading confirmation: %w", err)
@@ -163,29 +195,38 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	}
 
 	// Write the config file.
-	configPath := result.PrimaryFile
-	if configPath == "" {
-		configPath = filepath.Join(wd, config.BaseConfigFile)
+	writeConfig, err := confirmWrite(configPath, filepath.Base(configPath), c.Yes, interactive)
+	if err != nil {
+		return err
 	}
-	if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
+	if writeConfig {
+		if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+			return fmt.Errorf("creating config dir: %w", err)
+		}
+		if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", filepath.Base(configPath), err)
+		}
+		_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", configPath, len(adopted.Services))
+	} else {
+		_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", configPath)
 	}
-	_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(adopted.Services))
 
 	// Write env file if there are secrets.
 	if envContent != "" {
-		envPath := filepath.Join(wd, envFileName)
 		writeEnv, err := confirmWrite(envPath, envFileName, c.Yes, interactive)
 		if err != nil {
 			return err
 		}
 		if writeEnv {
+			if err := os.MkdirAll(filepath.Dir(envPath), 0o755); err != nil {
+				return fmt.Errorf("creating secrets dir: %w", err)
+			}
 			if err := os.WriteFile(envPath, []byte(envContent), 0o600); err != nil {
 				return fmt.Errorf("writing %s: %w", envFileName, err)
 			}
 			_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n", envFileName)
 
-			added, err := app.EnsureGitignoreHasLine(wd, envFileName)
+			added, err := app.EnsureGitignoreHasLine(filepath.Dir(envPath), envFileName)
 			if err != nil {
 				return fmt.Errorf("updating .gitignore: %w", err)
 			}
@@ -196,4 +237,16 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	}
 
 	return nil
+}
+
+func defaultSecretsPath(configPath string) string {
+	configPath = strings.TrimSpace(configPath)
+	if configPath == "" {
+		return config.DefaultEnvFile
+	}
+	ext := filepath.Ext(configPath)
+	if ext == "" {
+		return configPath + ".secrets"
+	}
+	return strings.TrimSuffix(configPath, ext) + ".secrets"
 }

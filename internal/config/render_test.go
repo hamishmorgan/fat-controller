@@ -425,7 +425,7 @@ func TestRenderInitTOML_IncludesEnvFileWhenSecretsPresent(t *testing.T) {
 	if !strings.Contains(got, "[tool]") {
 		t.Errorf("expected [tool] section when secrets present:\n%s", got)
 	}
-	if !strings.Contains(got, `env_file = ".secrets.fat-controller"`) {
+	if !strings.Contains(got, `env_file = "fat-controller.secrets"`) {
 		t.Errorf("expected env_file setting:\n%s", got)
 	}
 }

@@ -18,7 +18,7 @@ local env interpolation (`${VAR}`). The `${VAR}` syntax (single braces) is
 deliberately distinct from Railway's `${{}}` (double braces) — Railway
 chose double braces specifically to avoid shell variable collision.
 
-`config init` generates `.secrets.fat-controller` (gitignored) with actual
+`config init` generates `fat-controller.secrets` (gitignored) with actual
 secret values pulled from Railway. The base config uses `${VAR}` references
 for secrets. `--config` can be repeated for explicit overlay layering.
 

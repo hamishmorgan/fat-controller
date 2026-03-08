@@ -204,7 +204,7 @@ func TestRunConfigInit_OverwritesExistingWithYes(t *testing.T) {
 
 func TestRunConfigInit_SkipsExistingEnvFileWithYes(t *testing.T) {
 	dir := t.TempDir()
-	// Create existing .secrets.fat-controller but no config file.
+	// Create existing fat-controller.secrets but no config file.
 	envPath := filepath.Join(dir, envFile)
 	if err := os.WriteFile(envPath, []byte("OLD_SECRET=old"), 0o600); err != nil {
 		t.Fatalf("write existing env: %v", err)
@@ -233,12 +233,12 @@ func TestRunConfigInit_SkipsExistingEnvFileWithYes(t *testing.T) {
 	if !strings.Contains(got, "wrote fat-controller.toml") {
 		t.Errorf("expected config file to be written, got:\n%s", got)
 	}
-	if !strings.Contains(got, "wrote .secrets.fat-controller") {
+	if !strings.Contains(got, "wrote fat-controller.secrets") {
 		t.Errorf("expected env file to be written with --yes, got:\n%s", got)
 	}
 }
 
-const envFile = ".secrets.fat-controller"
+const envFile = "fat-controller.secrets"
 
 func TestRunConfigInit_CreatesEnvFileWithSecrets(t *testing.T) {
 	dir := t.TempDir()
@@ -262,7 +262,7 @@ func TestRunConfigInit_CreatesEnvFileWithSecrets(t *testing.T) {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	// .secrets.fat-controller should contain actual secret values.
+	// fat-controller.secrets should contain actual secret values.
 	content, err := os.ReadFile(filepath.Join(dir, envFile))
 	if err != nil {
 		t.Fatalf("reading env file: %v", err)
@@ -343,9 +343,9 @@ func TestRunConfigInit_NoSecretsNoEnvFile(t *testing.T) {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 
-	// No secrets → no .secrets.fat-controller file.
+	// No secrets → no fat-controller.secrets file.
 	if _, err := os.Stat(filepath.Join(dir, envFile)); !os.IsNotExist(err) {
-		t.Error("should not create .secrets.fat-controller when no secrets detected")
+		t.Error("should not create fat-controller.secrets when no secrets detected")
 	}
 }
 
@@ -477,7 +477,7 @@ func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
 		t.Error("dry-run should not create fat-controller.toml")
 	}
 	if _, err := os.Stat(filepath.Join(dir, envFile)); !os.IsNotExist(err) {
-		t.Error("dry-run should not create .secrets.fat-controller")
+		t.Error("dry-run should not create fat-controller.secrets")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".gitignore")); !os.IsNotExist(err) {
 		t.Error("dry-run should not create .gitignore")

@@ -64,7 +64,7 @@
 - [x] Pin mise tool versions to specific releases for reproducible builds.
 - [x] Add an interactive confirmation prompt for apply when `--confirm` is not set and stdin is a TTY.
 - [x] Support JSON/TOML output formats for `config apply`.
-- [x] Update `.gitignore` automatically when creating `.secrets.fat-controller` (optional safety).
+- [x] Update `.gitignore` automatically when creating `fat-controller.secrets` (optional safety).
 - [x] Add GoReleaser pipeline for prebuilt binaries.
 - [x] Add end-to-end integration tests using a mocked GraphQL API.
 - [x] Automate CLI reference documentation generation.

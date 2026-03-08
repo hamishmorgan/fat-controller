@@ -342,7 +342,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 
 	envFileName := config.DefaultEnvFile
 
-	// Collect secrets for .secrets.fat-controller.
+	// Collect secrets for fat-controller.secrets.
 	envContent := renderEnvFile(filtered)
 
 	if dryRun {
@@ -380,7 +380,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", config.BaseConfigFile)
 	}
 
-	// 7. Write .secrets.fat-controller with actual secret values.
+	// 7. Write fat-controller.secrets with actual secret values.
 	if envContent != "" {
 		envPath := filepath.Join(dir, envFileName)
 		writeEnv, err := confirmWrite(envPath, envFileName, yes, interactive)
@@ -449,7 +449,7 @@ func renderEnvFile(cfg *config.LiveConfig) string {
 	var out strings.Builder
 	out.WriteString("# Secret values for fat-controller (gitignored).\n")
 	out.WriteString("# Load into your environment before running config apply.\n")
-	out.WriteString("# e.g. source .secrets.fat-controller\n\n")
+	out.WriteString("# e.g. source fat-controller.secrets\n\n")
 	for _, k := range keys {
 		_, _ = fmt.Fprintf(&out, "%s=%s\n", k, secrets[k])
 	}

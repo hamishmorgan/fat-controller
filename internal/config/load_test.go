@@ -104,6 +104,25 @@ func TestLoadCascade_EnvFileLoading(t *testing.T) {
 	}
 }
 
+func TestLoadCascade_ConfigFileMissing(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "deploy", "staging.toml")
+
+	result, err := config.LoadCascade(config.LoadOptions{ConfigFile: path})
+	if err != nil {
+		t.Fatalf("missing --config-file should not error, got: %v", err)
+	}
+	if result.Config == nil {
+		t.Fatal("Config should be non-nil (empty)")
+	}
+	if result.PrimaryFile != path {
+		t.Errorf("PrimaryFile = %q, want %q", result.PrimaryFile, path)
+	}
+	if len(result.Files) != 1 || result.Files[0] != path {
+		t.Errorf("Files = %v, want [%s]", result.Files, path)
+	}
+}
+
 func TestLoadCascade_EnvFileMissing(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {

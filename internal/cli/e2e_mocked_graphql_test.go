@@ -904,7 +904,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 
 		dir := t.TempDir()
 		var out bytes.Buffer
-		if err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, false, true, &out); err != nil {
+		if err := cli.RunConfigInit(context.Background(), dir, "", fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, false, true, &out); err != nil {
 			t.Fatalf("RunConfigInit() error: %v", err)
 		}
 
@@ -934,7 +934,7 @@ name = "existing"`)
 
 		var out bytes.Buffer
 		// Non-interactive without --yes shows preview, does not write.
-		err := cli.RunConfigInit(context.Background(), dir, fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, false, false, &out)
+		err := cli.RunConfigInit(context.Background(), dir, "", fixtureWorkspaceName, fixtureProjectName, fixtureEnvironment, resolver, false, false, false, &out)
 		if err != nil {
 			t.Fatalf("RunConfigInit() error: %v", err)
 		}
@@ -960,7 +960,7 @@ name = "existing"`)
 
 		dir := t.TempDir()
 		var out bytes.Buffer
-		err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &out)
+		err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &out)
 		if err == nil {
 			t.Fatal("expected error for ambiguous workspace selection in non-tty")
 		}

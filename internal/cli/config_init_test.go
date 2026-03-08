@@ -99,7 +99,7 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestRunConfigInit_PrintsSummaryLines(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestRunConfigInit_NonInteractiveNoYesShowsPreview(t *testing.T) {
 	})
 	var buf bytes.Buffer
 	// Non-interactive without --yes should show preview and suggest --yes.
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -202,13 +202,13 @@ func TestRunConfigInit_OverwritesExistingWithYes(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "wrote fat-controller.toml") {
-		t.Errorf("expected 'wrote fat-controller.toml' in output, got:\n%s", got)
+	if !strings.Contains(got, "wrote") || !strings.Contains(got, "fat-controller.toml") {
+		t.Errorf("expected 'wrote ...fat-controller.toml' in output, got:\n%s", got)
 	}
 	// File should be overwritten with new content.
 	content, _ := os.ReadFile(existing)
@@ -240,12 +240,12 @@ func TestRunConfigInit_SkipsExistingEnvFileWithYes(t *testing.T) {
 	// --yes: config should be written (new), env should be overwritten (--yes).
 	// But to test independent skipping, we need interactive mode without --yes.
 	// With --yes, both files are overwritten. Verify that works.
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "wrote fat-controller.toml") {
+	if !strings.Contains(got, "wrote") || !strings.Contains(got, "fat-controller.toml") {
 		t.Errorf("expected config file to be written, got:\n%s", got)
 	}
 	if !strings.Contains(got, "wrote fat-controller.secrets") {
@@ -272,7 +272,7 @@ func TestRunConfigInit_CreatesEnvFileWithSecrets(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -326,7 +326,7 @@ func TestRunConfigInit_EnvFileSharedSecrets(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestRunConfigInit_NoSecretsNoEnvFile(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -374,7 +374,7 @@ func TestRunConfigInit_NonInteractiveIncludesAllServices(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestRunConfigInit_ResolveWorkspaceError(t *testing.T) {
 	dir := t.TempDir()
 	resolver := &fakeInitResolver{wsErr: errors.New("no workspace")}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err == nil {
 		t.Fatal("expected error from workspace resolve failure")
 	}
@@ -422,7 +422,7 @@ func TestRunConfigInit_ResolveProjectError(t *testing.T) {
 		projErr: errors.New("no project"),
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err == nil {
 		t.Fatal("expected error from project resolve failure")
 	}
@@ -436,7 +436,7 @@ func TestRunConfigInit_ResolveEnvironmentError(t *testing.T) {
 		envErr: errors.New("no environment"),
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, true, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, true, &buf)
 	if err == nil {
 		t.Fatal("expected error from environment resolve failure")
 	}
@@ -453,7 +453,7 @@ func TestRunConfigInit_NoYesNonInteractiveWritesNoFiles(t *testing.T) {
 	})
 	var buf bytes.Buffer
 	// interactive=false, dryRun=false, yes=false → implicit dry-run.
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, false, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, false, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -482,7 +482,7 @@ func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
 		},
 	})
 	var buf bytes.Buffer
-	err := cli.RunConfigInit(context.Background(), dir, "", "", "", resolver, false, true, false, &buf)
+	err := cli.RunConfigInit(context.Background(), dir, "", "", "", "", resolver, false, true, false, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigInit() error: %v", err)
 	}
@@ -509,5 +509,51 @@ func TestRunConfigInit_DryRunWritesNoFiles(t *testing.T) {
 	// Should preview the TOML content.
 	if !strings.Contains(got, `name = "my-app"`) {
 		t.Errorf("expected TOML preview in output, got:\n%s", got)
+	}
+}
+
+func TestRunConfigInit_ConfigFileOverride(t *testing.T) {
+	dir := t.TempDir()
+	subdir := filepath.Join(dir, "deploy")
+	if err := os.MkdirAll(subdir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	customPath := filepath.Join(subdir, "staging.toml")
+
+	resolver := newFakeResolver(&config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://user:pass@host/db"},
+			},
+		},
+	})
+	var buf bytes.Buffer
+	err := cli.RunConfigInit(context.Background(), dir, customPath, "", "", "", resolver, false, false, true, &buf)
+	if err != nil {
+		t.Fatalf("RunConfigInit() error: %v", err)
+	}
+
+	// Config should be written to the custom path, not the default.
+	if _, err := os.Stat(customPath); os.IsNotExist(err) {
+		t.Fatal("config file should be written to custom path")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "fat-controller.toml")); !os.IsNotExist(err) {
+		t.Error("should NOT write to default fat-controller.toml when configFile is set")
+	}
+
+	// Secrets file should be alongside the custom config path.
+	secretsPath := filepath.Join(subdir, "staging.secrets")
+	if _, err := os.Stat(secretsPath); os.IsNotExist(err) {
+		t.Fatal("secrets file should be written alongside the custom config path")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "fat-controller.secrets")); !os.IsNotExist(err) {
+		t.Error("should NOT write default fat-controller.secrets when configFile is set")
+	}
+
+	// Output should reference the custom path.
+	got := buf.String()
+	if !strings.Contains(got, customPath) {
+		t.Errorf("expected custom path in output, got:\n%s", got)
 	}
 }

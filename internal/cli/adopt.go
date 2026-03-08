@@ -50,7 +50,7 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	if loadErr != nil || result == nil || result.Config == nil {
 		slog.Debug("no existing config found, using init wizard")
 		resolver := &railwayInitResolver{client: client}
-		return RunConfigInit(ctx, wd, c.Workspace, c.Project, c.Environment, resolver, interactive, c.DryRun, c.Yes, os.Stdout)
+		return RunConfigInit(ctx, wd, c.ConfigFile, c.Workspace, c.Project, c.Environment, resolver, interactive, c.DryRun, c.Yes, os.Stdout)
 	}
 
 	// Existing config found — run the merge-based adopt flow.

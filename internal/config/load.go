@@ -49,15 +49,24 @@ func LoadCascade(opts LoadOptions) (*LoadResult, error) {
 	result := &LoadResult{}
 	var configs []*DesiredConfig
 
-	// If --config-file is set, load only that file.
+	// If --config-file is set, load only that file. A missing file is
+	// treated as an empty config so the caller can use the path for output
+	// (e.g. adopt writing a new config). Parse errors are still fatal.
 	if opts.ConfigFile != "" {
+		result.PrimaryFile = opts.ConfigFile
+		result.Files = []string{opts.ConfigFile}
+
+		if _, err := os.Stat(opts.ConfigFile); os.IsNotExist(err) {
+			slog.Debug("config file does not exist, treating as empty", "path", opts.ConfigFile)
+			result.Config = &DesiredConfig{}
+			return result, nil
+		}
+
 		cfg, err := ParseFile(opts.ConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s: %w", opts.ConfigFile, err)
 		}
 		result.Config = cfg
-		result.PrimaryFile = opts.ConfigFile
-		result.Files = []string{opts.ConfigFile}
 		result.EnvVars = loadEnvFiles(cfg, opts.ConfigFile)
 		return result, nil
 	}

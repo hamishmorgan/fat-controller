@@ -121,13 +121,18 @@ func summaryNote(label, value string) huh.Field {
 }
 
 // RunConfigInit is the testable core of `config init`.
-func RunConfigInit(ctx context.Context, dir, workspace, project, environment string, resolver initResolver, interactive, dryRun, yes bool, out io.Writer) error {
+// configFile overrides the output path for the config file. When empty the
+// default <dir>/fat-controller.toml is used.
+func RunConfigInit(ctx context.Context, dir, configFile, workspace, project, environment string, resolver initResolver, interactive, dryRun, yes bool, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
-	slog.Debug("starting config init", "dir", dir)
+	slog.Debug("starting config init", "dir", dir, "config_file", configFile)
 	configPath := filepath.Join(dir, config.BaseConfigFile)
+	if configFile != "" {
+		configPath = configFile
+	}
 
 	// 1. Resolve workspace → project → environment step by step.
 	//    Each API call is wrapped in a spinner (interactive only).
@@ -297,16 +302,32 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 
 	// 5. Render the config file.
 	slog.Debug("rendering config file", "services", len(filtered.Services))
-	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
 
-	envFileName := config.DefaultEnvFile
+	configDisplayName := filepath.Base(configPath)
+	envPath := defaultSecretsPath(configPath)
+	envFileName := filepath.Base(envPath)
 
-	// Collect secrets for fat-controller.secrets.
+	// Compute the env_file setting relative to the config dir so the TOML
+	// reference works regardless of where the config lives.
+	configDir := filepath.Dir(configPath)
+	envFileSetting := envPath
+	if rel, err := filepath.Rel(configDir, envPath); err == nil {
+		envFileSetting = rel
+	}
+
+	// Collect secrets for the secrets file.
 	envContent := app.RenderEnvFile(filtered)
+
+	var content string
+	if envContent != "" {
+		content = config.RenderInitTOMLWithEnvFile(wsName, projName, envName, *filtered, envFileSetting)
+	} else {
+		content = config.RenderInitTOML(wsName, projName, envName, *filtered)
+	}
 
 	if dryRun {
 		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n",
-			config.BaseConfigFile, len(filtered.Services), content)
+			configDisplayName, len(filtered.Services), content)
 		if envContent != "" {
 			_, _ = fmt.Fprintf(out, "\ndry run: would write %s\n\n%s\n",
 				envFileName, envContent)
@@ -317,7 +338,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	if !yes && !interactive {
-		_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n", config.BaseConfigFile, len(filtered.Services), content)
+		_, _ = fmt.Fprintf(out, "would write %s (%d services)\n\n%s\n", configDisplayName, len(filtered.Services), content)
 		if envContent != "" {
 			_, _ = fmt.Fprintf(out, "\nwould write %s\n\n%s\n", envFileName, envContent)
 		}
@@ -326,34 +347,39 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	// 6. Write the config file (prompt to overwrite if it exists).
-	writeConfig, err := confirmWrite(configPath, config.BaseConfigFile, yes, interactive)
+	writeConfig, err := confirmWrite(configPath, configDisplayName, yes, interactive)
 	if err != nil {
 		return err
 	}
 	if writeConfig {
-		if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", config.BaseConfigFile, err)
+		if err := os.MkdirAll(configDir, 0o755); err != nil {
+			return fmt.Errorf("creating config dir: %w", err)
 		}
-		_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", config.BaseConfigFile, len(filtered.Services))
+		if err := os.WriteFile(configPath, []byte(content+"\n"), 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", configDisplayName, err)
+		}
+		_, _ = fmt.Fprintf(out, "wrote %s (%d services)\n", configPath, len(filtered.Services))
 	} else {
-		_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", config.BaseConfigFile)
+		_, _ = fmt.Fprintf(out, "skipped %s (already exists)\n", configDisplayName)
 	}
 
-	// 7. Write fat-controller.secrets with actual secret values.
+	// 7. Write secrets file with actual secret values.
 	if envContent != "" {
-		envPath := filepath.Join(dir, envFileName)
 		writeEnv, err := confirmWrite(envPath, envFileName, yes, interactive)
 		if err != nil {
 			return err
 		}
 		if writeEnv {
+			if err := os.MkdirAll(filepath.Dir(envPath), 0o755); err != nil {
+				return fmt.Errorf("creating secrets dir: %w", err)
+			}
 			if err := os.WriteFile(envPath, []byte(envContent), 0o600); err != nil {
 				return fmt.Errorf("writing %s: %w", envFileName, err)
 			}
 			_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n",
 				envFileName)
 
-			added, err := app.EnsureGitignoreHasLine(dir, envFileName)
+			added, err := app.EnsureGitignoreHasLine(filepath.Dir(envPath), envFileName)
 			if err != nil {
 				return fmt.Errorf("updating .gitignore: %w", err)
 			}

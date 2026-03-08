@@ -78,6 +78,9 @@ func (c *loggingClient) MakeRequest(ctx context.Context, req *graphql.Request, r
 		return err
 	}
 
+	// Defensive: genqlient's default client returns resp.Errors as err, so
+	// this branch is currently unreachable. Kept for safety in case the
+	// inner client is swapped for one that populates resp.Errors separately.
 	if resp != nil && len(resp.Errors) > 0 {
 		attrs = append(attrs, slog.Int("graphql_errors", len(resp.Errors)))
 	}

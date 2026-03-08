@@ -225,18 +225,11 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleServiceInstanceLimitsUpdate(w, req)
 	case "ProjectToken":
 		m.handleProjectToken(w)
-	case "EnvironmentVolumes":
-		m.handleEnvironmentVolumes(w)
-	case "PrivateNetworks":
-		m.handlePrivateNetworks(w)
 	case "TCPProxies":
 		m.handleTCPProxies(w)
 	case "EgressGateways":
 		m.handleEgressGateways(w)
-	case "DeploymentTriggers":
-		m.handleDeploymentTriggers(w)
 	case "EnvironmentBulk":
-		// Replaces the former EnvironmentServiceInstances and AllDeploymentTriggers operations.
 		m.handleEnvironmentBulk(w)
 	case "ProjectsResolution":
 		m.handleProjectsResolution(w)
@@ -475,26 +468,6 @@ func (m *mockGraphQLServer) handleProjectToken(w http.ResponseWriter) {
 	})
 }
 
-func (m *mockGraphQLServer) handleEnvironmentVolumes(w http.ResponseWriter) {
-	respondJSON(m.t, w, map[string]any{
-		"data": map[string]any{
-			"environment": map[string]any{
-				"volumeInstances": map[string]any{
-					"edges": []any{},
-				},
-			},
-		},
-	})
-}
-
-func (m *mockGraphQLServer) handlePrivateNetworks(w http.ResponseWriter) {
-	respondJSON(m.t, w, map[string]any{
-		"data": map[string]any{
-			"privateNetworks": []any{},
-		},
-	})
-}
-
 func (m *mockGraphQLServer) handleTCPProxies(w http.ResponseWriter) {
 	respondJSON(m.t, w, map[string]any{
 		"data": map[string]any{
@@ -511,18 +484,7 @@ func (m *mockGraphQLServer) handleEgressGateways(w http.ResponseWriter) {
 	})
 }
 
-func (m *mockGraphQLServer) handleDeploymentTriggers(w http.ResponseWriter) {
-	respondJSON(m.t, w, map[string]any{
-		"data": map[string]any{
-			"deploymentTriggers": map[string]any{
-				"edges": []any{},
-			},
-		},
-	})
-}
-
 func (m *mockGraphQLServer) handleEnvironmentBulk(w http.ResponseWriter) {
-	// Combined response for EnvironmentBulk: serviceInstances + deploymentTriggers + volumeInstances + privateNetworks.
 	makeInstance := func(serviceID string) map[string]any {
 		return map[string]any{
 			"serviceId":               serviceID,

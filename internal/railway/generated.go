@@ -283,14 +283,6 @@ type BulkVolumeInstances struct {
 // GetEdges returns BulkVolumeInstances.Edges, and is useful for accessing the field via an interface.
 func (v *BulkVolumeInstances) GetEdges() []BulkVolumeInstanceEdge { return v.Edges }
 
-// ConnectedService includes the requested fields of the GraphQL type Service.
-type ConnectedService struct {
-	Id string `json:"id"`
-}
-
-// GetId returns ConnectedService.Id, and is useful for accessing the field via an interface.
-func (v *ConnectedService) GetId() string { return v.Id }
-
 // CreatedTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
 type CreatedTrigger struct {
 	Id string `json:"id"`
@@ -610,45 +602,6 @@ func (v *DeploymentTriggerFields) GetProvider() string { return v.Provider }
 // GetCheckSuites returns DeploymentTriggerFields.CheckSuites, and is useful for accessing the field via an interface.
 func (v *DeploymentTriggerFields) GetCheckSuites() bool { return v.CheckSuites }
 
-type DeploymentTriggerUpdateInput struct {
-	Branch        *string `json:"branch"`
-	CheckSuites   *bool   `json:"checkSuites"`
-	Repository    *string `json:"repository"`
-	RootDirectory *string `json:"rootDirectory"`
-}
-
-// GetBranch returns DeploymentTriggerUpdateInput.Branch, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateInput) GetBranch() *string { return v.Branch }
-
-// GetCheckSuites returns DeploymentTriggerUpdateInput.CheckSuites, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateInput) GetCheckSuites() *bool { return v.CheckSuites }
-
-// GetRepository returns DeploymentTriggerUpdateInput.Repository, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateInput) GetRepository() *string { return v.Repository }
-
-// GetRootDirectory returns DeploymentTriggerUpdateInput.RootDirectory, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateInput) GetRootDirectory() *string { return v.RootDirectory }
-
-// DeploymentTriggerUpdateResponse is returned by DeploymentTriggerUpdate on success.
-type DeploymentTriggerUpdateResponse struct {
-	// Updates a deployment trigger.
-	DeploymentTriggerUpdate UpdatedTrigger `json:"deploymentTriggerUpdate"`
-}
-
-// GetDeploymentTriggerUpdate returns DeploymentTriggerUpdateResponse.DeploymentTriggerUpdate, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggerUpdateResponse) GetDeploymentTriggerUpdate() UpdatedTrigger {
-	return v.DeploymentTriggerUpdate
-}
-
-// DeploymentTriggersResponse is returned by DeploymentTriggers on success.
-type DeploymentTriggersResponse struct {
-	// All deployment triggers.
-	DeploymentTriggers TriggerList `json:"deploymentTriggers"`
-}
-
-// GetDeploymentTriggers returns DeploymentTriggersResponse.DeploymentTriggers, and is useful for accessing the field via an interface.
-func (v *DeploymentTriggersResponse) GetDeploymentTriggers() TriggerList { return v.DeploymentTriggers }
-
 // DeploymentsResponse is returned by Deployments on success.
 type DeploymentsResponse struct {
 	// Get all deployments
@@ -837,39 +790,6 @@ func (v *EnvironmentSummaryFields) GetId() string { return v.Id }
 // GetName returns EnvironmentSummaryFields.Name, and is useful for accessing the field via an interface.
 func (v *EnvironmentSummaryFields) GetName() string { return v.Name }
 
-// EnvironmentVolumeEdge includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnectionEdge.
-type EnvironmentVolumeEdge struct {
-	Node VolumeInstanceFields `json:"node"`
-}
-
-// GetNode returns EnvironmentVolumeEdge.Node, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumeEdge) GetNode() VolumeInstanceFields { return v.Node }
-
-// EnvironmentVolumeList includes the requested fields of the GraphQL type EnvironmentVolumeInstancesConnection.
-type EnvironmentVolumeList struct {
-	Edges []EnvironmentVolumeEdge `json:"edges"`
-}
-
-// GetEdges returns EnvironmentVolumeList.Edges, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumeList) GetEdges() []EnvironmentVolumeEdge { return v.Edges }
-
-// EnvironmentVolumesEnv includes the requested fields of the GraphQL type Environment.
-type EnvironmentVolumesEnv struct {
-	VolumeInstances EnvironmentVolumeList `json:"volumeInstances"`
-}
-
-// GetVolumeInstances returns EnvironmentVolumesEnv.VolumeInstances, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesEnv) GetVolumeInstances() EnvironmentVolumeList { return v.VolumeInstances }
-
-// EnvironmentVolumesResponse is returned by EnvironmentVolumes on success.
-type EnvironmentVolumesResponse struct {
-	// Find a single environment
-	Environment EnvironmentVolumesEnv `json:"environment"`
-}
-
-// GetEnvironment returns EnvironmentVolumesResponse.Environment, and is useful for accessing the field via an interface.
-func (v *EnvironmentVolumesResponse) GetEnvironment() EnvironmentVolumesEnv { return v.Environment }
-
 // EnvironmentsResponse is returned by Environments on success.
 type EnvironmentsResponse struct {
 	// Gets all environments for a project.
@@ -900,36 +820,6 @@ func (v *LogEntryFields) GetSeverity() *string { return v.Severity }
 
 // GetTimestamp returns LogEntryFields.Timestamp, and is useful for accessing the field via an interface.
 func (v *LogEntryFields) GetTimestamp() string { return v.Timestamp }
-
-type PrivateNetworkCreateOrGetInput struct {
-	EnvironmentId string   `json:"environmentId"`
-	Name          string   `json:"name"`
-	ProjectId     string   `json:"projectId"`
-	Tags          []string `json:"tags"`
-}
-
-// GetEnvironmentId returns PrivateNetworkCreateOrGetInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetInput) GetEnvironmentId() string { return v.EnvironmentId }
-
-// GetName returns PrivateNetworkCreateOrGetInput.Name, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetInput) GetName() string { return v.Name }
-
-// GetProjectId returns PrivateNetworkCreateOrGetInput.ProjectId, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetInput) GetProjectId() string { return v.ProjectId }
-
-// GetTags returns PrivateNetworkCreateOrGetInput.Tags, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetInput) GetTags() []string { return v.Tags }
-
-// PrivateNetworkCreateOrGetResponse is returned by PrivateNetworkCreateOrGet on success.
-type PrivateNetworkCreateOrGetResponse struct {
-	// Create or get a private network.
-	PrivateNetworkCreateOrGet PrivateNetworkFields `json:"privateNetworkCreateOrGet"`
-}
-
-// GetPrivateNetworkCreateOrGet returns PrivateNetworkCreateOrGetResponse.PrivateNetworkCreateOrGet, and is useful for accessing the field via an interface.
-func (v *PrivateNetworkCreateOrGetResponse) GetPrivateNetworkCreateOrGet() PrivateNetworkFields {
-	return v.PrivateNetworkCreateOrGet
-}
 
 type PrivateNetworkEndpointCreateOrGetInput struct {
 	EnvironmentId    string   `json:"environmentId"`
@@ -1020,17 +910,6 @@ func (v *PrivateNetworkFields) GetDnsName() string { return v.DnsName }
 
 // GetName returns PrivateNetworkFields.Name, and is useful for accessing the field via an interface.
 func (v *PrivateNetworkFields) GetName() string { return v.Name }
-
-// PrivateNetworksResponse is returned by PrivateNetworks on success.
-type PrivateNetworksResponse struct {
-	// List private networks for an environment.
-	PrivateNetworks []PrivateNetworkFields `json:"privateNetworks"`
-}
-
-// GetPrivateNetworks returns PrivateNetworksResponse.PrivateNetworks, and is useful for accessing the field via an interface.
-func (v *PrivateNetworksResponse) GetPrivateNetworks() []PrivateNetworkFields {
-	return v.PrivateNetworks
-}
 
 // ProjectBucketsProject includes the requested fields of the GraphQL type Project.
 type ProjectBucketsProject struct {
@@ -1373,33 +1252,6 @@ var AllRestartPolicyType = []RestartPolicyType{
 	RestartPolicyTypeNever,
 	RestartPolicyTypeOnFailure,
 }
-
-type ServiceConnectInput struct {
-	// The branch to connect to. e.g. 'main'
-	Branch *string `json:"branch"`
-	// Name of the Dockerhub or GHCR image to connect this service to.
-	Image *string `json:"image"`
-	// The full name of the repo to connect to. e.g. 'railwayapp/starters'
-	Repo *string `json:"repo"`
-}
-
-// GetBranch returns ServiceConnectInput.Branch, and is useful for accessing the field via an interface.
-func (v *ServiceConnectInput) GetBranch() *string { return v.Branch }
-
-// GetImage returns ServiceConnectInput.Image, and is useful for accessing the field via an interface.
-func (v *ServiceConnectInput) GetImage() *string { return v.Image }
-
-// GetRepo returns ServiceConnectInput.Repo, and is useful for accessing the field via an interface.
-func (v *ServiceConnectInput) GetRepo() *string { return v.Repo }
-
-// ServiceConnectResponse is returned by ServiceConnect on success.
-type ServiceConnectResponse struct {
-	// Connect a service to a source
-	ServiceConnect ConnectedService `json:"serviceConnect"`
-}
-
-// GetServiceConnect returns ServiceConnectResponse.ServiceConnect, and is useful for accessing the field via an interface.
-func (v *ServiceConnectResponse) GetServiceConnect() ConnectedService { return v.ServiceConnect }
 
 type ServiceCreateInput struct {
 	Branch *string `json:"branch"`
@@ -1964,30 +1816,6 @@ func (v *TokenScope) GetProjectId() string { return v.ProjectId }
 // GetEnvironmentId returns TokenScope.EnvironmentId, and is useful for accessing the field via an interface.
 func (v *TokenScope) GetEnvironmentId() string { return v.EnvironmentId }
 
-// TriggerList includes the requested fields of the GraphQL type QueryDeploymentTriggersConnection.
-type TriggerList struct {
-	Edges []TriggerListEdge `json:"edges"`
-}
-
-// GetEdges returns TriggerList.Edges, and is useful for accessing the field via an interface.
-func (v *TriggerList) GetEdges() []TriggerListEdge { return v.Edges }
-
-// TriggerListEdge includes the requested fields of the GraphQL type QueryDeploymentTriggersConnectionEdge.
-type TriggerListEdge struct {
-	Node DeploymentTriggerFields `json:"node"`
-}
-
-// GetNode returns TriggerListEdge.Node, and is useful for accessing the field via an interface.
-func (v *TriggerListEdge) GetNode() DeploymentTriggerFields { return v.Node }
-
-// UpdatedTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
-type UpdatedTrigger struct {
-	Id string `json:"id"`
-}
-
-// GetId returns UpdatedTrigger.Id, and is useful for accessing the field via an interface.
-func (v *UpdatedTrigger) GetId() string { return v.Id }
-
 type VariableCollectionUpsertInput struct {
 	EnvironmentId string `json:"environmentId"`
 	ProjectId     string `json:"projectId"`
@@ -2176,33 +2004,6 @@ func (v *VolumeInstanceFields) GetVolumeId() string { return v.VolumeId }
 // GetVolume returns VolumeInstanceFields.Volume, and is useful for accessing the field via an interface.
 func (v *VolumeInstanceFields) GetVolume() VolumeSummaryFields { return v.Volume }
 
-type VolumeInstanceUpdateInput struct {
-	// The mount path of the volume instance. If not provided, the mount path will not be updated.
-	MountPath *string `json:"mountPath"`
-	// The service to attach the volume to. If not provided, the volume will be disconnected.
-	ServiceId *string `json:"serviceId"`
-	// The state of the volume instance. If not provided, the state will not be updated.
-	State *VolumeState `json:"state"`
-}
-
-// GetMountPath returns VolumeInstanceUpdateInput.MountPath, and is useful for accessing the field via an interface.
-func (v *VolumeInstanceUpdateInput) GetMountPath() *string { return v.MountPath }
-
-// GetServiceId returns VolumeInstanceUpdateInput.ServiceId, and is useful for accessing the field via an interface.
-func (v *VolumeInstanceUpdateInput) GetServiceId() *string { return v.ServiceId }
-
-// GetState returns VolumeInstanceUpdateInput.State, and is useful for accessing the field via an interface.
-func (v *VolumeInstanceUpdateInput) GetState() *VolumeState { return v.State }
-
-// VolumeInstanceUpdateResponse is returned by VolumeInstanceUpdate on success.
-type VolumeInstanceUpdateResponse struct {
-	// Update a volume instance. If no environmentId is provided, all volume instances for the volume will be updated.
-	VolumeInstanceUpdate bool `json:"volumeInstanceUpdate"`
-}
-
-// GetVolumeInstanceUpdate returns VolumeInstanceUpdateResponse.VolumeInstanceUpdate, and is useful for accessing the field via an interface.
-func (v *VolumeInstanceUpdateResponse) GetVolumeInstanceUpdate() bool { return v.VolumeInstanceUpdate }
-
 // VolumeList includes the requested fields of the GraphQL type ProjectVolumesConnection.
 type VolumeList struct {
 	Edges []VolumeListEdge `json:"edges"`
@@ -2282,30 +2083,6 @@ func (v *VolumeListItem) __premarshalJSON() (*__premarshalVolumeListItem, error)
 	retval.Id = v.VolumeSummaryFields.Id
 	retval.Name = v.VolumeSummaryFields.Name
 	return &retval, nil
-}
-
-type VolumeState string
-
-const (
-	VolumeStateDeleted          VolumeState = "DELETED"
-	VolumeStateDeleting         VolumeState = "DELETING"
-	VolumeStateError            VolumeState = "ERROR"
-	VolumeStateMigrating        VolumeState = "MIGRATING"
-	VolumeStateMigrationPending VolumeState = "MIGRATION_PENDING"
-	VolumeStateReady            VolumeState = "READY"
-	VolumeStateRestoring        VolumeState = "RESTORING"
-	VolumeStateUpdating         VolumeState = "UPDATING"
-)
-
-var AllVolumeState = []VolumeState{
-	VolumeStateDeleted,
-	VolumeStateDeleting,
-	VolumeStateError,
-	VolumeStateMigrating,
-	VolumeStateMigrationPending,
-	VolumeStateReady,
-	VolumeStateRestoring,
-	VolumeStateUpdating,
 }
 
 // VolumeSummaryFields includes the GraphQL fields of Volume requested by the fragment VolumeSummaryFields.
@@ -2484,34 +2261,6 @@ type __DeploymentTriggerDeleteInput struct {
 // GetId returns __DeploymentTriggerDeleteInput.Id, and is useful for accessing the field via an interface.
 func (v *__DeploymentTriggerDeleteInput) GetId() string { return v.Id }
 
-// __DeploymentTriggerUpdateInput is used internally by genqlient
-type __DeploymentTriggerUpdateInput struct {
-	Id    string                       `json:"id"`
-	Input DeploymentTriggerUpdateInput `json:"input"`
-}
-
-// GetId returns __DeploymentTriggerUpdateInput.Id, and is useful for accessing the field via an interface.
-func (v *__DeploymentTriggerUpdateInput) GetId() string { return v.Id }
-
-// GetInput returns __DeploymentTriggerUpdateInput.Input, and is useful for accessing the field via an interface.
-func (v *__DeploymentTriggerUpdateInput) GetInput() DeploymentTriggerUpdateInput { return v.Input }
-
-// __DeploymentTriggersInput is used internally by genqlient
-type __DeploymentTriggersInput struct {
-	EnvironmentId string `json:"environmentId"`
-	ProjectId     string `json:"projectId"`
-	ServiceId     string `json:"serviceId"`
-}
-
-// GetEnvironmentId returns __DeploymentTriggersInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *__DeploymentTriggersInput) GetEnvironmentId() string { return v.EnvironmentId }
-
-// GetProjectId returns __DeploymentTriggersInput.ProjectId, and is useful for accessing the field via an interface.
-func (v *__DeploymentTriggersInput) GetProjectId() string { return v.ProjectId }
-
-// GetServiceId returns __DeploymentTriggersInput.ServiceId, and is useful for accessing the field via an interface.
-func (v *__DeploymentTriggersInput) GetServiceId() string { return v.ServiceId }
-
 // __DeploymentsInput is used internally by genqlient
 type __DeploymentsInput struct {
 	Input DeploymentListInput `json:"input"`
@@ -2618,18 +2367,6 @@ func (v *__EnvironmentLogsInput) GetBeforeLimit() *int { return v.BeforeLimit }
 // GetFilter returns __EnvironmentLogsInput.Filter, and is useful for accessing the field via an interface.
 func (v *__EnvironmentLogsInput) GetFilter() *string { return v.Filter }
 
-// __EnvironmentVolumesInput is used internally by genqlient
-type __EnvironmentVolumesInput struct {
-	EnvironmentId string  `json:"environmentId"`
-	ProjectId     *string `json:"projectId"`
-}
-
-// GetEnvironmentId returns __EnvironmentVolumesInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *__EnvironmentVolumesInput) GetEnvironmentId() string { return v.EnvironmentId }
-
-// GetProjectId returns __EnvironmentVolumesInput.ProjectId, and is useful for accessing the field via an interface.
-func (v *__EnvironmentVolumesInput) GetProjectId() *string { return v.ProjectId }
-
 // __EnvironmentsInput is used internally by genqlient
 type __EnvironmentsInput struct {
 	ProjectId string `json:"projectId"`
@@ -2637,14 +2374,6 @@ type __EnvironmentsInput struct {
 
 // GetProjectId returns __EnvironmentsInput.ProjectId, and is useful for accessing the field via an interface.
 func (v *__EnvironmentsInput) GetProjectId() string { return v.ProjectId }
-
-// __PrivateNetworkCreateOrGetInput is used internally by genqlient
-type __PrivateNetworkCreateOrGetInput struct {
-	Input PrivateNetworkCreateOrGetInput `json:"input"`
-}
-
-// GetInput returns __PrivateNetworkCreateOrGetInput.Input, and is useful for accessing the field via an interface.
-func (v *__PrivateNetworkCreateOrGetInput) GetInput() PrivateNetworkCreateOrGetInput { return v.Input }
 
 // __PrivateNetworkEndpointCreateOrGetInput is used internally by genqlient
 type __PrivateNetworkEndpointCreateOrGetInput struct {
@@ -2679,14 +2408,6 @@ func (v *__PrivateNetworkEndpointInput) GetPrivateNetworkId() string { return v.
 
 // GetServiceId returns __PrivateNetworkEndpointInput.ServiceId, and is useful for accessing the field via an interface.
 func (v *__PrivateNetworkEndpointInput) GetServiceId() string { return v.ServiceId }
-
-// __PrivateNetworksInput is used internally by genqlient
-type __PrivateNetworksInput struct {
-	EnvironmentId string `json:"environmentId"`
-}
-
-// GetEnvironmentId returns __PrivateNetworksInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *__PrivateNetworksInput) GetEnvironmentId() string { return v.EnvironmentId }
 
 // __ProjectBucketsInput is used internally by genqlient
 type __ProjectBucketsInput struct {
@@ -2743,18 +2464,6 @@ type __ProjectsResolutionInput struct {
 
 // GetWorkspaceId returns __ProjectsResolutionInput.WorkspaceId, and is useful for accessing the field via an interface.
 func (v *__ProjectsResolutionInput) GetWorkspaceId() *string { return v.WorkspaceId }
-
-// __ServiceConnectInput is used internally by genqlient
-type __ServiceConnectInput struct {
-	Id    string              `json:"id"`
-	Input ServiceConnectInput `json:"input"`
-}
-
-// GetId returns __ServiceConnectInput.Id, and is useful for accessing the field via an interface.
-func (v *__ServiceConnectInput) GetId() string { return v.Id }
-
-// GetInput returns __ServiceConnectInput.Input, and is useful for accessing the field via an interface.
-func (v *__ServiceConnectInput) GetInput() ServiceConnectInput { return v.Input }
 
 // __ServiceCreateInput is used internally by genqlient
 type __ServiceCreateInput struct {
@@ -2945,22 +2654,6 @@ type __VolumeDeleteInput struct {
 
 // GetVolumeId returns __VolumeDeleteInput.VolumeId, and is useful for accessing the field via an interface.
 func (v *__VolumeDeleteInput) GetVolumeId() string { return v.VolumeId }
-
-// __VolumeInstanceUpdateInput is used internally by genqlient
-type __VolumeInstanceUpdateInput struct {
-	EnvironmentId *string                   `json:"environmentId"`
-	Input         VolumeInstanceUpdateInput `json:"input"`
-	VolumeId      string                    `json:"volumeId"`
-}
-
-// GetEnvironmentId returns __VolumeInstanceUpdateInput.EnvironmentId, and is useful for accessing the field via an interface.
-func (v *__VolumeInstanceUpdateInput) GetEnvironmentId() *string { return v.EnvironmentId }
-
-// GetInput returns __VolumeInstanceUpdateInput.Input, and is useful for accessing the field via an interface.
-func (v *__VolumeInstanceUpdateInput) GetInput() VolumeInstanceUpdateInput { return v.Input }
-
-// GetVolumeId returns __VolumeInstanceUpdateInput.VolumeId, and is useful for accessing the field via an interface.
-func (v *__VolumeInstanceUpdateInput) GetVolumeId() string { return v.VolumeId }
 
 // The query executed by ApiToken.
 const ApiToken_Operation = `
@@ -3492,92 +3185,6 @@ func DeploymentTriggerDelete(
 	return data_, err_
 }
 
-// The mutation executed by DeploymentTriggerUpdate.
-const DeploymentTriggerUpdate_Operation = `
-mutation DeploymentTriggerUpdate ($id: String!, $input: DeploymentTriggerUpdateInput!) {
-	deploymentTriggerUpdate(id: $id, input: $input) {
-		id
-	}
-}
-`
-
-func DeploymentTriggerUpdate(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	id string,
-	input DeploymentTriggerUpdateInput,
-) (data_ *DeploymentTriggerUpdateResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "DeploymentTriggerUpdate",
-		Query:  DeploymentTriggerUpdate_Operation,
-		Variables: &__DeploymentTriggerUpdateInput{
-			Id:    id,
-			Input: input,
-		},
-	}
-
-	data_ = &DeploymentTriggerUpdateResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
-// The query executed by DeploymentTriggers.
-const DeploymentTriggers_Operation = `
-query DeploymentTriggers ($environmentId: String!, $projectId: String!, $serviceId: String!) {
-	deploymentTriggers(environmentId: $environmentId, projectId: $projectId, serviceId: $serviceId, first: 100) {
-		edges {
-			node {
-				... DeploymentTriggerFields
-			}
-		}
-	}
-}
-fragment DeploymentTriggerFields on DeploymentTrigger {
-	id
-	serviceId
-	branch
-	repository
-	provider
-	checkSuites
-}
-`
-
-func DeploymentTriggers(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	environmentId string,
-	projectId string,
-	serviceId string,
-) (data_ *DeploymentTriggersResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "DeploymentTriggers",
-		Query:  DeploymentTriggers_Operation,
-		Variables: &__DeploymentTriggersInput{
-			EnvironmentId: environmentId,
-			ProjectId:     projectId,
-			ServiceId:     serviceId,
-		},
-	}
-
-	data_ = &DeploymentTriggersResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
 // The query executed by Deployments.
 const Deployments_Operation = `
 query Deployments ($input: DeploymentListInput!, $first: Int, $after: String) {
@@ -3993,62 +3600,6 @@ func EnvironmentLogs(
 	return data_, err_
 }
 
-// The query executed by EnvironmentVolumes.
-const EnvironmentVolumes_Operation = `
-query EnvironmentVolumes ($environmentId: String!, $projectId: String) {
-	environment(id: $environmentId, projectId: $projectId) {
-		volumeInstances(first: 100) {
-			edges {
-				node {
-					... VolumeInstanceFields
-				}
-			}
-		}
-	}
-}
-fragment VolumeInstanceFields on VolumeInstance {
-	id
-	mountPath
-	region
-	serviceId
-	volumeId
-	volume {
-		... VolumeSummaryFields
-	}
-}
-fragment VolumeSummaryFields on Volume {
-	id
-	name
-}
-`
-
-func EnvironmentVolumes(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	environmentId string,
-	projectId *string,
-) (data_ *EnvironmentVolumesResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "EnvironmentVolumes",
-		Query:  EnvironmentVolumes_Operation,
-		Variables: &__EnvironmentVolumesInput{
-			EnvironmentId: environmentId,
-			ProjectId:     projectId,
-		},
-	}
-
-	data_ = &EnvironmentVolumesResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
 // The query executed by Environments.
 const Environments_Operation = `
 query Environments ($projectId: String!) {
@@ -4080,45 +3631,6 @@ func Environments(
 	}
 
 	data_ = &EnvironmentsResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
-// The mutation executed by PrivateNetworkCreateOrGet.
-const PrivateNetworkCreateOrGet_Operation = `
-mutation PrivateNetworkCreateOrGet ($input: PrivateNetworkCreateOrGetInput!) {
-	privateNetworkCreateOrGet(input: $input) {
-		... PrivateNetworkFields
-	}
-}
-fragment PrivateNetworkFields on PrivateNetwork {
-	publicId
-	dnsName
-	name
-}
-`
-
-func PrivateNetworkCreateOrGet(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	input PrivateNetworkCreateOrGetInput,
-) (data_ *PrivateNetworkCreateOrGetResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "PrivateNetworkCreateOrGet",
-		Query:  PrivateNetworkCreateOrGet_Operation,
-		Variables: &__PrivateNetworkCreateOrGetInput{
-			Input: input,
-		},
-	}
-
-	data_ = &PrivateNetworkCreateOrGetResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -4233,45 +3745,6 @@ func PrivateNetworkEndpointDelete(
 	}
 
 	data_ = &PrivateNetworkEndpointDeleteResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
-// The query executed by PrivateNetworks.
-const PrivateNetworks_Operation = `
-query PrivateNetworks ($environmentId: String!) {
-	privateNetworks(environmentId: $environmentId) {
-		... PrivateNetworkFields
-	}
-}
-fragment PrivateNetworkFields on PrivateNetwork {
-	publicId
-	dnsName
-	name
-}
-`
-
-func PrivateNetworks(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	environmentId string,
-) (data_ *PrivateNetworksResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "PrivateNetworks",
-		Query:  PrivateNetworks_Operation,
-		Variables: &__PrivateNetworksInput{
-			EnvironmentId: environmentId,
-		},
-	}
-
-	data_ = &PrivateNetworksResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -4619,42 +4092,6 @@ func ProjectsResolution(
 	}
 
 	data_ = &ProjectsResolutionResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
-// The mutation executed by ServiceConnect.
-const ServiceConnect_Operation = `
-mutation ServiceConnect ($id: String!, $input: ServiceConnectInput!) {
-	serviceConnect(id: $id, input: $input) {
-		id
-	}
-}
-`
-
-func ServiceConnect(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	id string,
-	input ServiceConnectInput,
-) (data_ *ServiceConnectResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "ServiceConnect",
-		Query:  ServiceConnect_Operation,
-		Variables: &__ServiceConnectInput{
-			Id:    id,
-			Input: input,
-		},
-	}
-
-	data_ = &ServiceConnectResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -5376,42 +4813,6 @@ func VolumeDelete(
 	}
 
 	data_ = &VolumeDeleteResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
-// The mutation executed by VolumeInstanceUpdate.
-const VolumeInstanceUpdate_Operation = `
-mutation VolumeInstanceUpdate ($environmentId: String, $input: VolumeInstanceUpdateInput!, $volumeId: String!) {
-	volumeInstanceUpdate(environmentId: $environmentId, input: $input, volumeId: $volumeId)
-}
-`
-
-func VolumeInstanceUpdate(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	environmentId *string,
-	input VolumeInstanceUpdateInput,
-	volumeId string,
-) (data_ *VolumeInstanceUpdateResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "VolumeInstanceUpdate",
-		Query:  VolumeInstanceUpdate_Operation,
-		Variables: &__VolumeInstanceUpdateInput{
-			EnvironmentId: environmentId,
-			Input:         input,
-			VolumeId:      volumeId,
-		},
-	}
-
-	data_ = &VolumeInstanceUpdateResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

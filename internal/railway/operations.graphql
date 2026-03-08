@@ -305,13 +305,6 @@ mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
   }
 }
 
-mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
-  # @genqlient(typename: "ConnectedService")
-  serviceConnect(id: $id, input: $input) {
-    id
-  }
-}
-
 # ---------------------------------------------------------------------------
 # Variables
 # ---------------------------------------------------------------------------
@@ -419,18 +412,6 @@ mutation VolumeDelete($volumeId: String!) {
   volumeDelete(volumeId: $volumeId)
 }
 
-mutation VolumeInstanceUpdate(
-  $environmentId: String
-  $input: VolumeInstanceUpdateInput!
-  $volumeId: String!
-) {
-  volumeInstanceUpdate(
-    environmentId: $environmentId
-    input: $input
-    volumeId: $volumeId
-  )
-}
-
 # ---------------------------------------------------------------------------
 # Networking (TCP proxies, private networks, egress gateways)
 # ---------------------------------------------------------------------------
@@ -459,13 +440,6 @@ mutation TcpProxyCreate($input: TCPProxyCreateInput!) {
 
 mutation TcpProxyDelete($id: String!) {
   tcpProxyDelete(id: $id)
-}
-
-mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
-  # @genqlient(flatten: true)
-  privateNetworkCreateOrGet(input: $input) {
-    ...PrivateNetworkFields
-  }
 }
 
 mutation PrivateNetworkEndpointCreateOrGet(
@@ -501,16 +475,6 @@ mutation EgressGatewayAssociationsClear(
 mutation DeploymentTriggerCreate($input: DeploymentTriggerCreateInput!) {
   # @genqlient(typename: "CreatedTrigger")
   deploymentTriggerCreate(input: $input) {
-    id
-  }
-}
-
-mutation DeploymentTriggerUpdate(
-  $id: String!
-  $input: DeploymentTriggerUpdateInput!
-) {
-  # @genqlient(typename: "UpdatedTrigger")
-  deploymentTriggerUpdate(id: $id, input: $input) {
     id
   }
 }
@@ -692,54 +656,6 @@ query EgressGateways($environmentId: String!, $serviceId: String!) {
   # @genqlient(flatten: true)
   egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
     ...EgressGatewayFields
-  }
-}
-
-query DeploymentTriggers(
-  $environmentId: String!
-  $projectId: String!
-  $serviceId: String!
-) {
-  # @genqlient(typename: "TriggerList")
-  deploymentTriggers(
-    environmentId: $environmentId
-    projectId: $projectId
-    serviceId: $serviceId
-    first: 100
-  ) {
-    # @genqlient(typename: "TriggerListEdge")
-    edges {
-      # @genqlient(flatten: true)
-      node {
-        ...DeploymentTriggerFields
-      }
-    }
-  }
-}
-
-# Standalone volume/network queries — subsumed by EnvironmentBulk for the
-# primary live-state path but retained for list commands and test mocks.
-
-query EnvironmentVolumes($environmentId: String!, $projectId: String) {
-  # @genqlient(typename: "EnvironmentVolumesEnv")
-  environment(id: $environmentId, projectId: $projectId) {
-    # @genqlient(typename: "EnvironmentVolumeList")
-    volumeInstances(first: 100) {
-      # @genqlient(typename: "EnvironmentVolumeEdge")
-      edges {
-        # @genqlient(flatten: true)
-        node {
-          ...VolumeInstanceFields
-        }
-      }
-    }
-  }
-}
-
-query PrivateNetworks($environmentId: String!) {
-  # @genqlient(flatten: true)
-  privateNetworks(environmentId: $environmentId) {
-    ...PrivateNetworkFields
   }
 }
 

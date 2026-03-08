@@ -43,13 +43,17 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	}
 
 	// Collect the services to fetch based on the filter.
-	type svcRef struct{ name, id string }
+	type svcRef struct{ name, id, icon string }
 	var toFetch []svcRef
 	for _, edge := range services.Project.Services.Edges {
 		if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
 			continue
 		}
-		toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id})
+		icon := ""
+		if edge.Node.Icon != nil {
+			icon = *edge.Node.Icon
+		}
+		toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id, icon: icon})
 	}
 
 	if len(toFetch) == 0 {
@@ -82,7 +86,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	g, gCtx := errgroup.WithContext(ctx)
 	for i, ref := range toFetch {
 		g.Go(func() error {
-			svc, err := fetchServiceState(gCtx, client, projectID, environmentID, ref.id, ref.name, volumesByService, networks)
+			svc, err := fetchServiceState(gCtx, client, projectID, environmentID, ref.id, ref.name, ref.icon, volumesByService, networks)
 			if err != nil {
 				return err
 			}
@@ -101,12 +105,13 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 }
 
 // fetchServiceState fetches all state for a single service. Called concurrently.
-func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork) (*config.ServiceConfig, error) {
+func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork) (*config.ServiceConfig, error) {
 	svc := &config.ServiceConfig{
 		ID:        serviceID,
 		Name:      serviceName,
 		Variables: map[string]string{},
 	}
+	svc.Icon = icon
 
 	// Variables and ServiceInstance are required — fetch concurrently.
 	var vars *VariablesResponse

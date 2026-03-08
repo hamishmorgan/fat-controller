@@ -1363,8 +1363,9 @@ func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServ
 
 // ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService includes the requested fields of the GraphQL type Service.
 type ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id   string  `json:"id"`
+	Name string  `json:"name"`
+	Icon *string `json:"icon"`
 }
 
 // GetId returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Id, and is useful for accessing the field via an interface.
@@ -1375,6 +1376,11 @@ func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServ
 // GetName returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Name, and is useful for accessing the field via an interface.
 func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetName() string {
 	return v.Name
+}
+
+// GetIcon returns ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService.Icon, and is useful for accessing the field via an interface.
+func (v *ProjectServicesProjectServicesProjectServicesConnectionEdgesProjectServicesConnectionEdgeNodeService) GetIcon() *string {
+	return v.Icon
 }
 
 // ProjectServicesResponse is returned by ProjectServices on success.
@@ -4282,6 +4288,7 @@ query ProjectServices ($projectId: String!) {
 				node {
 					id
 					name
+					icon
 				}
 			}
 		}

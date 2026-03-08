@@ -47,6 +47,7 @@ query ProjectServices($projectId: String!) {
         node {
           id
           name
+          icon
         }
       }
     }

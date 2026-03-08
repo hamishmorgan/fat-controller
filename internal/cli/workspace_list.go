@@ -14,14 +14,14 @@ import (
 
 // workspaceLister abstracts workspace listing for tests.
 type workspaceLister interface {
-	ListWorkspaces(ctx context.Context) ([]railway.EntityInfo, error)
+	ListWorkspaces(ctx context.Context) ([]railway.WorkspaceInfo, error)
 }
 
 type defaultWorkspaceLister struct {
 	client *railway.Client
 }
 
-func (d *defaultWorkspaceLister) ListWorkspaces(ctx context.Context) ([]railway.EntityInfo, error) {
+func (d *defaultWorkspaceLister) ListWorkspaces(ctx context.Context) ([]railway.WorkspaceInfo, error) {
 	return railway.ListWorkspaces(ctx, d.client)
 }
 
@@ -47,7 +47,7 @@ func RunWorkspaceList(ctx context.Context, globals *Globals, lister workspaceLis
 		return enc.Encode(workspaces)
 	case "toml":
 		wrapper := struct {
-			Workspaces []railway.EntityInfo `toml:"workspaces"`
+			Workspaces []railway.WorkspaceInfo `toml:"workspaces"`
 		}{Workspaces: workspaces}
 		return toml.NewEncoder(out).Encode(wrapper)
 	default:

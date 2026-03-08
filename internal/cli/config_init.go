@@ -68,7 +68,7 @@ type initResolver interface {
 	FetchWorkspaces(ctx context.Context) ([]prompt.Item, error)
 	FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error)
 	FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error)
-	FetchServiceList(ctx context.Context, projectID string) ([]railway.EntityInfo, error)
+	FetchServiceList(ctx context.Context, projectID string) ([]railway.ServiceInfo, error)
 	FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
 }
 
@@ -113,7 +113,7 @@ func (r *railwayInitResolver) FetchEnvironments(ctx context.Context, projectID s
 	return items, nil
 }
 
-func (r *railwayInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+func (r *railwayInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]railway.ServiceInfo, error) {
 	return railway.ListServices(ctx, r.client, projectID)
 }
 
@@ -287,7 +287,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 
 	// 3. Fetch service list (lightweight — single query).
-	var svcList []railway.EntityInfo
+	var svcList []railway.ServiceInfo
 	if err := withSpinner(ctx, "Fetching services…", interactive, func() {
 		svcList, fetchErr = resolver.FetchServiceList(ctx, projID)
 	}); err != nil {

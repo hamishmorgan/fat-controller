@@ -12,17 +12,17 @@ import (
 )
 
 type fakeEnvironmentLister struct {
-	environments []railway.EntityInfo
+	environments []railway.EnvironmentInfo
 	err          error
 }
 
-func (f *fakeEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+func (f *fakeEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EnvironmentInfo, error) {
 	return f.environments, f.err
 }
 
 func TestRunEnvironmentList_Text(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []railway.EntityInfo{
+		environments: []railway.EnvironmentInfo{
 			{ID: "env-1", Name: "production"},
 			{ID: "env-2", Name: "staging"},
 		},
@@ -40,7 +40,7 @@ func TestRunEnvironmentList_Text(t *testing.T) {
 
 func TestRunEnvironmentList_JSON(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []railway.EntityInfo{
+		environments: []railway.EnvironmentInfo{
 			{ID: "env-1", Name: "production"},
 		},
 	}
@@ -57,7 +57,7 @@ func TestRunEnvironmentList_JSON(t *testing.T) {
 
 func TestRunEnvironmentList_TOML(t *testing.T) {
 	lister := &fakeEnvironmentLister{
-		environments: []railway.EntityInfo{
+		environments: []railway.EnvironmentInfo{
 			{ID: "env-1", Name: "production"},
 			{ID: "env-2", Name: "staging"},
 		},

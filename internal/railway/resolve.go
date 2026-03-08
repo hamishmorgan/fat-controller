@@ -11,15 +11,21 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
+// WorkspaceInfo holds the name and ID of a Railway workspace.
+type WorkspaceInfo struct {
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
+}
+
 // ListWorkspaces returns the name/ID pairs for all workspaces the token has access to.
-func ListWorkspaces(ctx context.Context, client *Client) ([]EntityInfo, error) {
+func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error) {
 	resp, err := ApiToken(ctx, client.GQL())
 	if err != nil {
 		return nil, err
 	}
-	workspaces := make([]EntityInfo, len(resp.ApiToken.Workspaces))
+	workspaces := make([]WorkspaceInfo, len(resp.ApiToken.Workspaces))
 	for i, ws := range resp.ApiToken.Workspaces {
-		workspaces[i] = EntityInfo{Name: ws.Name, ID: ws.Id}
+		workspaces[i] = WorkspaceInfo{Name: ws.Name, ID: ws.Id}
 	}
 	return workspaces, nil
 }

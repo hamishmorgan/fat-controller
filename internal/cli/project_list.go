@@ -14,14 +14,14 @@ import (
 
 // projectLister abstracts project listing for tests.
 type projectLister interface {
-	ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error)
+	ListProjects(ctx context.Context, workspace string) ([]railway.ProjectInfo, error)
 }
 
 type defaultProjectLister struct {
 	client *railway.Client
 }
 
-func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error) {
+func (d *defaultProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.ProjectInfo, error) {
 	workspaceID, err := railway.ResolveWorkspaceID(ctx, d.client, workspace)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func RunProjectList(ctx context.Context, globals *Globals, workspace string, lis
 		return enc.Encode(projects)
 	case "toml":
 		wrapper := struct {
-			Projects []railway.EntityInfo `toml:"projects"`
+			Projects []railway.ProjectInfo `toml:"projects"`
 		}{Projects: projects}
 		return toml.NewEncoder(out).Encode(wrapper)
 	default:

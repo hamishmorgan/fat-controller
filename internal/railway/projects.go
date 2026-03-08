@@ -6,15 +6,21 @@ import (
 	"log/slog"
 )
 
+// ProjectInfo holds the name and ID of a Railway project.
+type ProjectInfo struct {
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
+}
+
 // ListProjects returns the name/ID pairs for all projects in a workspace.
-func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]EntityInfo, error) {
+func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]ProjectInfo, error) {
 	resp, err := Projects(ctx, client.GQL(), &workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	projects := make([]EntityInfo, len(resp.Projects.Edges))
+	projects := make([]ProjectInfo, len(resp.Projects.Edges))
 	for i, edge := range resp.Projects.Edges {
-		projects[i] = EntityInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		projects[i] = ProjectInfo{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
 	return projects, nil
 }

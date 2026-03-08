@@ -14,14 +14,14 @@ import (
 
 // environmentLister abstracts environment listing for tests.
 type environmentLister interface {
-	ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error)
+	ListEnvironments(ctx context.Context, projectID string) ([]railway.EnvironmentInfo, error)
 }
 
 type defaultEnvironmentLister struct {
 	client *railway.Client
 }
 
-func (d *defaultEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+func (d *defaultEnvironmentLister) ListEnvironments(ctx context.Context, projectID string) ([]railway.EnvironmentInfo, error) {
 	return railway.ListEnvironments(ctx, d.client, projectID)
 }
 
@@ -47,7 +47,7 @@ func RunEnvironmentList(ctx context.Context, globals *Globals, projectID string,
 		return enc.Encode(envs)
 	case "toml":
 		wrapper := struct {
-			Environments []railway.EntityInfo `toml:"environments"`
+			Environments []railway.EnvironmentInfo `toml:"environments"`
 		}{Environments: envs}
 		return toml.NewEncoder(out).Encode(wrapper)
 	default:

@@ -6,15 +6,21 @@ import (
 	"log/slog"
 )
 
+// EnvironmentInfo holds the name and ID of a Railway environment.
+type EnvironmentInfo struct {
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
+}
+
 // ListEnvironments returns the name/ID pairs for all environments in a project.
-func ListEnvironments(ctx context.Context, client *Client, projectID string) ([]EntityInfo, error) {
+func ListEnvironments(ctx context.Context, client *Client, projectID string) ([]EnvironmentInfo, error) {
 	resp, err := Environments(ctx, client.GQL(), projectID)
 	if err != nil {
 		return nil, err
 	}
-	envs := make([]EntityInfo, len(resp.Environments.Edges))
+	envs := make([]EnvironmentInfo, len(resp.Environments.Edges))
 	for i, edge := range resp.Environments.Edges {
-		envs[i] = EntityInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		envs[i] = EnvironmentInfo{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
 	return envs, nil
 }

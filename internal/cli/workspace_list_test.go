@@ -11,16 +11,16 @@ import (
 )
 
 type fakeWorkspaceLister struct {
-	workspaces []railway.EntityInfo
+	workspaces []railway.WorkspaceInfo
 }
 
-func (f *fakeWorkspaceLister) ListWorkspaces(ctx context.Context) ([]railway.EntityInfo, error) {
+func (f *fakeWorkspaceLister) ListWorkspaces(ctx context.Context) ([]railway.WorkspaceInfo, error) {
 	return f.workspaces, nil
 }
 
 func TestRunWorkspaceList_Text(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []railway.EntityInfo{
+		workspaces: []railway.WorkspaceInfo{
 			{ID: "ws-1", Name: "alpha"},
 			{ID: "ws-2", Name: "beta"},
 		},
@@ -38,7 +38,7 @@ func TestRunWorkspaceList_Text(t *testing.T) {
 
 func TestRunWorkspaceList_JSON(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []railway.EntityInfo{{ID: "ws-1", Name: "alpha"}},
+		workspaces: []railway.WorkspaceInfo{{ID: "ws-1", Name: "alpha"}},
 	}
 	var buf bytes.Buffer
 	err := cli.RunWorkspaceList(context.Background(), &cli.Globals{Output: "json"}, lister, &buf)
@@ -53,7 +53,7 @@ func TestRunWorkspaceList_JSON(t *testing.T) {
 
 func TestRunWorkspaceList_TOML(t *testing.T) {
 	lister := &fakeWorkspaceLister{
-		workspaces: []railway.EntityInfo{
+		workspaces: []railway.WorkspaceInfo{
 			{ID: "ws-1", Name: "alpha"},
 			{ID: "ws-2", Name: "beta"},
 		},

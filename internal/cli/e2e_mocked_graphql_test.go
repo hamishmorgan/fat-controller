@@ -849,7 +849,7 @@ func (e *e2eInitResolver) FetchEnvironments(ctx context.Context, projectID strin
 	return items, nil
 }
 
-func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]railway.EntityInfo, error) {
+func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]railway.ServiceInfo, error) {
 	return railway.ListServices(ctx, e.client, projectID)
 }
 

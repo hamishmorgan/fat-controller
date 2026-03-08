@@ -12,17 +12,17 @@ import (
 )
 
 type fakeProjectLister struct {
-	projects []railway.EntityInfo
+	projects []railway.ProjectInfo
 	err      error
 }
 
-func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.EntityInfo, error) {
+func (f *fakeProjectLister) ListProjects(ctx context.Context, workspace string) ([]railway.ProjectInfo, error) {
 	return f.projects, f.err
 }
 
 func TestRunProjectList_Text(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []railway.EntityInfo{
+		projects: []railway.ProjectInfo{
 			{ID: "proj-1", Name: "my-app"},
 			{ID: "proj-2", Name: "my-api"},
 		},
@@ -43,7 +43,7 @@ func TestRunProjectList_Text(t *testing.T) {
 
 func TestRunProjectList_JSON(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []railway.EntityInfo{
+		projects: []railway.ProjectInfo{
 			{ID: "proj-1", Name: "my-app"},
 		},
 	}
@@ -60,7 +60,7 @@ func TestRunProjectList_JSON(t *testing.T) {
 
 func TestRunProjectList_TOML(t *testing.T) {
 	lister := &fakeProjectLister{
-		projects: []railway.EntityInfo{
+		projects: []railway.ProjectInfo{
 			{ID: "proj-1", Name: "my-app"},
 			{ID: "proj-2", Name: "my-api"},
 		},

@@ -6,22 +6,21 @@ import (
 	"log/slog"
 )
 
-// EntityInfo is a lightweight name+ID pair returned by list operations.
-// Used for workspaces, projects, environments, and services.
-type EntityInfo struct {
+// ServiceInfo holds the name and ID of a Railway service.
+type ServiceInfo struct {
 	ID   string `json:"id" toml:"id"`
 	Name string `json:"name" toml:"name"`
 }
 
 // ListServices returns the name/ID pairs for all services in a project.
-func ListServices(ctx context.Context, client *Client, projectID string) ([]EntityInfo, error) {
+func ListServices(ctx context.Context, client *Client, projectID string) ([]ServiceInfo, error) {
 	resp, err := ProjectServices(ctx, client.GQL(), projectID)
 	if err != nil {
 		return nil, err
 	}
-	services := make([]EntityInfo, len(resp.Project.Services.Edges))
+	services := make([]ServiceInfo, len(resp.Project.Services.Edges))
 	for i, edge := range resp.Project.Services.Edges {
-		services[i] = EntityInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		services[i] = ServiceInfo{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
 	return services, nil
 }

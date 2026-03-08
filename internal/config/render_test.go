@@ -408,3 +408,39 @@ func TestRenderInitTOML_SharedVariables(t *testing.T) {
 		t.Errorf("expected variables section:\n%s", got)
 	}
 }
+
+func TestRenderInitTOML_IncludesIDs(t *testing.T) {
+	cfg := config.LiveConfig{
+		ProjectID:     "proj-abc123",
+		EnvironmentID: "env-xyz789",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				ID:        "svc-111",
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080"},
+			},
+			"worker": {
+				ID:        "svc-222",
+				Name:      "worker",
+				Variables: map[string]string{"QUEUE": "default"},
+			},
+		},
+	}
+	got := config.RenderInitTOML("ws", "proj", "production", cfg)
+
+	// Environment ID at top level.
+	if !strings.Contains(got, `id = "env-xyz789"`) {
+		t.Errorf("expected environment ID:\n%s", got)
+	}
+	// Project ID in [project] block.
+	if !strings.Contains(got, `id = "proj-abc123"`) {
+		t.Errorf("expected project ID:\n%s", got)
+	}
+	// Service IDs in [[service]] blocks.
+	if !strings.Contains(got, `id = "svc-111"`) {
+		t.Errorf("expected api service ID:\n%s", got)
+	}
+	if !strings.Contains(got, `id = "svc-222"`) {
+		t.Errorf("expected worker service ID:\n%s", got)
+	}
+}

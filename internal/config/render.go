@@ -56,6 +56,7 @@ type tomlDeploy struct {
 // tomlInitConfig is the top-level struct for init/adopt output.
 type tomlInitConfig struct {
 	Name      string            `toml:"name"`
+	ID        string            `toml:"id,omitempty"`
 	Workspace *tomlContextBlock `toml:"workspace,omitempty"`
 	Project   *tomlContextBlock `toml:"project,omitempty"`
 	Variables map[string]string `toml:"variables,omitempty"`
@@ -64,6 +65,7 @@ type tomlInitConfig struct {
 
 type tomlContextBlock struct {
 	Name string `toml:"name"`
+	ID   string `toml:"id,omitempty"`
 }
 
 // ---------- conversion helpers ----------
@@ -110,10 +112,10 @@ func liveToTOMLServices(cfg LiveConfig, full bool) []tomlService {
 		svc := cfg.Services[name]
 		ts := tomlService{
 			Name:      name,
+			ID:        svc.ID,
 			Variables: svc.Variables,
 		}
 		if full {
-			ts.ID = svc.ID
 			ts.Deploy = deployToTOML(svc.Deploy)
 		}
 		services = append(services, ts)
@@ -360,14 +362,15 @@ func CollectSecrets(cfg LiveConfig) map[string]string {
 
 // RenderInitTOML generates a fat-controller.toml for the init command.
 // It includes workspace/project/environment header (when provided), uses
-// ${VAR} env references for secrets, and excludes deploy settings and IDs
-// (those are operational, not config).
+// ${VAR} env references for secrets, and records IDs for pinning.
+// Deploy settings are excluded (those are operational, fetched live).
 func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
 	replaced := envRefConfig(cfg)
 
 	tc := tomlInitConfig{
 		Name:      environment,
-		Project:   &tomlContextBlock{Name: project},
+		ID:        cfg.EnvironmentID,
+		Project:   &tomlContextBlock{Name: project, ID: cfg.ProjectID},
 		Variables: replaced.Variables,
 		Service:   liveToTOMLServices(replaced, false),
 	}

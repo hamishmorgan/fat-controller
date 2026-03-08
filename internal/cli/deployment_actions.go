@@ -14,10 +14,14 @@ import (
 type RedeployCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	PromptFlags      `kong:"embed"`
+	DryRun           bool     `help:"Preview what would be redeployed without triggering." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	Services         []string `arg:"" optional:"" help:"Services to redeploy (default: all)."`
 }
 
 func (c *RedeployCmd) Run(globals *Globals) error {
+	if c.DryRun {
+		return runDeploymentDryRun(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "redeploy")
+	}
 	return runDeploymentAction(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "redeploy", func(ctx context.Context, client *railway.Client, deploymentID string) (string, error) {
 		return railway.RedeployDeployment(ctx, client, deploymentID)
 	})
@@ -27,10 +31,14 @@ func (c *RedeployCmd) Run(globals *Globals) error {
 type RestartCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	PromptFlags      `kong:"embed"`
+	DryRun           bool     `help:"Preview what would be restarted without triggering." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	Services         []string `arg:"" optional:"" help:"Services to restart (default: all)."`
 }
 
 func (c *RestartCmd) Run(globals *Globals) error {
+	if c.DryRun {
+		return runDeploymentDryRun(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "restart")
+	}
 	return runDeploymentAction(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "restart", func(ctx context.Context, client *railway.Client, deploymentID string) (string, error) {
 		err := railway.RestartDeployment(ctx, client, deploymentID)
 		return "", err
@@ -41,10 +49,14 @@ func (c *RestartCmd) Run(globals *Globals) error {
 type RollbackCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	PromptFlags      `kong:"embed"`
+	DryRun           bool     `help:"Preview what would be rolled back without triggering." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	Services         []string `arg:"" optional:"" help:"Services to roll back (default: all)."`
 }
 
 func (c *RollbackCmd) Run(globals *Globals) error {
+	if c.DryRun {
+		return runDeploymentDryRun(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "rollback")
+	}
 	return runDeploymentAction(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "rollback", func(ctx context.Context, client *railway.Client, deploymentID string) (string, error) {
 		err := railway.RollbackDeployment(ctx, client, deploymentID)
 		return "", err
@@ -55,10 +67,14 @@ func (c *RollbackCmd) Run(globals *Globals) error {
 type StopCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	PromptFlags      `kong:"embed"`
+	DryRun           bool     `help:"Preview what would be stopped without triggering." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	Services         []string `arg:"" optional:"" help:"Services to stop (default: all)."`
 }
 
 func (c *StopCmd) Run(globals *Globals) error {
+	if c.DryRun {
+		return runDeploymentDryRun(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "stop")
+	}
 	return runDeploymentAction(globals, &c.ApiFlags, c.Workspace, c.Project, c.Environment, c.Services, "stop", func(ctx context.Context, client *railway.Client, deploymentID string) (string, error) {
 		err := railway.CancelDeployment(ctx, client, deploymentID)
 		return "", err
@@ -179,4 +195,27 @@ func RunDeploymentAction(
 		}
 	}
 	return nil
+}
+
+// runDeploymentDryRun resolves targets and previews what a deployment action
+// would do, without actually performing it.
+func runDeploymentDryRun(globals *Globals, apiFlags *ApiFlags, workspace, project, environment string, serviceNames []string, actionName string) error {
+	ctx, cancel := apiFlags.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(apiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment)
+	if err != nil {
+		return err
+	}
+
+	targets, err := resolveServiceTargets(ctx, client, projID, envID, serviceNames)
+	if err != nil {
+		return err
+	}
+
+	return RunDeployDryRun(globals, actionName, envID, targets, os.Stdout)
 }

@@ -206,6 +206,29 @@ func ValidateWithOptions(cfg *DesiredConfig, opts ValidateOptions) []Warning {
 		}
 	}
 
+	// W090: Unresolvable ${VAR} references.
+	// Checks that all ${VAR} references in the raw (pre-interpolation) config
+	// can be resolved from either the env file or the process environment.
+	{
+		allRefs := collectEnvReferences(cfg)
+		for varName := range allRefs {
+			// Check env file first, then process environment.
+			if opts.EnvFileVars != nil {
+				if _, ok := opts.EnvFileVars[varName]; ok {
+					continue
+				}
+			}
+			if _, ok := os.LookupEnv(varName); ok {
+				continue
+			}
+			warnings = append(warnings, Warning{
+				Code:    "W090",
+				Message: fmt.Sprintf("${%s} is referenced but not defined in env file or process environment", varName),
+				Path:    "",
+			})
+		}
+	}
+
 	// W080: Orphaned env-file key.
 	if cfg.Tool != nil && len(cfg.Tool.EnvFiles()) > 0 && len(opts.EnvFileVars) > 0 {
 		references := collectEnvReferences(cfg)

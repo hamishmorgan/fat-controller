@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"runtime"
 )
@@ -19,16 +20,23 @@ var errCodeExchange = errors.New("code exchange failed")
 type BrowserOpener func(url string) error
 
 // OpenBrowser opens the given URL in the user's default browser.
+// If the BROWSER environment variable is set, it is used as the command;
+// otherwise the platform default is used (open on macOS, xdg-open on Linux,
+// rundll32 on Windows).
 // This is the production BrowserOpener.
 func OpenBrowser(url string) error {
 	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default: // linux, freebsd, etc.
-		cmd = exec.Command("xdg-open", url)
+	if browser := os.Getenv("BROWSER"); browser != "" {
+		cmd = exec.Command(browser, url)
+	} else {
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		default: // linux, freebsd, etc.
+			cmd = exec.Command("xdg-open", url)
+		}
 	}
 	if err := cmd.Start(); err != nil {
 		return err

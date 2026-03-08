@@ -15,6 +15,7 @@ import (
 type DeployCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	PromptFlags      `kong:"embed"`
+	DryRun           bool     `help:"Preview what would be deployed without triggering." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
 	Services         []string `arg:"" optional:"" help:"Services to deploy (default: all)."`
 }
 
@@ -36,6 +37,11 @@ func (c *DeployCmd) Run(globals *Globals) error {
 	if err != nil {
 		return err
 	}
+
+	if c.DryRun {
+		return RunDeployDryRun(globals, "deploy", envID, targets, os.Stdout)
+	}
+
 	return RunDeploy(ctx, globals, envID, targets, func(ctx context.Context, environmentID, serviceID string) (string, error) {
 		return railway.DeployService(ctx, client, environmentID, serviceID, nil)
 	}, os.Stdout, os.Stderr)
@@ -126,4 +132,26 @@ func resolveServiceTargets(ctx context.Context, client *railway.Client, projectI
 		targets = append(targets, serviceTarget{Name: svc.Name, ID: svc.ID})
 	}
 	return targets, nil
+}
+
+// RunDeployDryRun previews what a deploy/redeploy/restart/rollback/stop would
+// do without actually triggering anything.
+func RunDeployDryRun(globals *Globals, action, environmentID string, targets []serviceTarget, out io.Writer) error {
+	if out == nil {
+		out = os.Stdout
+	}
+
+	if isStructuredOutput(globals) {
+		payload := DeployOutput{Action: action + " (dry run)", EnvironmentID: environmentID, Results: make([]DeployResult, 0, len(targets))}
+		for _, svc := range targets {
+			payload.Results = append(payload.Results, DeployResult{Service: svc.Name, ServiceID: svc.ID})
+		}
+		return writeStructured(out, globals.Output, payload)
+	}
+
+	_, _ = fmt.Fprintf(out, "dry run: would %s %d service(s):\n", action, len(targets))
+	for _, svc := range targets {
+		_, _ = fmt.Fprintf(out, "  %s (%s)\n", svc.Name, svc.ID)
+	}
+	return nil
 }

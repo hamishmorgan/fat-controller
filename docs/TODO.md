@@ -9,6 +9,15 @@
 - [ ] Make `config init` interactive bootstrap (future).
 - [ ] Support parsing, validating, and updating standard `railway.toml` native service configurations natively.
 
+## Known Limitations
+
+- [ ] GraphQL connection queries (e.g. `projects`, `environments`, `services`) use a fixed `first: N` limit and do not paginate with cursors. Results beyond the limit are silently dropped. Unlikely to be an issue in practice but not ideal.
+- [ ] Several fields fetched from Railway are not surfaced in `config get --full` output or diffed/applied. Read-only fields (assigned by Railway, not user-settable) should appear in `config get --full`; user-settable fields should also be diffed and applied:
+  - **Read-only (adopt-only):** `LiveDomain.Suffix`, `LiveTCPProxy.ProxyPort`, `LiveTCPProxy.Domain`, `LiveEgressGateway.IPv4`, `LiveNetworkEndpoint.DNSName`
+  - **User-settable (adopt + diff + apply):** `LiveVolume.Region` (pass to `CreateVolume` and diff), `LiveTrigger.Provider` (pass to `CreateDeploymentTrigger` and diff)
+  - **Display gaps:** `Deploy.WatchPatterns` and `Deploy.PreDeployCommand` are diffed and applied but missing from `config get --full` output (`tomlDeploy`, `deployMap`, `renderText`). `ServiceConfig.VCPUs` and `ServiceConfig.MemoryGB` are also not shown.
+  - **Unmapped:** `DeploymentTriggerFields.checkSuites` is fetched and exists in `TriggerConfig` but never mapped to `LiveTrigger`, so it can never be diffed.
+
 ## Code Quality & Testing
 
 - [ ] Improve test coverage for `cmd/fat-controller`, `internal/apply`, and `internal/railway` (currently ~0-60%).

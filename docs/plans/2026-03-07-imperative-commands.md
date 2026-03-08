@@ -1,12 +1,12 @@
-# Imperative Commands
+# Imperative Commands — DONE
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** All tasks complete. SSH was extracted to its own plan (`2026-03-08-ssh-command.md`).
 
-**Goal:** Implement the operational commands that don't touch config: `deploy`, `redeploy`, `restart`, `rollback`, `stop`, `logs`, `status`, `ssh`, and `open`.
+**Goal:** Implement the operational commands that don't touch config: `deploy`, `redeploy`, `restart`, `rollback`, `stop`, `logs`, `status`, and `open`.
 
-**Architecture:** Imperative commands act on live Railway state. They accept service arguments to narrow scope (no service = all services in the environment). `logs` streams by default; switches to fetch mode with `--lines`/`--since`/`--until`. `ssh` opens a WebSocket shell. `open` launches the Railway dashboard in a browser.
+**Architecture:** Imperative commands act on live Railway state. They accept service arguments to narrow scope (no service = all services in the environment). `logs` streams by default; switches to fetch mode with `--lines`/`--since`/`--until`. `open` launches the Railway dashboard in a browser.
 
-**Tech Stack:** Go 1.26, Kong CLI, Railway GraphQL API, WebSocket (gorilla/websocket or nhooyr.io/websocket for SSH), charmbracelet/bubbletea (optional for log streaming TUI).
+**Tech Stack:** Go 1.26, Kong CLI, Railway GraphQL API.
 
 **Depends on:** Plan 3 (Command Restructure) and Plan 4 (GraphQL Operations).
 
@@ -213,48 +213,9 @@ Fetches and displays:
 
 ---
 
-## Task 5: Implement `ssh` command
+## Task 5: ~~Implement `ssh` command~~ — Extracted
 
-**Files:**
-
-- Create: `internal/cli/ssh.go`
-- Create: `internal/railway/ssh.go` (WebSocket client)
-- Test: `internal/cli/ssh_test.go`
-
-### Step 1: Write tests
-
-```go
-func TestSSH_ServiceRequired(t *testing.T) {
-	// No service in non-interactive mode → error.
-}
-
-func TestSSH_ServicePicker(t *testing.T) {
-	// Interactive mode, no service → picker shown.
-}
-```
-
-### Step 2: Implement WebSocket SSH client
-
-Railway SSH uses a WebSocket connection. The client:
-
-1. Connects to Railway's WebSocket endpoint
-2. Sets up stdin/stdout piping
-3. Handles terminal raw mode (if interactive)
-4. Runs optional command or opens shell
-
-### Step 3: Wire into CLI
-
-```go
-type SSHCmd struct {
-	EnvironmentFlags `kong:"embed"`
-	Service          string   `arg:"" optional:"" help:"Service to connect to."`
-	Command          []string `arg:"" optional:"" help:"Command to run."`
-}
-```
-
-### Step 4: Run tests — expect pass
-
-### Step 5: Commit
+> Moved to standalone plan: `docs/plans/2026-03-08-ssh-command.md`
 
 ---
 

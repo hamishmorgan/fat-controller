@@ -1,6 +1,6 @@
-# Output, Polish, and CI Hardening
+# Output, Polish, and CI Hardening — DONE
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** All 11 tasks complete.
 
 **Goal:** Polish output formatting, implement the full color precedence chain, add `--raw` output format, harden CI testing, and add shell completions for all new commands.
 

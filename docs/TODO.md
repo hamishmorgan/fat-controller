@@ -5,18 +5,13 @@
 - [ ] Extend `config init` with optional service selection (choose which services to include).
 - [ ] Add `config init` support for environment-specific files (e.g. generate overlay files).
 - [ ] Resolve project/environment IDs to names when `config init` is passed UUIDs.
-- [ ] Add volume, domain, and TCP proxy management to config (future).
 - [ ] Make `config init` interactive bootstrap (future).
 - [ ] Support parsing, validating, and updating standard `railway.toml` native service configurations natively.
 
 ## Known Limitations
 
 - [ ] GraphQL connection queries (e.g. `projects`, `environments`, `services`) use a fixed `first: N` limit and do not paginate with cursors. Results beyond the limit are silently dropped. Unlikely to be an issue in practice but not ideal.
-- [ ] Several fields fetched from Railway are not surfaced in `config get --full` output or diffed/applied. Read-only fields (assigned by Railway, not user-settable) should appear in `config get --full`; user-settable fields should also be diffed and applied:
-  - **Read-only (adopt-only):** `LiveDomain.Suffix`, `LiveTCPProxy.ProxyPort`, `LiveTCPProxy.Domain`, `LiveEgressGateway.IPv4`, `LiveNetworkEndpoint.DNSName`
-  - **User-settable (adopt + diff + apply):** `LiveVolume.Region` (pass to `CreateVolume` and diff), `LiveTrigger.Provider` (pass to `CreateDeploymentTrigger` and diff)
-  - **Display gaps:** `Deploy.WatchPatterns` and `Deploy.PreDeployCommand` are diffed and applied but missing from `config get --full` output (`tomlDeploy`, `deployMap`, `renderText`). `ServiceConfig.VCPUs` and `ServiceConfig.MemoryGB` are also not shown.
-  - **Unmapped:** `DeploymentTriggerFields.checkSuites` is fetched and exists in `TriggerConfig` but never mapped to `LiveTrigger`, so it can never be diffed.
+- [ ] `DeploymentTriggerFields.checkSuites` is fetched from Railway and exists in `TriggerConfig` but is never mapped to `LiveTrigger`, so it can never be diffed or applied.
 
 ## Code Quality & Testing
 
@@ -25,8 +20,8 @@
 ## Docs & UX Polish
 
 - [ ] Clarify configuration layering and file support (global `$XDG_CONFIG_HOME/...` vs local `.fat-controller.toml` vs `fat-controller.toml`).
-- [ ] Clarify `config validate --quiet` behavior in docs vs implementation.
-- [ ] Improve `config get` path parsing to support keys containing `.` (quoted TOML keys), or document the limitation.
+- [ ] Clarify `validate --quiet` behavior in docs vs implementation.
+- [ ] Improve `show` path parsing to support keys containing `.` (quoted TOML keys), or document the limitation.
 
 ## Done
 
@@ -80,3 +75,7 @@
 - [x] Add JSON Schema and annotated example for `fat-controller.toml` config format.
 - [x] CI freshness check for generated CLI reference docs.
 - [x] Refactor repeated config CLI tests into table-driven subtests.
+- [x] Surface all fetched Railway fields in `show --full` output (domains, volumes, TCP proxies, triggers, egress, network, resources, watch patterns, pre-deploy command).
+- [x] Wire volume region and trigger provider through diff and apply.
+- [x] Remove dead `LiveVolume.ID` field (instance ID was unused; `VolumeID` is used for deletes).
+- [x] Add volume, domain, and TCP proxy management to config.

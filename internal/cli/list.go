@@ -56,19 +56,9 @@ func (c *ListCmd) runListServices(globals *Globals) error {
 		return err
 	}
 
-	resp, err := railway.ProjectServices(ctx, client.GQL(), projectID)
+	services, err := railway.ListServices(ctx, client, projectID)
 	if err != nil {
 		return fmt.Errorf("listing services: %w", err)
-	}
-
-	type serviceOut struct {
-		ID   string `json:"id" toml:"id"`
-		Name string `json:"name" toml:"name"`
-	}
-
-	services := make([]serviceOut, 0, len(resp.Project.Services.Edges))
-	for _, edge := range resp.Project.Services.Edges {
-		services = append(services, serviceOut{ID: edge.Node.Id, Name: edge.Node.Name})
 	}
 
 	if isStructuredOutput(globals) {
@@ -255,19 +245,9 @@ func (c *ListCmd) runListBuckets(globals *Globals) error {
 		return err
 	}
 
-	resp, err := railway.ProjectBuckets(ctx, client.GQL(), projectID)
+	buckets, err := railway.ListBuckets(ctx, client, projectID)
 	if err != nil {
 		return fmt.Errorf("listing buckets: %w", err)
-	}
-
-	type bucketOut struct {
-		ID   string `json:"id" toml:"id"`
-		Name string `json:"name" toml:"name"`
-	}
-
-	buckets := make([]bucketOut, 0, len(resp.Project.Buckets.Edges))
-	for _, edge := range resp.Project.Buckets.Edges {
-		buckets = append(buckets, bucketOut{ID: edge.Node.Id, Name: edge.Node.Name})
 	}
 
 	if isStructuredOutput(globals) {
@@ -299,14 +279,5 @@ func resolveServiceID(ctx context.Context, client *railway.Client, workspace, pr
 	if err != nil {
 		return "", err
 	}
-	resp, err := railway.ProjectServices(ctx, client.GQL(), projID)
-	if err != nil {
-		return "", fmt.Errorf("listing services: %w", err)
-	}
-	for _, edge := range resp.Project.Services.Edges {
-		if edge.Node.Name == service {
-			return edge.Node.Id, nil
-		}
-	}
-	return "", fmt.Errorf("service %q not found in project", service)
+	return railway.ResolveServiceID(ctx, client, projID, service)
 }

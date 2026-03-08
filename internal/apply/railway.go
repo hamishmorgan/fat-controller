@@ -82,11 +82,7 @@ func (r *RailwayApplier) UpdateServiceSettings(ctx context.Context, service stri
 	if err != nil {
 		return err
 	}
-	input, err := ToServiceInstanceUpdateInput(deploy)
-	if err != nil {
-		return err
-	}
-	return railway.UpdateServiceSettings(ctx, r.Client, serviceID, input)
+	return railway.UpdateServiceSettings(ctx, r.Client, serviceID, deploy)
 }
 
 func (r *RailwayApplier) UpdateServiceResources(ctx context.Context, service string, res *config.DesiredResources) error {

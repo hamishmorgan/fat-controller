@@ -2,7 +2,11 @@ package railway
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strings"
+
+	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
 // UpsertVariable sets a single variable for shared or service scope.
@@ -71,11 +75,142 @@ func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, ser
 	return err
 }
 
-// UpdateServiceSettings updates deploy/build settings.
-// The generated ServiceInstanceUpdate function takes serviceId as a separate
-// argument (matching the GraphQL schema where it's a top-level mutation arg).
-func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string, input ServiceInstanceUpdateInput) error {
+// UpdateServiceSettings converts desired deploy settings to the GraphQL input
+// type and updates the service instance. Only non-nil fields in desired are
+// set; Railway treats nil as "don't change".
+func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string, desired *config.DesiredDeploy) error {
+	if desired == nil {
+		return nil
+	}
 	slog.Debug("updating service settings", "service_id", serviceID)
-	_, err := ServiceInstanceUpdate(ctx, client.GQL(), serviceID, input)
+	input, err := buildServiceInstanceInput(desired)
+	if err != nil {
+		return err
+	}
+	_, err = ServiceInstanceUpdate(ctx, client.GQL(), serviceID, input)
 	return err
+}
+
+// buildServiceInstanceInput converts a DesiredDeploy to the generated GraphQL
+// input type. Kept package-private so the generated types don't leak.
+func buildServiceInstanceInput(desired *config.DesiredDeploy) (ServiceInstanceUpdateInput, error) {
+	var input ServiceInstanceUpdateInput
+
+	// Builder
+	if desired.Builder != nil {
+		b, err := ParseBuilder(*desired.Builder)
+		if err != nil {
+			return input, err
+		}
+		input.Builder = &b
+	}
+
+	// Source
+	if desired.Repo != nil || desired.Image != nil {
+		input.Source = &ServiceSourceInput{
+			Repo:  desired.Repo,
+			Image: desired.Image,
+		}
+	}
+	if desired.RegistryCredentials != nil {
+		input.RegistryCredentials = &RegistryCredentialsInput{
+			Username: desired.RegistryCredentials.Username,
+			Password: desired.RegistryCredentials.Password,
+		}
+	}
+
+	// Build
+	input.BuildCommand = desired.BuildCommand
+	input.DockerfilePath = desired.DockerfilePath
+	input.RootDirectory = desired.RootDirectory
+	if desired.WatchPatterns != nil {
+		input.WatchPatterns = desired.WatchPatterns
+	}
+
+	// Run
+	input.StartCommand = desired.StartCommand
+	input.CronSchedule = desired.CronSchedule
+	if desired.PreDeployCommand != nil {
+		input.PreDeployCommand = toPreDeployCommand(desired.PreDeployCommand)
+	}
+
+	// Health
+	input.HealthcheckPath = desired.HealthcheckPath
+	input.HealthcheckTimeout = desired.HealthcheckTimeout
+	if desired.RestartPolicy != nil {
+		rp, err := ParseRestartPolicy(*desired.RestartPolicy)
+		if err != nil {
+			return input, err
+		}
+		input.RestartPolicyType = &rp
+	}
+	input.RestartPolicyMaxRetries = desired.RestartPolicyMaxRetries
+
+	// Deploy strategy
+	input.DrainingSeconds = desired.DrainingSeconds
+	input.OverlapSeconds = desired.OverlapSeconds
+	input.SleepApplication = desired.SleepApplication
+
+	// Placement
+	input.NumReplicas = desired.NumReplicas
+	input.Region = desired.Region
+
+	// Networking
+	input.Ipv6EgressEnabled = desired.IPv6Egress
+
+	return input, nil
+}
+
+// ParseBuilder maps a string to the generated Builder enum.
+func ParseBuilder(value string) (Builder, error) {
+	switch strings.ToUpper(value) {
+	case "NIXPACKS":
+		return BuilderNixpacks, nil
+	case "RAILPACK":
+		return BuilderRailpack, nil
+	case "PAKETO":
+		return BuilderPaketo, nil
+	case "HEROKU":
+		return BuilderHeroku, nil
+	default:
+		return "", fmt.Errorf("unknown builder: %q (valid: NIXPACKS, RAILPACK, PAKETO, HEROKU)", value)
+	}
+}
+
+// ParseRestartPolicy maps a string to the generated RestartPolicyType enum.
+func ParseRestartPolicy(value string) (RestartPolicyType, error) {
+	switch strings.ToUpper(value) {
+	case "ALWAYS":
+		return RestartPolicyTypeAlways, nil
+	case "NEVER":
+		return RestartPolicyTypeNever, nil
+	case "ON_FAILURE":
+		return RestartPolicyTypeOnFailure, nil
+	default:
+		return "", fmt.Errorf("unknown restart_policy: %q (valid: ALWAYS, NEVER, ON_FAILURE)", value)
+	}
+}
+
+// toPreDeployCommand converts the DesiredDeploy.PreDeployCommand (any) to []string.
+// TOML allows string or array; we normalize to []string for the API.
+func toPreDeployCommand(v any) []string {
+	switch val := v.(type) {
+	case string:
+		if val == "" {
+			return nil
+		}
+		return []string{val}
+	case []any:
+		result := make([]string, 0, len(val))
+		for _, item := range val {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case []string:
+		return val
+	default:
+		return nil
+	}
 }

@@ -78,37 +78,37 @@ type railwayInitResolver struct {
 }
 
 func (r *railwayInitResolver) FetchWorkspaces(ctx context.Context) ([]prompt.Item, error) {
-	resp, err := railway.ApiToken(ctx, r.client.GQL())
+	workspaces, err := railway.ListWorkspaces(ctx, r.client)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]prompt.Item, len(resp.ApiToken.Workspaces))
-	for i, ws := range resp.ApiToken.Workspaces {
-		items[i] = prompt.Item{Name: ws.Name, ID: ws.Id}
+	items := make([]prompt.Item, len(workspaces))
+	for i, ws := range workspaces {
+		items[i] = prompt.Item{Name: ws.Name, ID: ws.ID}
 	}
 	return items, nil
 }
 
 func (r *railwayInitResolver) FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error) {
-	resp, err := railway.Projects(ctx, r.client.GQL(), &workspaceID)
+	projects, err := railway.ListProjects(ctx, r.client, workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]prompt.Item, len(resp.Projects.Edges))
-	for i, edge := range resp.Projects.Edges {
-		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	items := make([]prompt.Item, len(projects))
+	for i, p := range projects {
+		items[i] = prompt.Item{Name: p.Name, ID: p.ID}
 	}
 	return items, nil
 }
 
 func (r *railwayInitResolver) FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error) {
-	resp, err := railway.Environments(ctx, r.client.GQL(), projectID)
+	envs, err := railway.ListEnvironments(ctx, r.client, projectID)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]prompt.Item, len(resp.Environments.Edges))
-	for i, edge := range resp.Environments.Edges {
-		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+	items := make([]prompt.Item, len(envs))
+	for i, e := range envs {
+		items[i] = prompt.Item{Name: e.Name, ID: e.ID}
 	}
 	return items, nil
 }

@@ -6,6 +6,25 @@ import (
 	"log/slog"
 )
 
+// BucketInfo holds the name and ID of a Railway bucket.
+type BucketInfo struct {
+	ID   string `json:"id" toml:"id"`
+	Name string `json:"name" toml:"name"`
+}
+
+// ListBuckets returns the name/ID pairs for all buckets in a project.
+func ListBuckets(ctx context.Context, client *Client, projectID string) ([]BucketInfo, error) {
+	resp, err := ProjectBuckets(ctx, client.GQL(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	buckets := make([]BucketInfo, len(resp.Project.Buckets.Edges))
+	for i, edge := range resp.Project.Buckets.Edges {
+		buckets[i] = BucketInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return buckets, nil
+}
+
 // CreateBucket creates a new bucket in a project.
 // Returns the bucket ID on success.
 func CreateBucket(ctx context.Context, client *Client, projectID, name string) (string, error) {

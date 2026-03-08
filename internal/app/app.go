@@ -21,10 +21,14 @@ type ConfigFetcher interface {
 // ConfigPair bundles the desired and live config together with resolved IDs,
 // produced by the shared load → interpolate → resolve → fetch → filter pipeline.
 type ConfigPair struct {
+	// RawDesired is the config as loaded from disk (before ${VAR} interpolation).
+	// Used for emitting advisory warnings that should reflect the authored config.
+	RawDesired    *config.DesiredConfig
 	Desired       *config.DesiredConfig
 	Live          *config.LiveConfig
 	ProjectID     string
 	EnvironmentID string
+	EnvVars       map[string]string
 }
 
 // LoadAndFetch runs the shared pipeline used by both diff and apply:
@@ -45,6 +49,7 @@ func LoadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 		return nil, err
 	}
 	desired := result.Config
+	rawDesired := cloneDesiredForWarnings(desired)
 
 	// 2. Interpolate ${VAR} references (env files → process env).
 	if err := config.Interpolate(desired, result.EnvVars); err != nil {
@@ -98,11 +103,61 @@ func LoadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 	}
 
 	return &ConfigPair{
+		RawDesired:    rawDesired,
 		Desired:       desired,
 		Live:          live,
 		ProjectID:     projID,
 		EnvironmentID: envID,
+		EnvVars:       result.EnvVars,
 	}, nil
+}
+
+// cloneDesiredForWarnings makes a copy of the parts of DesiredConfig that are
+// mutated by interpolation (variables and certain nested string fields). This
+// keeps warning output focused on what the user wrote in the config.
+func cloneDesiredForWarnings(in *config.DesiredConfig) *config.DesiredConfig {
+	if in == nil {
+		return nil
+	}
+	out := *in
+
+	if in.Variables != nil {
+		vars := make(config.Variables, len(in.Variables))
+		for k, v := range in.Variables {
+			vars[k] = v
+		}
+		out.Variables = vars
+	}
+
+	if len(in.Services) > 0 {
+		services := make([]*config.DesiredService, 0, len(in.Services))
+		for _, svc := range in.Services {
+			if svc == nil {
+				services = append(services, nil)
+				continue
+			}
+			copiedSvc := *svc
+			if svc.Variables != nil {
+				svcVars := make(config.Variables, len(svc.Variables))
+				for k, v := range svc.Variables {
+					svcVars[k] = v
+				}
+				copiedSvc.Variables = svcVars
+			}
+			if svc.Deploy != nil {
+				copiedDeploy := *svc.Deploy
+				if svc.Deploy.RegistryCredentials != nil {
+					copiedCreds := *svc.Deploy.RegistryCredentials
+					copiedDeploy.RegistryCredentials = &copiedCreds
+				}
+				copiedSvc.Deploy = &copiedDeploy
+			}
+			services = append(services, &copiedSvc)
+		}
+		out.Services = services
+	}
+
+	return &out
 }
 
 // ScopeDesiredByPath narrows a DesiredConfig to only include the service or

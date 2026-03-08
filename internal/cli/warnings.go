@@ -15,19 +15,29 @@ func emitWarnings(pair *app.ConfigPair, quiet int, configDir string) {
 	if quiet > 0 {
 		return
 	}
+	if pair == nil {
+		return
+	}
+	desired := pair.Desired
+	if pair.RawDesired != nil {
+		desired = pair.RawDesired
+	}
+	if desired == nil {
+		return
+	}
 	// Extract live service names for W040.
 	var liveNames []string
 	for name := range pair.Live.Services {
 		liveNames = append(liveNames, name)
 	}
 
-	warnings := config.ValidateWithOptions(pair.Desired, config.ValidateOptions{LiveServiceNames: liveNames, EnvFileVars: nil})
+	warnings := config.ValidateWithOptions(desired, config.ValidateOptions{LiveServiceNames: liveNames, EnvFileVars: pair.EnvVars})
 	warnings = append(warnings, config.ValidateFiles(configDir)...)
 
 	// Filter suppressed warnings (Validate already filters, but ValidateFiles warnings need it too).
 	var suppressWarnings []string
-	if pair.Desired.Tool != nil {
-		suppressWarnings = pair.Desired.Tool.SuppressWarnings
+	if desired.Tool != nil {
+		suppressWarnings = desired.Tool.SuppressWarnings
 	}
 	suppressed := make(map[string]bool, len(suppressWarnings))
 	for _, code := range suppressWarnings {

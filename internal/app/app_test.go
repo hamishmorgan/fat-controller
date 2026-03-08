@@ -102,6 +102,9 @@ PORT = "8080"
 	if got.ProjectID != "proj-1" || got.EnvironmentID != "env-1" {
 		t.Fatalf("ProjectID/EnvironmentID = %q/%q, want proj-1/env-1", got.ProjectID, got.EnvironmentID)
 	}
+	if got.EnvVars == nil || got.EnvVars["TOKEN"] != "secret" {
+		t.Fatalf("EnvVars[TOKEN] = %q, want %q", got.EnvVars["TOKEN"], "secret")
+	}
 	if got.Desired.Variables["TOKEN"] != "secret" {
 		t.Fatalf("TOKEN = %q, want %q", got.Desired.Variables["TOKEN"], "secret")
 	}

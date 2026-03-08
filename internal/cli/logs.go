@@ -16,6 +16,7 @@ type LogsCmd struct {
 	EnvironmentFlags `kong:"embed"`
 	Services         []string `arg:"" optional:"" help:"Services to show logs for."`
 	Build            bool     `help:"Show build logs." short:"b"`
+	Deploy           bool     `help:"Show deploy logs (default when services specified)." short:"d"`
 	Lines            *int     `help:"Number of lines to fetch." short:"n"`
 	Since            string   `help:"Start time: relative (5m, 2h) or ISO 8601."`
 	Until            string   `help:"End time: relative or ISO 8601."`
@@ -34,6 +35,11 @@ func (c *LogsCmd) Run(globals *Globals) error {
 	if err != nil {
 		return err
 	}
+
+	// --deploy is the explicit form of the default (deploy logs). If both
+	// --build and --deploy are set, --build wins since build logs are a
+	// subset of the deployment lifecycle.
+	showBuild := c.Build && !c.Deploy
 
 	// If no services specified and no build flag, use environment logs.
 	if len(c.Services) == 0 && !c.Build {
@@ -76,13 +82,13 @@ func (c *LogsCmd) Run(globals *Globals) error {
 		filter = &c.Filter
 	}
 
-	return RunLogsServices(ctx, globals, envID, targets, c.Build, c.Lines,
+	return RunLogsServices(ctx, globals, envID, targets, showBuild, c.Lines,
 		func(ctx context.Context, environmentID, serviceID string) ([]railway.DeploymentInfo, error) {
 			d, _, err := railway.ListDeployments(ctx, client, environmentID, serviceID, 1, nil)
 			return d, err
 		},
-		func(ctx context.Context, deploymentID string, build bool) ([]railway.LogEntry, error) {
-			if build {
+		func(ctx context.Context, deploymentID string, isBuild bool) ([]railway.LogEntry, error) {
+			if isBuild {
 				return railway.GetBuildLogs(ctx, client, deploymentID, c.Lines, startDate, endDate, filter)
 			}
 			return railway.GetDeploymentLogs(ctx, client, deploymentID, c.Lines, startDate, endDate, filter)

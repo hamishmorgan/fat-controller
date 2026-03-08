@@ -30,6 +30,7 @@ func clearAuthEnv(t *testing.T) {
 func TestAuthLogoutCmd_Run(t *testing.T) {
 	keyring.MockInit()
 	cmd := &cli.AuthLogoutCmd{}
+	cmd.Yes = true // skip confirmation in test
 	if err := cmd.Run(&cli.Globals{}); err != nil {
 		t.Fatalf("AuthLogoutCmd.Run() returned error: %v", err)
 	}

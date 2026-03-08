@@ -211,7 +211,9 @@ type AuthLoginCmd struct {
 }
 
 // AuthLogoutCmd implements `auth logout`.
-type AuthLogoutCmd struct{}
+type AuthLogoutCmd struct {
+	PromptFlags `kong:"embed"`
+}
 
 // AuthStatusCmd implements `auth status`.
 type AuthStatusCmd struct {

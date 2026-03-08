@@ -10,6 +10,7 @@ import (
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/platform"
+	"github.com/hamishmorgan/fat-controller/internal/prompt"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -30,15 +31,33 @@ func RunAuthLogin(ctx context.Context, globals *Globals, out io.Writer) error {
 }
 
 func (c *AuthLogoutCmd) Run(globals *Globals) error {
-	return RunAuthLogout(os.Stdout)
+	interactive := prompt.StdinIsInteractive()
+	return RunAuthLogout(interactive, c.Yes, os.Stdout)
 }
 
 // RunAuthLogout is the testable core of `auth logout`.
-func RunAuthLogout(out io.Writer) error {
+func RunAuthLogout(interactive, yes bool, out io.Writer) error {
 	slog.Debug("starting auth logout")
 	store := auth.NewTokenStore(
 		auth.WithFallbackPath(platform.AuthFilePath()),
 	)
+
+	// Confirm before deleting credentials.
+	if !yes {
+		if !interactive {
+			return fmt.Errorf("refusing to log out in non-interactive mode without --yes")
+		}
+		confirmed, err := prompt.Confirm("Clear stored credentials?", false)
+		if err != nil {
+			return fmt.Errorf("reading confirmation: %w", err)
+		}
+		if !confirmed {
+			_, _ = fmt.Fprintln(out, "Logout cancelled.")
+			return nil
+		}
+	}
+
+	// TODO: revoke token when Railway supports RFC 7009 (OAuth token revocation).
 	if err := store.Delete(); err != nil {
 		return fmt.Errorf("clearing credentials: %w", err)
 	}

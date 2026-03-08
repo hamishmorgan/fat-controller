@@ -127,7 +127,7 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	_, _ = fmt.Fprintln(out)
 
 	envFileName := config.DefaultEnvFile
-	envContent := renderEnvFile(adopted)
+	envContent := app.RenderEnvFile(adopted)
 
 	if c.DryRun {
 		_, _ = fmt.Fprintf(out, "dry run: would write %s (%d services)\n\n%s\n",
@@ -185,7 +185,7 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 			}
 			_, _ = fmt.Fprintf(out, "wrote %s (secret values — do not commit)\n", envFileName)
 
-			added, err := ensureGitignoreHasLine(wd, envFileName)
+			added, err := app.EnsureGitignoreHasLine(wd, envFileName)
 			if err != nil {
 				return fmt.Errorf("updating .gitignore: %w", err)
 			}

@@ -9,6 +9,7 @@ const (
 	KeyDockerfilePath          = "dockerfile_path"
 	KeyRootDirectory           = "root_directory"
 	KeyWatchPatterns           = "watch_patterns"
+	KeyPreDeployCommand        = "pre_deploy_command"
 	KeyStartCommand            = "start_command"
 	KeyCronSchedule            = "cron_schedule"
 	KeyHealthcheckPath         = "healthcheck_path"

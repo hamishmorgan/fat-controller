@@ -3,6 +3,7 @@ package diff
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
@@ -273,7 +274,7 @@ func diffSubResources(desired *config.DesiredService, live *config.ServiceConfig
 }
 
 // diffDomains computes domain create/delete changes.
-// Desired domains are keyed by domain name (or "service" for auto-generated).
+// Desired domains are keyed by domain name (or "service_domain" for auto-generated).
 // Delete flag in DomainConfig marks for removal.
 func diffDomains(desired map[string]config.DomainConfig, live *config.ServiceConfig) []SubResourceChange {
 	if len(desired) == 0 {
@@ -309,8 +310,8 @@ func diffDomains(desired map[string]config.DomainConfig, live *config.ServiceCon
 			if dc.Port != nil {
 				port = *dc.Port
 			}
-			// Determine if it's a service domain (starts with "service") or custom.
-			isCustom := domainName != "service"
+			// Determine if it's a service domain or custom.
+			isCustom := domainName != "service_domain"
 			changes = append(changes, SubResourceChange{
 				Type:     "domain",
 				Action:   ActionCreate,
@@ -551,6 +552,8 @@ func diffDeploy(desired *config.DesiredDeploy, live config.Deploy) []Change {
 	changes = appendPtrDiff(changes, config.KeyBuildCommand, live.BuildCommand, desired.BuildCommand)
 	changes = appendPtrDiff(changes, config.KeyDockerfilePath, live.DockerfilePath, desired.DockerfilePath)
 	changes = appendPtrDiff(changes, config.KeyRootDirectory, live.RootDirectory, desired.RootDirectory)
+	changes = appendStringSliceDiff(changes, config.KeyWatchPatterns, live.WatchPatterns, desired.WatchPatterns)
+	changes = appendPreDeployDiff(changes, config.KeyPreDeployCommand, live.PreDeployCommand, desired.PreDeployCommand)
 
 	// Run
 	changes = appendPtrDiff(changes, config.KeyStartCommand, live.StartCommand, desired.StartCommand)
@@ -684,6 +687,67 @@ func filterSubResourceChanges(changes []SubResourceChange, opts Options) []SubRe
 		}
 	}
 	return filtered
+}
+
+// appendStringSliceDiff compares []string fields (e.g. watch_patterns).
+// Only diffs when desired is non-nil.
+func appendStringSliceDiff(changes []Change, key string, live, desired []string) []Change {
+	if desired == nil {
+		return changes
+	}
+	liveVal := strings.Join(live, ", ")
+	desiredVal := strings.Join(desired, ", ")
+	if liveVal == desiredVal {
+		return changes
+	}
+	action := ActionUpdate
+	if liveVal == "" {
+		action = ActionCreate
+	}
+	return append(changes, Change{
+		Key:          key,
+		Action:       action,
+		LiveValue:    liveVal,
+		DesiredValue: desiredVal,
+	})
+}
+
+// appendPreDeployDiff compares pre_deploy_command fields.
+// Desired is any (string or []string); live is []string.
+func appendPreDeployDiff(changes []Change, key string, live []string, desired any) []Change {
+	if desired == nil {
+		return changes
+	}
+	var desiredSlice []string
+	switch v := desired.(type) {
+	case string:
+		desiredSlice = []string{v}
+	case []string:
+		desiredSlice = v
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				desiredSlice = append(desiredSlice, s)
+			}
+		}
+	default:
+		return changes
+	}
+	liveVal := strings.Join(live, ", ")
+	desiredVal := strings.Join(desiredSlice, ", ")
+	if liveVal == desiredVal {
+		return changes
+	}
+	action := ActionUpdate
+	if liveVal == "" {
+		action = ActionCreate
+	}
+	return append(changes, Change{
+		Key:          key,
+		Action:       action,
+		LiveValue:    liveVal,
+		DesiredValue: desiredVal,
+	})
 }
 
 func appendSettingDiff(changes []Change, key, liveVal, desiredVal string) []Change {

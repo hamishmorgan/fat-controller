@@ -84,6 +84,9 @@ type Deploy struct {
 	RootDirectory  *string
 	WatchPatterns  []string
 
+	// Pre-deploy
+	PreDeployCommand []string // resolved from Railway's *map[string]interface{}
+
 	// Run
 	StartCommand *string
 	CronSchedule *string

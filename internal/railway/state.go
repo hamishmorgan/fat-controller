@@ -69,6 +69,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			DockerfilePath:          si.DockerfilePath,
 			RootDirectory:           si.RootDirectory,
 			WatchPatterns:           si.WatchPatterns,
+			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
 			StartCommand:            si.StartCommand,
 			CronSchedule:            si.CronSchedule,
 			HealthcheckPath:         si.HealthcheckPath,
@@ -256,6 +257,25 @@ func intPtrNonZero(v int) *int {
 		return nil
 	}
 	return &v
+}
+
+// parsePreDeployCommand extracts a []string from Railway's preDeployCommand field.
+// The GraphQL response returns it as *map[string]interface{} or nil.
+func parsePreDeployCommand(raw *map[string]interface{}) []string {
+	if raw == nil {
+		return nil
+	}
+	// Railway returns preDeployCommand as a JSON object; extract string values.
+	var result []string
+	for _, v := range *raw {
+		if s, ok := v.(string); ok && s != "" {
+			result = append(result, s)
+		}
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 // toFloat64 attempts to convert an interface{} value to float64.

@@ -11,18 +11,40 @@ func Merge(configs ...*DesiredConfig) *DesiredConfig {
 		if cfg == nil {
 			continue
 		}
-		// Merge name: non-empty overrides.
+		// Merge name and ID: non-empty overrides.
 		if cfg.Name != "" {
 			slog.Debug("config override", "field", "name", "value", cfg.Name)
 			result.Name = cfg.Name
 		}
+		if cfg.ID != "" {
+			slog.Debug("config override", "field", "id", "value", cfg.ID)
+			result.ID = cfg.ID
+		}
+		// Deep-merge workspace (non-empty fields override).
 		if cfg.Workspace != nil {
 			slog.Debug("config override", "field", "workspace", "value", cfg.Workspace.Name)
-			result.Workspace = cfg.Workspace
+			if result.Workspace == nil {
+				result.Workspace = &ContextBlock{}
+			}
+			if cfg.Workspace.Name != "" {
+				result.Workspace.Name = cfg.Workspace.Name
+			}
+			if cfg.Workspace.ID != "" {
+				result.Workspace.ID = cfg.Workspace.ID
+			}
 		}
+		// Deep-merge project (non-empty fields override).
 		if cfg.Project != nil {
 			slog.Debug("config override", "field", "project", "value", cfg.Project.Name)
-			result.Project = cfg.Project
+			if result.Project == nil {
+				result.Project = &ContextBlock{}
+			}
+			if cfg.Project.Name != "" {
+				result.Project.Name = cfg.Project.Name
+			}
+			if cfg.Project.ID != "" {
+				result.Project.ID = cfg.Project.ID
+			}
 		}
 		if cfg.Tool != nil {
 			if result.Tool == nil {

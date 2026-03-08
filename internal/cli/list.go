@@ -262,9 +262,109 @@ func (c *ListCmd) runListBuckets(globals *Globals) error {
 	return nil
 }
 
+// allTreeWorkspace is the structured output type for `list all`.
+type allTreeWorkspace struct {
+	Name     string           `json:"name" toml:"name"`
+	ID       string           `json:"id" toml:"id"`
+	Projects []allTreeProject `json:"projects" toml:"projects"`
+}
+
+type allTreeProject struct {
+	Name         string               `json:"name" toml:"name"`
+	ID           string               `json:"id" toml:"id"`
+	Environments []allTreeEnvironment `json:"environments" toml:"environments"`
+}
+
+type allTreeEnvironment struct {
+	Name     string                `json:"name" toml:"name"`
+	ID       string                `json:"id" toml:"id"`
+	Services []railway.ServiceInfo `json:"services" toml:"services"`
+}
+
 func (c *ListCmd) runListAll(globals *Globals) error {
-	// Run services list (the most common "all" view).
-	return c.runListServices(globals)
+	ctx, cancel := c.TimeoutContext(globals.BaseCtx)
+	defer cancel()
+	client, err := newClient(&c.ApiFlags, globals.BaseCtx)
+	if err != nil {
+		return err
+	}
+
+	workspaces, err := railway.ListWorkspaces(ctx, client)
+	if err != nil {
+		return fmt.Errorf("listing workspaces: %w", err)
+	}
+
+	var tree []allTreeWorkspace
+	for _, ws := range workspaces {
+		wsNode := allTreeWorkspace{Name: ws.Name, ID: ws.ID}
+		projects, err := railway.ListProjects(ctx, client, ws.ID)
+		if err != nil {
+			return fmt.Errorf("listing projects for %s: %w", ws.Name, err)
+		}
+		for _, proj := range projects {
+			projNode := allTreeProject{Name: proj.Name, ID: proj.ID}
+			envs, err := railway.ListEnvironments(ctx, client, proj.ID)
+			if err != nil {
+				return fmt.Errorf("listing environments for %s: %w", proj.Name, err)
+			}
+			// Services are project-scoped (shared across environments).
+			services, err := railway.ListServices(ctx, client, proj.ID)
+			if err != nil {
+				return fmt.Errorf("listing services for %s: %w", proj.Name, err)
+			}
+			for _, env := range envs {
+				envNode := allTreeEnvironment{Name: env.Name, ID: env.ID}
+				envNode.Services = services
+				projNode.Environments = append(projNode.Environments, envNode)
+			}
+			wsNode.Projects = append(wsNode.Projects, projNode)
+		}
+		tree = append(tree, wsNode)
+	}
+
+	if isStructuredOutput(globals) {
+		return writeStructured(os.Stdout, globals.Output, tree)
+	}
+
+	// Text tree output matching ARCHITECTURE.md example.
+	for _, ws := range tree {
+		if _, err := fmt.Fprintln(os.Stdout, ws.Name); err != nil {
+			return err
+		}
+		for _, proj := range ws.Projects {
+			if _, err := fmt.Fprintf(os.Stdout, "  %s\n", proj.Name); err != nil {
+				return err
+			}
+			for _, env := range proj.Environments {
+				svcNames := make([]string, len(env.Services))
+				for i, s := range env.Services {
+					svcNames[i] = s.Name
+				}
+				if len(svcNames) > 0 {
+					if _, err := fmt.Fprintf(os.Stdout, "    %s\n      %s\n", env.Name, joinComma(svcNames)); err != nil {
+						return err
+					}
+				} else {
+					if _, err := fmt.Fprintf(os.Stdout, "    %s\n", env.Name); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// joinComma joins strings with ", ".
+func joinComma(ss []string) string {
+	if len(ss) == 0 {
+		return ""
+	}
+	result := ss[0]
+	for _, s := range ss[1:] {
+		result += ", " + s
+	}
+	return result
 }
 
 // resolveProjectEnv resolves workspace/project/environment names to IDs.

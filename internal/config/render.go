@@ -1,12 +1,134 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
+
+// ---------- TOML render structs ----------
+// These structs exist solely for toml.Marshal output. They mirror the config
+// model but use toml struct tags and omitempty to produce clean output.
+
+// tomlShowConfig is the top-level struct for `show --toml`.
+type tomlShowConfig struct {
+	ProjectID     string            `toml:"project_id,omitempty"`
+	EnvironmentID string            `toml:"environment_id,omitempty"`
+	Variables     map[string]string `toml:"variables,omitempty"`
+	Service       []tomlService     `toml:"service,omitempty"`
+}
+
+// tomlService represents one [[service]] entry in rendered TOML.
+type tomlService struct {
+	Name      string            `toml:"name"`
+	ID        string            `toml:"id,omitempty"`
+	Variables map[string]string `toml:"variables,omitempty"`
+	Deploy    *tomlDeploy       `toml:"deploy,omitempty"`
+}
+
+// tomlDeploy mirrors Deploy with toml tags for marshalling.
+type tomlDeploy struct {
+	Builder                 string  `toml:"builder,omitempty"`
+	Repo                    *string `toml:"repo,omitempty"`
+	Image                   *string `toml:"image,omitempty"`
+	BuildCommand            *string `toml:"build_command,omitempty"`
+	DockerfilePath          *string `toml:"dockerfile_path,omitempty"`
+	RootDirectory           *string `toml:"root_directory,omitempty"`
+	StartCommand            *string `toml:"start_command,omitempty"`
+	CronSchedule            *string `toml:"cron_schedule,omitempty"`
+	HealthcheckPath         *string `toml:"healthcheck_path,omitempty"`
+	HealthcheckTimeout      *int    `toml:"healthcheck_timeout,omitempty"`
+	RestartPolicy           string  `toml:"restart_policy,omitempty"`
+	RestartPolicyMaxRetries *int    `toml:"restart_policy_max_retries,omitempty"`
+	DrainingSeconds         *int    `toml:"draining_seconds,omitempty"`
+	OverlapSeconds          *int    `toml:"overlap_seconds,omitempty"`
+	SleepApplication        *bool   `toml:"sleep_application,omitempty"`
+	NumReplicas             *int    `toml:"num_replicas,omitempty"`
+	Region                  *string `toml:"region,omitempty"`
+	IPv6Egress              *bool   `toml:"ipv6_egress,omitempty"`
+}
+
+// tomlInitConfig is the top-level struct for init/adopt output.
+type tomlInitConfig struct {
+	Name      string            `toml:"name"`
+	Workspace *tomlContextBlock `toml:"workspace,omitempty"`
+	Project   *tomlContextBlock `toml:"project,omitempty"`
+	Variables map[string]string `toml:"variables,omitempty"`
+	Service   []tomlService     `toml:"service,omitempty"`
+}
+
+type tomlContextBlock struct {
+	Name string `toml:"name"`
+}
+
+// ---------- conversion helpers ----------
+
+func deployToTOML(d Deploy) *tomlDeploy {
+	td := &tomlDeploy{
+		Builder:                 d.Builder,
+		Repo:                    d.Repo,
+		Image:                   d.Image,
+		BuildCommand:            d.BuildCommand,
+		DockerfilePath:          d.DockerfilePath,
+		RootDirectory:           d.RootDirectory,
+		StartCommand:            d.StartCommand,
+		CronSchedule:            d.CronSchedule,
+		HealthcheckPath:         d.HealthcheckPath,
+		HealthcheckTimeout:      d.HealthcheckTimeout,
+		RestartPolicy:           d.RestartPolicy,
+		RestartPolicyMaxRetries: d.RestartPolicyMaxRetries,
+		DrainingSeconds:         d.DrainingSeconds,
+		OverlapSeconds:          d.OverlapSeconds,
+		SleepApplication:        d.SleepApplication,
+		NumReplicas:             d.NumReplicas,
+		Region:                  d.Region,
+		IPv6Egress:              d.IPv6Egress,
+	}
+	// Return nil if all fields are zero so omitempty drops the section.
+	if td.Builder == "" && td.Repo == nil && td.Image == nil &&
+		td.BuildCommand == nil && td.DockerfilePath == nil &&
+		td.RootDirectory == nil && td.StartCommand == nil &&
+		td.CronSchedule == nil && td.HealthcheckPath == nil &&
+		td.HealthcheckTimeout == nil && td.RestartPolicy == "" &&
+		td.RestartPolicyMaxRetries == nil && td.DrainingSeconds == nil &&
+		td.OverlapSeconds == nil && td.SleepApplication == nil &&
+		td.NumReplicas == nil && td.Region == nil && td.IPv6Egress == nil {
+		return nil
+	}
+	return td
+}
+
+func liveToTOMLServices(cfg LiveConfig, full bool) []tomlService {
+	names := sortedServiceNames(cfg.Services)
+	services := make([]tomlService, 0, len(names))
+	for _, name := range names {
+		svc := cfg.Services[name]
+		ts := tomlService{
+			Name:      name,
+			Variables: svc.Variables,
+		}
+		if full {
+			ts.ID = svc.ID
+			ts.Deploy = deployToTOML(svc.Deploy)
+		}
+		services = append(services, ts)
+	}
+	return services
+}
+
+func marshalTOML(v any) string {
+	var buf bytes.Buffer
+	if err := toml.NewEncoder(&buf).Encode(v); err != nil {
+		// Struct marshalling should never fail for our types.
+		panic(fmt.Sprintf("toml.Encode: %v", err))
+	}
+	return strings.TrimRight(buf.String(), "\n")
+}
 
 // RenderOptions controls how config is rendered.
 type RenderOptions struct {
@@ -161,36 +283,17 @@ func deployMap(d Deploy) map[string]any {
 	return m
 }
 
-// renderTOML builds valid TOML output using [[service]] array-of-tables syntax
-// with TOML v1.1 multiline inline tables for sub-fields (variables, deploy).
+// renderTOML builds valid TOML output via toml.Marshal.
 func renderTOML(cfg LiveConfig, full bool) string {
-	var out strings.Builder
+	tc := tomlShowConfig{
+		Variables: cfg.Variables,
+		Service:   liveToTOMLServices(cfg, full),
+	}
 	if full {
-		out.WriteString("project_id = " + tomlQuote(cfg.ProjectID) + "\n")
-		out.WriteString("environment_id = " + tomlQuote(cfg.EnvironmentID) + "\n\n")
+		tc.ProjectID = cfg.ProjectID
+		tc.EnvironmentID = cfg.EnvironmentID
 	}
-	if len(cfg.Variables) > 0 {
-		writeTOMLInlineVars(&out, "variables", cfg.Variables)
-		out.WriteString("\n")
-	}
-	serviceNames := sortedServiceNames(cfg.Services)
-	for _, name := range serviceNames {
-		svc := cfg.Services[name]
-		out.WriteString("[[service]]\n")
-		out.WriteString("name = " + tomlQuote(name) + "\n")
-		if full && svc.ID != "" {
-			out.WriteString("id = " + tomlQuote(svc.ID) + "\n")
-		}
-
-		if len(svc.Variables) > 0 {
-			writeTOMLInlineVars(&out, "variables", svc.Variables)
-		}
-		if full {
-			writeTOMLInlineDeploy(&out, svc.Deploy)
-		}
-		out.WriteString("\n")
-	}
-	return strings.TrimRight(out.String(), "\n")
+	return marshalTOML(tc)
 }
 
 // envRefConfig returns a copy of cfg with sensitive variable values replaced
@@ -262,157 +365,16 @@ func CollectSecrets(cfg LiveConfig) map[string]string {
 func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
 	replaced := envRefConfig(cfg)
 
-	var out strings.Builder
-	out.WriteString("name = " + tomlQuote(environment) + "\n\n")
+	tc := tomlInitConfig{
+		Name:      environment,
+		Project:   &tomlContextBlock{Name: project},
+		Variables: replaced.Variables,
+		Service:   liveToTOMLServices(replaced, false),
+	}
 	if workspace != "" {
-		out.WriteString("[workspace]\n")
-		out.WriteString("name = " + tomlQuote(workspace) + "\n\n")
+		tc.Workspace = &tomlContextBlock{Name: workspace}
 	}
-	out.WriteString("[project]\n")
-	out.WriteString("name = " + tomlQuote(project) + "\n")
-
-	// Render service sections using the existing TOML renderer (without
-	// IDs or deploy settings — those are fetched live, not managed in config).
-	body := renderTOML(replaced, false)
-	if body != "" {
-		out.WriteString("\n")
-		out.WriteString(body)
-	}
-
-	return out.String()
-}
-
-// writeTOMLInlineVars writes a multiline inline table of key-value string pairs.
-// Example output:
-//
-//	variables = {
-//	    PORT = "8080",
-//	    NODE_ENV = "production",
-//	}
-func writeTOMLInlineVars(out *strings.Builder, tableName string, vars map[string]string) {
-	keys := sortedKeys(vars)
-	out.WriteString(tableName + " = {\n")
-	for _, k := range keys {
-		out.WriteString("    " + tomlKey(k) + " = " + tomlQuote(vars[k]) + ",\n")
-	}
-	out.WriteString("}\n")
-}
-
-// writeTOMLInlineDeploy writes deploy settings as a multiline inline table.
-func writeTOMLInlineDeploy(out *strings.Builder, d Deploy) {
-	lines := deployLines(d)
-	if len(lines) > 0 {
-		out.WriteString("deploy = {\n")
-		for _, line := range lines {
-			out.WriteString("    " + line + ",\n")
-		}
-		out.WriteString("}\n")
-	}
-}
-
-// deployLines returns TOML key=value lines for all non-zero deploy fields.
-func deployLines(d Deploy) []string {
-	var lines []string
-	if d.Builder != "" {
-		lines = append(lines, "builder = "+tomlQuote(d.Builder))
-	}
-	if d.Repo != nil && *d.Repo != "" {
-		lines = append(lines, "repo = "+tomlQuote(*d.Repo))
-	}
-	if d.Image != nil && *d.Image != "" {
-		lines = append(lines, "image = "+tomlQuote(*d.Image))
-	}
-	if d.BuildCommand != nil {
-		lines = append(lines, "build_command = "+tomlQuote(*d.BuildCommand))
-	}
-	if d.DockerfilePath != nil {
-		lines = append(lines, "dockerfile_path = "+tomlQuote(*d.DockerfilePath))
-	}
-	if d.RootDirectory != nil {
-		lines = append(lines, "root_directory = "+tomlQuote(*d.RootDirectory))
-	}
-	if d.StartCommand != nil {
-		lines = append(lines, "start_command = "+tomlQuote(*d.StartCommand))
-	}
-	if d.CronSchedule != nil {
-		lines = append(lines, "cron_schedule = "+tomlQuote(*d.CronSchedule))
-	}
-	if d.HealthcheckPath != nil {
-		lines = append(lines, "healthcheck_path = "+tomlQuote(*d.HealthcheckPath))
-	}
-	if d.HealthcheckTimeout != nil {
-		lines = append(lines, fmt.Sprintf("healthcheck_timeout = %d", *d.HealthcheckTimeout))
-	}
-	if d.RestartPolicy != "" {
-		lines = append(lines, "restart_policy = "+tomlQuote(d.RestartPolicy))
-	}
-	if d.RestartPolicyMaxRetries != nil {
-		lines = append(lines, fmt.Sprintf("restart_policy_max_retries = %d", *d.RestartPolicyMaxRetries))
-	}
-	if d.DrainingSeconds != nil {
-		lines = append(lines, fmt.Sprintf("draining_seconds = %d", *d.DrainingSeconds))
-	}
-	if d.OverlapSeconds != nil {
-		lines = append(lines, fmt.Sprintf("overlap_seconds = %d", *d.OverlapSeconds))
-	}
-	if d.SleepApplication != nil {
-		lines = append(lines, fmt.Sprintf("sleep_application = %t", *d.SleepApplication))
-	}
-	if d.NumReplicas != nil {
-		lines = append(lines, fmt.Sprintf("num_replicas = %d", *d.NumReplicas))
-	}
-	if d.Region != nil {
-		lines = append(lines, "region = "+tomlQuote(*d.Region))
-	}
-	if d.IPv6Egress != nil {
-		lines = append(lines, fmt.Sprintf("ipv6_egress = %t", *d.IPv6Egress))
-	}
-	return lines
-}
-
-// tomlKey returns a bare TOML key if it contains only safe characters
-// (A-Z, a-z, 0-9, -, _), otherwise returns a quoted key.
-func tomlKey(key string) string {
-	for _, r := range key {
-		if (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '_' && r != '-' {
-			return tomlQuote(key)
-		}
-	}
-	return key
-}
-
-// tomlQuote returns a TOML basic string with special characters escaped.
-// All C0 control characters (U+0000–U+001F) and DEL (U+007F) are escaped
-// per the TOML spec.
-func tomlQuote(s string) string {
-	var b strings.Builder
-	b.WriteByte('"')
-	for _, r := range s {
-		switch r {
-		case '"':
-			b.WriteString(`\"`)
-		case '\\':
-			b.WriteString(`\\`)
-		case '\b':
-			b.WriteString(`\b`)
-		case '\f':
-			b.WriteString(`\f`)
-		case '\n':
-			b.WriteString(`\n`)
-		case '\r':
-			b.WriteString(`\r`)
-		case '\t':
-			b.WriteString(`\t`)
-		default:
-			if r <= 0x1F || r == 0x7F {
-				fmt.Fprintf(&b, `\u%04X`, r)
-			} else {
-				b.WriteRune(r)
-			}
-		}
-	}
-	b.WriteByte('"')
-	return b.String()
+	return marshalTOML(tc) + "\n"
 }
 
 // renderText builds human-readable text output.
@@ -453,13 +415,11 @@ func renderText(cfg LiveConfig, full bool) string {
 			out.WriteString("\n")
 		}
 		if full {
-			lines := deployLines(svc.Deploy)
-			if len(lines) > 0 {
+			td := deployToTOML(svc.Deploy)
+			if td != nil {
 				out.WriteString("[service.deploy]\n")
-				for _, line := range lines {
-					out.WriteString(line + "\n")
-				}
-				out.WriteString("\n")
+				out.WriteString(marshalTOML(td))
+				out.WriteString("\n\n")
 			}
 		}
 	}

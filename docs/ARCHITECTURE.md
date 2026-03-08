@@ -151,10 +151,11 @@ matches by name. Any command that resolves a resource records its
 ID in the config file as bookkeeping — this is not a merge
 direction, just pinning the match for future operations.
 
-Sub-tables use TOML v1.1 multiline inline tables (supported by
-BurntSushi/toml v1.6.0+). This keeps all fields visually grouped
-under their parent entry. The equivalent `[service.variables]`
-sub-header form also works — the parser treats both identically.
+Sub-tables can use TOML v1.1 multiline inline tables (supported
+by BurntSushi/toml v1.6.0+) or the equivalent `[service.variables]`
+sub-header form — the parser treats both identically. Tool-generated
+output (from `init`, `adopt`, `show --toml`) uses the sub-header
+form via `toml.Marshal`.
 
 ### Variable interpolation
 

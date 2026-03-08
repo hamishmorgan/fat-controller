@@ -1,8 +1,9 @@
-package cli
+package app_test
 
 import (
 	"testing"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
@@ -21,7 +22,7 @@ func TestAdoptMerge_CreateNewService(t *testing.T) {
 		},
 	}
 
-	result := adoptMerge(desired, live, true, true, false, "")
+	result := app.AdoptMerge(desired, live, true, true, false, "")
 	if _, ok := result.Services["worker"]; !ok {
 		t.Error("expected worker service to be created")
 	}
@@ -45,7 +46,7 @@ func TestAdoptMerge_NoCreate(t *testing.T) {
 		},
 	}
 
-	result := adoptMerge(desired, live, false, true, false, "")
+	result := app.AdoptMerge(desired, live, false, true, false, "")
 	if _, ok := result.Services["worker"]; ok {
 		t.Error("expected worker service NOT to be created when create=false")
 	}
@@ -70,7 +71,7 @@ func TestAdoptMerge_Delete(t *testing.T) {
 		},
 	}
 
-	result := adoptMerge(desired, live, true, true, true, "")
+	result := app.AdoptMerge(desired, live, true, true, true, "")
 	if _, ok := result.Services["old-service"]; ok {
 		t.Error("expected old-service to be deleted")
 	}
@@ -95,7 +96,7 @@ func TestAdoptMerge_NoDelete(t *testing.T) {
 		Services:  map[string]*config.ServiceConfig{},
 	}
 
-	result := adoptMerge(desired, live, true, true, false, "")
+	result := app.AdoptMerge(desired, live, true, true, false, "")
 	if _, ok := result.Services["old-service"]; !ok {
 		t.Error("expected old-service to be preserved when delete=false")
 	}
@@ -119,7 +120,7 @@ func TestAdoptMerge_UpdateExisting(t *testing.T) {
 		},
 	}
 
-	result := adoptMerge(desired, live, true, true, false, "")
+	result := app.AdoptMerge(desired, live, true, true, false, "")
 	if result.Variables["PORT"] != "8080" {
 		t.Errorf("expected PORT to be updated to 8080, got %q", result.Variables["PORT"])
 	}
@@ -143,7 +144,7 @@ func TestAdoptMerge_NoUpdate(t *testing.T) {
 		},
 	}
 
-	result := adoptMerge(desired, live, true, false, false, "")
+	result := app.AdoptMerge(desired, live, true, false, false, "")
 	if result.Variables["PORT"] != "3000" {
 		t.Errorf("expected PORT to be preserved as 3000, got %q", result.Variables["PORT"])
 	}
@@ -166,8 +167,8 @@ func TestAdoptMerge_PathScoping(t *testing.T) {
 	}
 
 	// Scope to "api" — only api should be affected by merge flags.
-	scopedLive := scopeLiveByPath(live, "api")
-	result := adoptMerge(desired, scopedLive, true, true, true, "api")
+	scopedLive := app.ScopeLiveByPath(live, "api")
+	result := app.AdoptMerge(desired, scopedLive, true, true, true, "api")
 
 	// api should be updated from live.
 	if _, ok := result.Services["api"]; !ok {
@@ -198,8 +199,8 @@ func TestAdoptMerge_VariablesPathScope(t *testing.T) {
 		},
 	}
 
-	scopedLive := scopeLiveByPath(live, "variables")
-	result := adoptMerge(desired, scopedLive, true, true, true, "variables")
+	scopedLive := app.ScopeLiveByPath(live, "variables")
+	result := app.AdoptMerge(desired, scopedLive, true, true, true, "variables")
 
 	// Variables in scope: OLD should be deleted, NEW should be created.
 	if _, ok := result.Variables["OLD"]; ok {
@@ -224,14 +225,14 @@ func TestScopeLiveByPath(t *testing.T) {
 	}
 
 	t.Run("empty path returns full config", func(t *testing.T) {
-		result := scopeLiveByPath(live, "")
+		result := app.ScopeLiveByPath(live, "")
 		if len(result.Services) != 2 {
 			t.Errorf("expected 2 services, got %d", len(result.Services))
 		}
 	})
 
 	t.Run("variables path returns only variables", func(t *testing.T) {
-		result := scopeLiveByPath(live, "variables")
+		result := app.ScopeLiveByPath(live, "variables")
 		if len(result.Services) != 0 {
 			t.Errorf("expected 0 services, got %d", len(result.Services))
 		}
@@ -241,7 +242,7 @@ func TestScopeLiveByPath(t *testing.T) {
 	})
 
 	t.Run("service name returns only that service", func(t *testing.T) {
-		result := scopeLiveByPath(live, "api")
+		result := app.ScopeLiveByPath(live, "api")
 		if len(result.Services) != 1 {
 			t.Errorf("expected 1 service, got %d", len(result.Services))
 		}
@@ -254,7 +255,7 @@ func TestScopeLiveByPath(t *testing.T) {
 	})
 
 	t.Run("unknown path returns empty", func(t *testing.T) {
-		result := scopeLiveByPath(live, "nonexistent")
+		result := app.ScopeLiveByPath(live, "nonexistent")
 		if len(result.Services) != 0 {
 			t.Errorf("expected 0 services, got %d", len(result.Services))
 		}
@@ -278,7 +279,7 @@ func TestDesiredServiceToLive(t *testing.T) {
 		},
 	}
 
-	result := desiredServiceToLive(ds, liveSvc)
+	result := app.DesiredServiceToLive(ds, liveSvc)
 	if result.Name != "api" {
 		t.Errorf("expected name api, got %s", result.Name)
 	}
@@ -303,7 +304,7 @@ func TestDesiredServiceToLive_NilLive(t *testing.T) {
 		Variables: config.Variables{"PORT": "3000"},
 	}
 
-	result := desiredServiceToLive(ds, nil)
+	result := app.DesiredServiceToLive(ds, nil)
 	if result.ID != "svc-123" {
 		t.Errorf("expected ID svc-123, got %s", result.ID)
 	}

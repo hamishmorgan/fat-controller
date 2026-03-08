@@ -22,7 +22,7 @@ func CreateEgressGateway(ctx context.Context, client *Client, envID, serviceID, 
 	if len(resp.EgressGatewayAssociationCreate) == 0 {
 		return "", fmt.Errorf("creating egress gateway: no gateways returned")
 	}
-	return resp.EgressGatewayAssociationCreate[0].EgressGatewayFields.Ipv4, nil
+	return resp.EgressGatewayAssociationCreate[0].Ipv4, nil
 }
 
 // ClearEgressGateways removes all egress gateway associations for a service.

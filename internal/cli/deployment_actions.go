@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -96,7 +97,8 @@ func runDeploymentAction(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	targets, err := resolveServiceTargets(ctx, client, projID, envID, serviceNames)
+	fetcher := &defaultConfigFetcher{client: client}
+	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, serviceNames)
 	if err != nil {
 		return err
 	}
@@ -212,7 +214,8 @@ func runDeploymentDryRun(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	targets, err := resolveServiceTargets(ctx, client, projID, envID, serviceNames)
+	fetcher := &defaultConfigFetcher{client: client}
+	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, serviceNames)
 	if err != nil {
 		return err
 	}

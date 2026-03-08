@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
@@ -31,7 +32,8 @@ func (c *StatusCmd) Run(globals *Globals) error {
 		return err
 	}
 
-	targets, err := resolveServiceTargets(ctx, client, projID, envID, c.Services)
+	fetcher := &defaultConfigFetcher{client: client}
+	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, c.Services)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
 
@@ -55,7 +56,8 @@ func (c *LogsCmd) Run(globals *Globals) error {
 	}
 
 	// Resolve service targets.
-	targets, err := resolveServiceTargets(ctx, client, projID, envID, c.Services)
+	fetcher := &defaultConfigFetcher{client: client}
+	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, c.Services)
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,7 @@ fat-controller apply [<path>] [flags]
 | `--delete` | bool | `false` | `FAT_CONTROLLER_ALLOW_DELETE` | Remove entities that exist in target but not source. |
 | `-a`, `--ask` | bool |  |  | Prompt for all parameters. |
 | `-y`, `--yes` | bool |  | `FAT_CONTROLLER_YES` | Skip all confirmation prompts. |
-| `-f`, `--config-file` | string[] |  | `FAT_CONTROLLER_CONFIG_FILE` | Railway config file paths. Repeatable. |
+| `-f`, `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path. Disables upward walk — loads only this file. |
 | `--dry-run` | bool |  | `FAT_CONTROLLER_DRY_RUN` | Force preview of mutations. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 | `--skip-deploys` | bool |  | `FAT_CONTROLLER_DEPLOY` | Don't trigger redeployments. |

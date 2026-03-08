@@ -25,8 +25,8 @@ type ApplyOpts struct {
 }
 
 // RunConfigApply is the testable core of `config apply`.
-func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
-	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, extraFiles, service, fetcher)
+func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
+	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
 	if err != nil {
 		return err
 	}

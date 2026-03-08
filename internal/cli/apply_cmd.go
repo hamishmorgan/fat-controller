@@ -36,7 +36,7 @@ func (c *ApplyCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	pair, err := loadAndFetch(ctx, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, fetcher)
+	pair, err := loadAndFetch(ctx, c.Workspace, c.Project, c.Environment, wd, c.ConfigFile, c.Service, fetcher)
 	if err != nil {
 		return err
 	}

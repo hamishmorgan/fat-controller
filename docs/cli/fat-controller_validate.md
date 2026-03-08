@@ -18,7 +18,7 @@ fat-controller validate [<path>] [flags]
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
-| `-f`, `--config-file` | string[] |  | `FAT_CONTROLLER_CONFIG_FILE` | Railway config file paths. Repeatable. |
+| `-f`, `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path. Disables upward walk — loads only this file. |
 
 ## Global Flags
 

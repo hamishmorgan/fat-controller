@@ -17,30 +17,24 @@ type configPair struct {
 	EnvironmentID string
 }
 
-// loadAndFetch runs the shared pipeline used by both `config diff` and `config apply`:
-//  1. Load and merge config files via cascade
+// loadAndFetch runs the shared pipeline used by both `diff` and `apply`:
+//  1. Load config files (cascade or single --config-file)
 //  2. Interpolate ${VAR} references (env files → process env)
 //  3. Fall back to config-file project/environment when flags are empty
 //  4. Resolve project and environment IDs
 //  5. Fetch live state
 //  6. Filter desired config by --service if set
-func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironment, configDir string, extraFiles []string, service string, fetcher configFetcher) (*configPair, error) {
-	// 1. Load and merge config files via cascade.
-	slog.Debug("loading config", "dir", configDir)
-	result, err := config.LoadCascade(config.LoadOptions{WorkDir: configDir})
+func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironment, configDir string, configFile string, service string, fetcher configFetcher) (*configPair, error) {
+	// 1. Load config files (cascade or single --config-file).
+	slog.Debug("loading config", "dir", configDir, "config_file", configFile)
+	result, err := config.LoadCascade(config.LoadOptions{
+		WorkDir:    configDir,
+		ConfigFile: configFile,
+	})
 	if err != nil {
 		return nil, err
 	}
 	desired := result.Config
-
-	// Merge extra config files (--file flags) on top.
-	for _, f := range extraFiles {
-		extra, err := config.ParseFile(f)
-		if err != nil {
-			return nil, fmt.Errorf("parsing %s: %w", f, err)
-		}
-		desired = config.Merge(desired, extra)
-	}
 
 	// 2. Interpolate ${VAR} references (env files → process env).
 	if err := config.Interpolate(desired, result.EnvVars); err != nil {

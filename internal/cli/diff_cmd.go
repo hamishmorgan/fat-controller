@@ -31,7 +31,7 @@ func (c *DiffCmd) Run(globals *Globals) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	return RunConfigDiffWithOpts(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFiles, c.Service, DiffOpts{
+	return RunConfigDiffWithOpts(ctx, globals, c.Workspace, c.Project, c.Environment, wd, c.ConfigFile, c.Service, DiffOpts{
 		ShowSecrets: c.ShowSecrets,
 		DiffOptions: diff.Options{
 			Create: c.Create,

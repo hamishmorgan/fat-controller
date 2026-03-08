@@ -11,7 +11,7 @@ import (
 
 // Globals holds values that are available to every command's Run() method.
 // Kong tags are here so CLI can embed Globals directly.
-// Command-specific flags live in mixin structs (ApiFlags, MutationFlags,
+// Command-specific flags live in mixin structs (ApiFlags,
 // ConfigFileFlags, and the resolution hierarchy
 // ApiFlags → WorkspaceFlags → ProjectFlags → EnvironmentFlags → ServiceFlags)
 // or directly on command structs — not here.
@@ -99,12 +99,6 @@ type ServiceFlags struct {
 	Service          string `help:"Scope to a single service." env:"FAT_CONTROLLER_SERVICE"`
 }
 
-// MutationFlags are embedded by commands that mutate state (set, delete, init, apply).
-type MutationFlags struct {
-	Yes    bool `help:"Answer yes to all confirmation prompts." short:"y" env:"FAT_CONTROLLER_YES"`
-	DryRun bool `help:"Force preview of mutations." name:"dry-run" env:"FAT_CONTROLLER_DRY_RUN"`
-}
-
 // MergeFlags controls what a merge operation does.
 type MergeFlags struct {
 	Create bool `help:"Add entities that exist in source but not target." negatable:"" default:"true" env:"FAT_CONTROLLER_ALLOW_CREATE"`
@@ -129,9 +123,9 @@ func (f *PromptFlags) PromptMode() string {
 	return "default"
 }
 
-// ConfigFileFlags are embedded by commands that read config files (diff, apply, validate).
+// ConfigFileFlags are embedded by commands that read config files (diff, apply, validate, adopt).
 type ConfigFileFlags struct {
-	ConfigFiles []string `help:"Railway config file paths. Repeatable." name:"config-file" short:"f" env:"FAT_CONTROLLER_CONFIG_FILE" sep:"none"`
+	ConfigFile string `help:"Config file path. Disables upward walk — loads only this file." name:"config-file" short:"f" env:"FAT_CONTROLLER_CONFIG_FILE"`
 }
 
 // Logger returns a slog.Logger configured for the current verbosity level.

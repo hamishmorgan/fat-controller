@@ -102,7 +102,7 @@ override lower ones:
 | Timeout | `--timeout` | `FAT_CONTROLLER_API_TIMEOUT` | `api_timeout` | `30s` | API request timeout |
 | Yes | `--yes`, `-y` | `FAT_CONTROLLER_YES` | — | `false` | Skip confirmation prompts |
 | Dry run | `--dry-run` | `FAT_CONTROLLER_DRY_RUN` | — | `false` | Preview without executing |
-| Config file | `--config-file`, `-f` | `FAT_CONTROLLER_CONFIG_FILE` | — | `fat-controller.toml` | Config file path(s) |
+| Config file | `--config-file`, `-f` | `FAT_CONTROLLER_CONFIG_FILE` | — | *(auto-discover)* | Config file path; disables upward walk |
 | Service | `--service` | `FAT_CONTROLLER_SERVICE` | — | — | Scope to a single service |
 | Skip deploys | `--skip-deploys` | `FAT_CONTROLLER_DEPLOY` | `deploy` | `false` | Don't trigger redeployments |
 | Fail fast | `--fail-fast` | `FAT_CONTROLLER_FAIL_FAST` | `fail_fast` | `false` | Stop on first error |

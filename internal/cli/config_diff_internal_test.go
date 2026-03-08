@@ -40,7 +40,7 @@ variables = { PORT = "9090" }
 	fetcher := &fakeConfigFetcher{cfg: &config.LiveConfig{ProjectID: "proj-1", EnvironmentID: "env-1", Services: map[string]*config.ServiceConfig{"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}}}}}
 	var buf bytes.Buffer
 	globals := &Globals{Output: "json"}
-	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf); err != nil {
+	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf); err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
 	var payload DiffOutput
@@ -65,7 +65,7 @@ variables = { PORT = "9090" }
 	fetcher := &fakeConfigFetcher{cfg: &config.LiveConfig{ProjectID: "proj-1", EnvironmentID: "env-1", Services: map[string]*config.ServiceConfig{"api": {Name: "api", Variables: map[string]string{"PORT": "8080"}}}}}
 	var buf bytes.Buffer
 	globals := &Globals{Output: "toml"}
-	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf); err != nil {
+	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf); err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
 	var payload DiffOutput
@@ -90,7 +90,7 @@ variables = { DATABASE_PASSWORD = "newpass" }
 	fetcher := &fakeConfigFetcher{cfg: &config.LiveConfig{ProjectID: "proj-1", EnvironmentID: "env-1", Services: map[string]*config.ServiceConfig{"api": {Name: "api", Variables: map[string]string{"DATABASE_PASSWORD": "hunter2"}}}}}
 	var buf bytes.Buffer
 	globals := &Globals{Output: "json"}
-	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf); err != nil {
+	if err := RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf); err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
 	var payload DiffOutput

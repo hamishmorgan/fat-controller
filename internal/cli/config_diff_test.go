@@ -34,7 +34,7 @@ variables = { PORT = "9090", NEW_VAR = "hello" }
 	}
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
@@ -68,7 +68,7 @@ variables = { PORT = "8080" }
 	}
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
@@ -100,7 +100,7 @@ variables = { PORT = "${MY_PORT_FC_TEST}" }
 	}
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
@@ -126,7 +126,7 @@ variables = { SECRET = "${TOTALLY_MISSING_FC_VAR}" }
 		},
 	}
 	var buf bytes.Buffer
-	err := cli.RunConfigDiff(context.Background(), &cli.Globals{}, "", "", "", dir, nil, "", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), &cli.Globals{}, "", "", "", dir, "", "", false, fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error for missing env var")
 	}
@@ -144,7 +144,7 @@ variables = { PORT = "8080" }
 `)
 	fetcher := &fakeFetcher{resolveErr: errors.New("no project")}
 	var buf bytes.Buffer
-	err := cli.RunConfigDiff(context.Background(), &cli.Globals{}, "", "", "", dir, nil, "", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), &cli.Globals{}, "", "", "", dir, "", "", false, fetcher, &buf)
 	if err == nil {
 		t.Fatal("expected error from resolve failure")
 	}
@@ -172,7 +172,7 @@ variables = { QUEUE = "high" }
 	}
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "api", false, fetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "api", false, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
@@ -212,7 +212,7 @@ variables = { PORT = "9090" }
 	var buf bytes.Buffer
 	// Globals with empty Project/Environment — should fall back to config file.
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, captureFetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, captureFetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}
@@ -247,7 +247,7 @@ variables = { PORT = "9090" }
 	var buf bytes.Buffer
 	// Flag values should override config file.
 	globals := &cli.Globals{Output: "text"}
-	err := cli.RunConfigDiff(context.Background(), globals, "", "other-project", "staging", dir, nil, "", false, captureFetcher, &buf)
+	err := cli.RunConfigDiff(context.Background(), globals, "", "other-project", "staging", dir, "", "", false, captureFetcher, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigDiff() error: %v", err)
 	}

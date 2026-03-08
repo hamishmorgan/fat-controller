@@ -20,20 +20,20 @@ type DiffOpts struct {
 
 // RunConfigDiff is the testable core of `config diff`.
 // Legacy: always includes creates, updates, and deletes.
-func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
-	return RunConfigDiffWithOpts(ctx, globals, workspace, project, environment, configDir, extraFiles, service, DiffOpts{
+func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+	return RunConfigDiffWithOpts(ctx, globals, workspace, project, environment, configDir, configFile, service, DiffOpts{
 		ShowSecrets: showSecrets,
 		DiffOptions: diff.Options{Create: true, Update: true, Delete: true},
 	}, fetcher, out)
 }
 
 // RunConfigDiffWithOpts is the full-featured diff entrypoint.
-func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, extraFiles []string, service string, opts DiffOpts, fetcher configFetcher, out io.Writer) error {
+func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts DiffOpts, fetcher configFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
-	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, extraFiles, service, fetcher)
+	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
 	if err != nil {
 		return err
 	}

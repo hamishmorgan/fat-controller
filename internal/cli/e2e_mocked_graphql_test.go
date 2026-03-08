@@ -1106,7 +1106,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		// Expect 4 applied operations:
@@ -1195,7 +1195,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{DryRun: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{DryRun: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "dry run") {
@@ -1235,7 +1235,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "No changes") {
@@ -1272,7 +1272,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1308,7 +1308,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1348,7 +1348,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true, FailFast: true}, fetcher, applier, &out)
+		err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true, FailFast: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from fail-fast on collection upsert failure")
 		}
@@ -1378,7 +1378,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true, SkipDeploys: true}, fetcher, applier, &out); err != nil {
+		if err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true, SkipDeploys: true}, fetcher, applier, &out); err != nil {
 			t.Fatalf("RunConfigApply() error: %v", err)
 		}
 
@@ -1445,7 +1445,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{}
 		var out bytes.Buffer
-		err := cli.RunConfigApply(ctx, globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out)
+		err := cli.RunConfigApply(ctx, globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &out)
 		if err == nil {
 			t.Fatal("expected error from cancelled context")
 		}
@@ -1493,7 +1493,7 @@ name = "existing"`)
 		opts := cli.DiffOpts{
 			DiffOptions: diff.Options{Create: true, Update: false, Delete: false},
 		}
-		if err := cli.RunConfigDiffWithOpts(context.Background(), globals, "", "", "", dir, nil, "", opts, fetcher, &out); err != nil {
+		if err := cli.RunConfigDiffWithOpts(context.Background(), globals, "", "", "", dir, "", "", opts, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigDiffWithOpts() error: %v", err)
 		}
 		output := out.String()
@@ -1524,7 +1524,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{Output: "json"}
 		var out bytes.Buffer
-		if err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, nil, "", false, fetcher, &out); err != nil {
+		if err := cli.RunConfigDiff(context.Background(), globals, "", "", "", dir, "", "", false, fetcher, &out); err != nil {
 			t.Fatalf("RunConfigDiff() error: %v", err)
 		}
 		var parsed any
@@ -1552,7 +1552,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{Output: "text"}
 		var out bytes.Buffer
-		if err := cli.RunConfigValidate(globals, dir, nil, &out); err != nil {
+		if err := cli.RunConfigValidate(globals, dir, "", &out); err != nil {
 			t.Fatalf("RunConfigValidate() error: %v", err)
 		}
 		if !strings.Contains(out.String(), "No warnings") {
@@ -1578,7 +1578,7 @@ name = "existing"`)
 
 		globals := &cli.Globals{Output: "text"}
 		var out bytes.Buffer
-		err := cli.RunConfigValidate(globals, dir, nil, &out)
+		err := cli.RunConfigValidate(globals, dir, "", &out)
 		output := out.String()
 		if err != nil {
 			output += err.Error()

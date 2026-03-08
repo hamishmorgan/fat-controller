@@ -27,7 +27,7 @@ fat-controller diff [<path>] [flags]
 | `--create` | bool | `true` | `FAT_CONTROLLER_ALLOW_CREATE` | Add entities that exist in source but not target. |
 | `--update` | bool | `true` | `FAT_CONTROLLER_ALLOW_UPDATE` | Overwrite entities that exist in both. |
 | `--delete` | bool | `false` | `FAT_CONTROLLER_ALLOW_DELETE` | Remove entities that exist in target but not source. |
-| `-f`, `--config-file` | string[] |  | `FAT_CONTROLLER_CONFIG_FILE` | Railway config file paths. Repeatable. |
+| `-f`, `--config-file` | string |  | `FAT_CONTROLLER_CONFIG_FILE` | Config file path. Disables upward walk — loads only this file. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 
 ## Global Flags

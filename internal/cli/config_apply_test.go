@@ -88,7 +88,7 @@ variables = { PORT = "9090" }
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "text"}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{}, fetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{}, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -120,7 +120,7 @@ variables = { PORT = "9090", NEW = "hello" }
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -152,7 +152,7 @@ variables = { PORT = "9090" }
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true, DryRun: true}, fetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true, DryRun: true}, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -180,7 +180,7 @@ variables = { PORT = "8080" }
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -214,7 +214,7 @@ variables = { QUEUE = "high" }
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "api", cli.ApplyOpts{Yes: true}, fetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -249,7 +249,7 @@ variables = { PORT = "9090" }
 	// Globals with empty Project/Environment — should fall back to config file.
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, nil, "", cli.ApplyOpts{Yes: true}, captureFetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "", "", dir, "", "", cli.ApplyOpts{Yes: true}, captureFetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}
@@ -286,7 +286,7 @@ variables = { PORT = "9090" }
 	// Flag values should override config file.
 	globals := &cli.Globals{}
 
-	err := cli.RunConfigApply(context.Background(), globals, "", "other-project", "staging", dir, nil, "", cli.ApplyOpts{Yes: true}, captureFetcher, applier, &buf)
+	err := cli.RunConfigApply(context.Background(), globals, "", "other-project", "staging", dir, "", "", cli.ApplyOpts{Yes: true}, captureFetcher, applier, &buf)
 	if err != nil {
 		t.Fatalf("RunConfigApply() error: %v", err)
 	}

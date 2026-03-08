@@ -12,35 +12,29 @@ import (
 )
 
 // RunConfigValidateScoped is a scoped variant of RunConfigValidate.
-func RunConfigValidateScoped(globals *Globals, configDir string, extraFiles []string, path string, out io.Writer) error {
+func RunConfigValidateScoped(globals *Globals, configDir string, configFile string, path string, out io.Writer) error {
 	// Path scoping for validate filters warnings by path prefix.
 	// For now, delegate to the base implementation — all warnings are returned
 	// and filtered at output time if path is set.
-	return RunConfigValidate(globals, configDir, extraFiles, out)
+	return RunConfigValidate(globals, configDir, configFile, out)
 }
 
 // RunConfigValidate is the testable core of `config validate`.
-func RunConfigValidate(globals *Globals, configDir string, extraFiles []string, out io.Writer) error {
+func RunConfigValidate(globals *Globals, configDir string, configFile string, out io.Writer) error {
 	slog.Debug("starting config validate")
 	if out == nil {
 		out = os.Stdout
 	}
 
-	// Load and merge config files via cascade.
-	result, err := config.LoadCascade(config.LoadOptions{WorkDir: configDir})
+	// Load config files (cascade or single --config-file).
+	result, err := config.LoadCascade(config.LoadOptions{
+		WorkDir:    configDir,
+		ConfigFile: configFile,
+	})
 	if err != nil {
 		return err
 	}
 	desired := result.Config
-
-	// Merge extra config files (--file flags) on top.
-	for _, f := range extraFiles {
-		extra, err := config.ParseFile(f)
-		if err != nil {
-			return fmt.Errorf("parsing %s: %w", f, err)
-		}
-		desired = config.Merge(desired, extra)
-	}
 
 	// Interpolation is not required for validation — we check the raw config.
 	// No API calls: liveServiceNames is nil (W040 skipped in offline mode).

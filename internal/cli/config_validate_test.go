@@ -21,7 +21,7 @@ variables = { myVar = "" }
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
-	err := cli.RunConfigValidate(globals, dir, nil, &buf)
+	err := cli.RunConfigValidate(globals, dir, "", &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,7 +45,7 @@ variables = { PORT = "8080" }
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
-	err := cli.RunConfigValidate(globals, dir, nil, &buf)
+	err := cli.RunConfigValidate(globals, dir, "", &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestRunConfigValidate_MissingConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
-	err := cli.RunConfigValidate(globals, dir, nil, &buf)
+	err := cli.RunConfigValidate(globals, dir, "", &buf)
 	if err == nil {
 		t.Fatal("expected error for missing config file")
 	}
@@ -76,7 +76,7 @@ name = "api"
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{}
-	err := cli.RunConfigValidate(globals, dir, nil, &buf)
+	err := cli.RunConfigValidate(globals, dir, "", &buf)
 	// Warnings are advisory — should return nil, not an error.
 	if err != nil {
 		t.Fatalf("expected no error (warnings are advisory), got: %v", err)
@@ -93,7 +93,7 @@ name = "api"
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "json"}
-	if err := cli.RunConfigValidate(globals, dir, nil, &buf); err != nil {
+	if err := cli.RunConfigValidate(globals, dir, "", &buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -122,7 +122,7 @@ name = "api"
 
 	var buf bytes.Buffer
 	globals := &cli.Globals{Output: "toml"}
-	if err := cli.RunConfigValidate(globals, dir, nil, &buf); err != nil {
+	if err := cli.RunConfigValidate(globals, dir, "", &buf); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

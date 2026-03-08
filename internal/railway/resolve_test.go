@@ -32,7 +32,7 @@ func TestResolveProjectEnvironment_ProjectToken(t *testing.T) {
 		HeaderValue: "project-token",
 		Source:      auth.SourceEnvToken,
 	}, nil, nil)
-	proj, env, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "", "")
+	proj, env, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "", "", nil)
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "")
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	_, _, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "")
+	_, _, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
 	if err == nil {
 		t.Fatal("expected error for ambiguous project")
 	}

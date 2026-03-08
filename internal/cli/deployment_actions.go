@@ -91,7 +91,7 @@ func runDeploymentAction(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment)
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func runDeploymentDryRun(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment)
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
 	if err != nil {
 		return err
 	}

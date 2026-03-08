@@ -26,7 +26,7 @@ func (c *StatusCmd) Run(globals *Globals) error {
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment)
+	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment, interactivePicker)
 	if err != nil {
 		return err
 	}

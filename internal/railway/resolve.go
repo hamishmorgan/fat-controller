@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strings"
 
 	"github.com/hamishmorgan/fat-controller/internal/auth"
-	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
 // WorkspaceInfo holds the name and ID of a Railway workspace.
@@ -30,19 +30,29 @@ func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error
 	return workspaces, nil
 }
 
+// Picker selects an ID from a list of candidates. Called when resolution
+// finds multiple matches and no explicit name was given.
+//
+// Pass nil for non-interactive mode: single results are auto-selected,
+// multiple results produce an error listing the candidates.
+type Picker func(label string, items []PickCandidate) (id string, err error)
+
+// PickCandidate is a name+ID pair presented to an interactive picker.
+type PickCandidate struct {
+	Name string
+	ID   string
+}
+
 // uuidPattern matches Railway-style UUIDs (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // ResolveProjectEnvironment returns project/environment IDs for the active auth.
 // For project tokens, it uses the ProjectToken query. For account tokens, it
 // resolves the provided project/environment names (or passes through IDs).
-// An optional PickOpts controls picker behaviour (e.g. ForcePrompt for init).
-func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, project, environment string, opts ...prompt.PickOpts) (string, string, error) {
+// The picker is called when interactive selection is needed; pass nil for
+// non-interactive mode.
+func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, project, environment string, picker Picker) (string, string, error) {
 	slog.Debug("resolving project and environment", "workspace", workspace, "project", project, "environment", environment)
-	pickOpts := prompt.PickOpts{}
-	if len(opts) > 0 {
-		pickOpts = opts[0]
-	}
 	if client == nil || client.Auth() == nil {
 		return "", "", errors.New("missing auth")
 	}
@@ -53,23 +63,23 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, p
 		}
 		return resp.ProjectToken.ProjectId, resp.ProjectToken.EnvironmentId, nil
 	}
-	projID, err := resolveProjectID(ctx, client, workspace, project, pickOpts)
+	projID, err := resolveProjectID(ctx, client, workspace, project, picker)
 	if err != nil {
 		return "", "", err
 	}
-	envID, err := resolveEnvironmentID(ctx, client, projID, environment, pickOpts)
+	envID, err := resolveEnvironmentID(ctx, client, projID, environment, picker)
 	if err != nil {
 		return "", "", err
 	}
 	return projID, envID, nil
 }
 
-func resolveProjectID(ctx context.Context, client *Client, workspace, project string, pickOpts prompt.PickOpts) (string, error) {
+func resolveProjectID(ctx context.Context, client *Client, workspace, project string, picker Picker) (string, error) {
 	if project != "" && uuidPattern.MatchString(project) {
 		slog.Debug("project is UUID, skipping resolution", "project_id", project)
 		return project, nil
 	}
-	workspaceID, err := resolveWorkspaceID(ctx, client, workspace, pickOpts)
+	workspaceID, err := resolveWorkspaceID(ctx, client, workspace, picker)
 	if err != nil {
 		return "", err
 	}
@@ -86,14 +96,14 @@ func resolveProjectID(ctx context.Context, client *Client, workspace, project st
 		return "", fmt.Errorf("project not found: %s", project)
 	}
 
-	items := make([]prompt.Item, len(resp.Projects.Edges))
+	items := make([]PickCandidate, len(resp.Projects.Edges))
 	for i, edge := range resp.Projects.Edges {
-		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+		items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
-	return prompt.PickProject(items, prompt.StdinIsInteractive(), pickOpts)
+	return pickOne("project", items, picker)
 }
 
-func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, pickOpts prompt.PickOpts) (*string, error) {
+func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, picker Picker) (*string, error) {
 	if workspace != "" && uuidPattern.MatchString(workspace) {
 		return &workspace, nil
 	}
@@ -115,20 +125,21 @@ func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, p
 		return nil, fmt.Errorf("workspace not found: %s", workspace)
 	}
 
-	items := make([]prompt.Item, len(resp.ApiToken.Workspaces))
+	items := make([]PickCandidate, len(resp.ApiToken.Workspaces))
 	for i, ws := range resp.ApiToken.Workspaces {
-		items[i] = prompt.Item{Name: ws.Name, ID: ws.Id}
+		items[i] = PickCandidate{Name: ws.Name, ID: ws.Id}
 	}
-	selected, err := prompt.PickWorkspace(items, prompt.StdinIsInteractive(), pickOpts)
+	selected, err := pickOne("workspace", items, picker)
 	if err != nil {
 		return nil, err
 	}
 	return &selected, nil
 }
 
-// ResolveWorkspaceID returns a workspace ID, prompting or auto-selecting when missing.
+// ResolveWorkspaceID returns a workspace ID, resolving a name or auto-selecting.
+// Pass nil picker for non-interactive mode.
 func ResolveWorkspaceID(ctx context.Context, client *Client, workspace string) (string, error) {
-	id, err := resolveWorkspaceID(ctx, client, workspace, prompt.PickOpts{})
+	id, err := resolveWorkspaceID(ctx, client, workspace, nil)
 	if err != nil {
 		return "", err
 	}
@@ -138,9 +149,10 @@ func ResolveWorkspaceID(ctx context.Context, client *Client, workspace string) (
 	return *id, nil
 }
 
-// ResolveProjectID returns a project ID, prompting or auto-selecting when missing.
+// ResolveProjectID returns a project ID, resolving a name or auto-selecting.
+// Pass nil picker for non-interactive mode.
 func ResolveProjectID(ctx context.Context, client *Client, workspace, project string) (string, error) {
-	return resolveProjectID(ctx, client, workspace, project, prompt.PickOpts{})
+	return resolveProjectID(ctx, client, workspace, project, nil)
 }
 
 // ResolveServiceID maps a service name to its ID within a project.
@@ -164,7 +176,7 @@ func ResolveServiceID(ctx context.Context, client *Client, projectID, service st
 	return "", fmt.Errorf("service not found: %s", service)
 }
 
-func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string, pickOpts prompt.PickOpts) (string, error) {
+func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string, picker Picker) (string, error) {
 	if env != "" && uuidPattern.MatchString(env) {
 		return env, nil
 	}
@@ -182,9 +194,33 @@ func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env st
 		return "", fmt.Errorf("environment not found: %s", env)
 	}
 
-	items := make([]prompt.Item, len(resp.Environments.Edges))
+	items := make([]PickCandidate, len(resp.Environments.Edges))
 	for i, edge := range resp.Environments.Edges {
-		items[i] = prompt.Item{Name: edge.Node.Name, ID: edge.Node.Id}
+		items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
-	return prompt.PickEnvironment(items, prompt.StdinIsInteractive(), pickOpts)
+	return pickOne("environment", items, picker)
+}
+
+// pickOne selects from candidates:
+//   - 0 items: error
+//   - 1 item: auto-select
+//   - multiple + picker: delegate to picker
+//   - multiple + nil picker: error listing candidates
+func pickOne(label string, items []PickCandidate, picker Picker) (string, error) {
+	if len(items) == 0 {
+		return "", fmt.Errorf("no %ss found", label)
+	}
+	if len(items) == 1 {
+		return items[0].ID, nil
+	}
+	if picker != nil {
+		return picker(label, items)
+	}
+	// Non-interactive: list candidates in the error message.
+	var b strings.Builder
+	_, _ = fmt.Fprintf(&b, "multiple %ss available — specify with --%s flag:", label, label)
+	for _, item := range items {
+		_, _ = fmt.Fprintf(&b, "\n  %s (%s)", item.Name, item.ID)
+	}
+	return "", errors.New(b.String())
 }

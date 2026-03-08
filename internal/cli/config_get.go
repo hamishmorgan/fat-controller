@@ -23,7 +23,7 @@ type defaultConfigFetcher struct {
 }
 
 func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
-	return railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment)
+	return railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment, interactivePicker)
 }
 
 func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {

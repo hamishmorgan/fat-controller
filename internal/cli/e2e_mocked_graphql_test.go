@@ -800,7 +800,7 @@ type e2eFetcher struct {
 }
 
 func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
-	return railway.ResolveProjectEnvironment(ctx, e.client, workspace, project, environment)
+	return railway.ResolveProjectEnvironment(ctx, e.client, workspace, project, environment, nil)
 }
 
 func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {

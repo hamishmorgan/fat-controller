@@ -227,6 +227,24 @@ rover graph introspect https://backboard.railway.com/graphql/v2 \
   --output internal/railway/schema.graphql
 """
 
+[tasks."schema:voyager"]
+alias = ["voyager"]
+description = "Build and open an interactive graphql-voyager diagram of the Railway schema"
+sources = ["internal/railway/schema.graphql"]
+outputs = [".build/railway_schema_voyager.html"]
+run = """
+mkdir -p .build
+
+# Install graphql npm package into a temp dir so we don't pollute the project.
+NPMDIR=$(mktemp -d)
+trap 'rm -rf "$NPMDIR"' EXIT
+npm install --prefix "$NPMDIR" --silent graphql
+
+node .config/mise/schema-voyager.mjs "$NPMDIR"
+echo "Opening .build/railway_schema_voyager.html"
+xdg-open .build/railway_schema_voyager.html 2>/dev/null || open .build/railway_schema_voyager.html 2>/dev/null || true
+"""
+
 # ---------------------------------------------------------------------------
 # Go
 # ---------------------------------------------------------------------------

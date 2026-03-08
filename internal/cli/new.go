@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
@@ -47,9 +48,12 @@ func (c *NewProjectCmd) Run(globals *Globals) error {
 		configPath = filepath.Join(wd, "fat-controller.toml")
 	}
 
-	var buf strings.Builder
-	buf.WriteString("\n[project]\n")
-	fmt.Fprintf(&buf, "name = %q\n", c.Name)
+	snippet := struct {
+		Project struct {
+			Name string `toml:"name"`
+		} `toml:"project"`
+	}{}
+	snippet.Project.Name = c.Name
 
 	f, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -57,7 +61,10 @@ func (c *NewProjectCmd) Run(globals *Globals) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	if _, err := f.WriteString(buf.String()); err != nil {
+	if _, err := f.WriteString("\n"); err != nil {
+		return fmt.Errorf("writing to %s: %w", configPath, err)
+	}
+	if err := toml.NewEncoder(f).Encode(snippet); err != nil {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 
@@ -99,7 +106,9 @@ func (c *NewEnvironmentCmd) Run(globals *Globals) error {
 	}
 
 	// The environment name is the top-level `name` field.
-	snippet := fmt.Sprintf("name = %q\n", c.Name)
+	snippet := struct {
+		Name string `toml:"name"`
+	}{Name: c.Name}
 
 	f, err := os.OpenFile(configPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -107,7 +116,7 @@ func (c *NewEnvironmentCmd) Run(globals *Globals) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	if _, err := f.WriteString(snippet); err != nil {
+	if err := toml.NewEncoder(f).Encode(snippet); err != nil {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 
@@ -148,21 +157,29 @@ func (c *NewServiceCmd) Run(globals *Globals) error {
 		}
 	}
 
-	// Build the TOML snippet to append.
-	var buf strings.Builder
-	buf.WriteString("\n[[service]]\n")
-	fmt.Fprintf(&buf, "name = %q\n", c.Name)
+	// Build the service entry.
+	type deploySnippet struct {
+		Image *string `toml:"image,omitempty"`
+		Repo  *string `toml:"repo,omitempty"`
+	}
+	type serviceEntry struct {
+		Name   string         `toml:"name"`
+		Deploy *deploySnippet `toml:"deploy,omitempty"`
+	}
+	entry := serviceEntry{Name: c.Name}
 
 	if c.Database != "" {
-		fmt.Fprintf(&buf, "\n[service.deploy]\n")
-		fmt.Fprintf(&buf, "image = %q\n", databaseImage(c.Database))
+		img := databaseImage(c.Database)
+		entry.Deploy = &deploySnippet{Image: &img}
 	} else if c.Image != "" {
-		fmt.Fprintf(&buf, "\n[service.deploy]\n")
-		fmt.Fprintf(&buf, "image = %q\n", c.Image)
+		entry.Deploy = &deploySnippet{Image: &c.Image}
 	} else if c.Repo != "" {
-		fmt.Fprintf(&buf, "\n[service.deploy]\n")
-		fmt.Fprintf(&buf, "repo = %q\n", c.Repo)
+		entry.Deploy = &deploySnippet{Repo: &c.Repo}
 	}
+
+	snippet := struct {
+		Service []serviceEntry `toml:"service"`
+	}{Service: []serviceEntry{entry}}
 
 	// Find or create the config file.
 	configPath := ""
@@ -179,7 +196,7 @@ func (c *NewServiceCmd) Run(globals *Globals) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	if _, err := f.WriteString(buf.String()); err != nil {
+	if err := toml.NewEncoder(f).Encode(snippet); err != nil {
 		return fmt.Errorf("writing to %s: %w", configPath, err)
 	}
 

@@ -14,7 +14,7 @@ type EnvironmentInfo struct {
 
 // ListEnvironments returns the name/ID pairs for all environments in a project.
 func ListEnvironments(ctx context.Context, client *Client, projectID string) ([]EnvironmentInfo, error) {
-	resp, err := Environments(ctx, client.GQL(), projectID)
+	resp, err := Environments(ctx, client.gql(), projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func CreateEnvironment(ctx context.Context, client *Client, projectID, name stri
 		ProjectId: projectID,
 		Name:      name,
 	}
-	resp, err := EnvironmentCreate(ctx, client.GQL(), input)
+	resp, err := EnvironmentCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating environment %q: %w", name, err)
 	}
@@ -43,7 +43,7 @@ func CreateEnvironment(ctx context.Context, client *Client, projectID, name stri
 // DeleteEnvironment deletes an environment by ID.
 func DeleteEnvironment(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting environment", "id", id)
-	_, err := EnvironmentDelete(ctx, client.GQL(), id)
+	_, err := EnvironmentDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting environment %q: %w", id, err)
 	}

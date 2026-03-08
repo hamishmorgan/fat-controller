@@ -22,7 +22,7 @@ func UpsertVariable(ctx context.Context, client *Client, projectID, environmentI
 	if serviceID != "" {
 		input.ServiceId = &serviceID
 	}
-	_, err := VariableUpsert(ctx, client.GQL(), input)
+	_, err := VariableUpsert(ctx, client.gql(), input)
 	return err
 }
 
@@ -42,7 +42,7 @@ func UpsertVariableCollection(ctx context.Context, client *Client, projectID, en
 	if serviceID != "" {
 		input.ServiceId = &serviceID
 	}
-	_, err := VariableCollectionUpsert(ctx, client.GQL(), input)
+	_, err := VariableCollectionUpsert(ctx, client.gql(), input)
 	return err
 }
 
@@ -57,7 +57,7 @@ func DeleteVariable(ctx context.Context, client *Client, projectID, environmentI
 	if serviceID != "" {
 		input.ServiceId = &serviceID
 	}
-	_, err := VariableDelete(ctx, client.GQL(), input)
+	_, err := VariableDelete(ctx, client.gql(), input)
 	return err
 }
 
@@ -71,7 +71,7 @@ func UpdateServiceLimits(ctx context.Context, client *Client, environmentID, ser
 		VCPUs:         vcpus,
 		MemoryGB:      memoryGB,
 	}
-	_, err := ServiceInstanceLimitsUpdate(ctx, client.GQL(), input)
+	_, err := ServiceInstanceLimitsUpdate(ctx, client.gql(), input)
 	return err
 }
 
@@ -87,7 +87,7 @@ func UpdateServiceSettings(ctx context.Context, client *Client, serviceID string
 	if err != nil {
 		return err
 	}
-	_, err = ServiceInstanceUpdate(ctx, client.GQL(), serviceID, input)
+	_, err = ServiceInstanceUpdate(ctx, client.gql(), serviceID, input)
 	return err
 }
 
@@ -98,7 +98,7 @@ func buildServiceInstanceInput(desired *config.DesiredDeploy) (ServiceInstanceUp
 
 	// Builder
 	if desired.Builder != nil {
-		b, err := ParseBuilder(*desired.Builder)
+		b, err := parseBuilder(*desired.Builder)
 		if err != nil {
 			return input, err
 		}
@@ -138,7 +138,7 @@ func buildServiceInstanceInput(desired *config.DesiredDeploy) (ServiceInstanceUp
 	input.HealthcheckPath = desired.HealthcheckPath
 	input.HealthcheckTimeout = desired.HealthcheckTimeout
 	if desired.RestartPolicy != nil {
-		rp, err := ParseRestartPolicy(*desired.RestartPolicy)
+		rp, err := parseRestartPolicy(*desired.RestartPolicy)
 		if err != nil {
 			return input, err
 		}
@@ -161,8 +161,8 @@ func buildServiceInstanceInput(desired *config.DesiredDeploy) (ServiceInstanceUp
 	return input, nil
 }
 
-// ParseBuilder maps a string to the generated Builder enum.
-func ParseBuilder(value string) (Builder, error) {
+// parseBuilder maps a string to the generated Builder enum.
+func parseBuilder(value string) (Builder, error) {
 	switch strings.ToUpper(value) {
 	case "NIXPACKS":
 		return BuilderNixpacks, nil
@@ -177,8 +177,8 @@ func ParseBuilder(value string) (Builder, error) {
 	}
 }
 
-// ParseRestartPolicy maps a string to the generated RestartPolicyType enum.
-func ParseRestartPolicy(value string) (RestartPolicyType, error) {
+// parseRestartPolicy maps a string to the generated RestartPolicyType enum.
+func parseRestartPolicy(value string) (RestartPolicyType, error) {
 	switch strings.ToUpper(value) {
 	case "ALWAYS":
 		return RestartPolicyTypeAlways, nil

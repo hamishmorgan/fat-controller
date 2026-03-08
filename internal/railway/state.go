@@ -28,7 +28,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 		filterSet[name] = true
 	}
 
-	shared, err := Variables(ctx, client.GQL(), projectID, environmentID, nil)
+	shared, err := Variables(ctx, client.gql(), projectID, environmentID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	}
 	slog.Debug("fetched shared variables", "count", len(cfg.Variables))
 
-	services, err := ProjectServices(ctx, client.GQL(), projectID)
+	services, err := ProjectServices(ctx, client.gql(), projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,12 +114,12 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 	g, gCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		var err error
-		vars, err = Variables(gCtx, client.GQL(), projectID, environmentID, &serviceID)
+		vars, err = Variables(gCtx, client.gql(), projectID, environmentID, &serviceID)
 		return err
 	})
 	g.Go(func() error {
 		var err error
-		instance, err = ServiceInstance(gCtx, client.GQL(), environmentID, serviceID)
+		instance, err = ServiceInstance(gCtx, client.gql(), environmentID, serviceID)
 		if err != nil {
 			return fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
 		}
@@ -179,7 +179,7 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 	// Non-fatal sub-resource queries — run concurrently.
 	subG, subCtx := errgroup.WithContext(ctx)
 	subG.Go(func() error {
-		limits, err := ServiceInstanceLimits(subCtx, client.GQL(), environmentID, serviceID)
+		limits, err := ServiceInstanceLimits(subCtx, client.gql(), environmentID, serviceID)
 		if err != nil {
 			slog.Debug("could not fetch resource limits", "service", serviceName, "error", err)
 			return nil
@@ -227,7 +227,7 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 // groups them by serviceId. Non-fatal: returns empty map on error.
 func fetchVolumesByService(ctx context.Context, client *Client, projectID, environmentID string) map[string][]config.LiveVolume {
 	result := map[string][]config.LiveVolume{}
-	resp, err := EnvironmentVolumes(ctx, client.GQL(), environmentID, &projectID)
+	resp, err := EnvironmentVolumes(ctx, client.gql(), environmentID, &projectID)
 	if err != nil {
 		slog.Debug("could not fetch volumes", "error", err)
 		return result
@@ -254,7 +254,7 @@ func fetchVolumesByService(ctx context.Context, client *Client, projectID, envir
 
 // fetchPrivateNetworks returns the list of private networks for the environment.
 func fetchPrivateNetworks(ctx context.Context, client *Client, environmentID string) []PrivateNetworksPrivateNetworksPrivateNetwork {
-	resp, err := PrivateNetworks(ctx, client.GQL(), environmentID)
+	resp, err := PrivateNetworks(ctx, client.gql(), environmentID)
 	if err != nil {
 		slog.Debug("could not fetch private networks", "error", err)
 		return nil
@@ -264,7 +264,7 @@ func fetchPrivateNetworks(ctx context.Context, client *Client, environmentID str
 
 // fetchTCPProxies populates TCP proxies on the service config. Non-fatal.
 func fetchTCPProxies(ctx context.Context, client *Client, environmentID, serviceID string, svc *config.ServiceConfig) {
-	resp, err := TCPProxies(ctx, client.GQL(), environmentID, serviceID)
+	resp, err := TCPProxies(ctx, client.gql(), environmentID, serviceID)
 	if err != nil {
 		slog.Debug("could not fetch TCP proxies", "service", svc.Name, "error", err)
 		return
@@ -281,7 +281,7 @@ func fetchTCPProxies(ctx context.Context, client *Client, environmentID, service
 
 // fetchEgress populates egress gateways on the service config. Non-fatal.
 func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID string, svc *config.ServiceConfig) {
-	resp, err := EgressGateways(ctx, client.GQL(), environmentID, serviceID)
+	resp, err := EgressGateways(ctx, client.gql(), environmentID, serviceID)
 	if err != nil {
 		slog.Debug("could not fetch egress gateways", "service", svc.Name, "error", err)
 		return
@@ -296,7 +296,7 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 
 // fetchTriggers populates deployment triggers on the service config. Non-fatal.
 func fetchTriggers(ctx context.Context, client *Client, environmentID, projectID, serviceID string, svc *config.ServiceConfig) {
-	resp, err := DeploymentTriggers(ctx, client.GQL(), environmentID, projectID, serviceID)
+	resp, err := DeploymentTriggers(ctx, client.gql(), environmentID, projectID, serviceID)
 	if err != nil {
 		slog.Debug("could not fetch triggers", "service", svc.Name, "error", err)
 		return
@@ -315,7 +315,7 @@ func fetchTriggers(ctx context.Context, client *Client, environmentID, projectID
 // fetchNetworkEndpoint checks if a service has a private network endpoint. Non-fatal.
 func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, serviceID string, networks []PrivateNetworksPrivateNetworksPrivateNetwork, svc *config.ServiceConfig) {
 	for _, net := range networks {
-		resp, err := PrivateNetworkEndpoint(ctx, client.GQL(), environmentID, net.PublicId, serviceID)
+		resp, err := PrivateNetworkEndpoint(ctx, client.gql(), environmentID, net.PublicId, serviceID)
 		if err != nil {
 			slog.Debug("could not check network endpoint", "service", svc.Name, "network", net.Name, "error", err)
 			continue

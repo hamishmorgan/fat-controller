@@ -16,7 +16,7 @@ func CreateVolume(ctx context.Context, client *Client, projectID, envID, service
 		ServiceId:     &serviceID,
 		MountPath:     path,
 	}
-	resp, err := VolumeCreate(ctx, client.GQL(), input)
+	resp, err := VolumeCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating volume at %q: %w", path, err)
 	}
@@ -26,7 +26,7 @@ func CreateVolume(ctx context.Context, client *Client, projectID, envID, service
 // DeleteVolume deletes a persistent volume by ID.
 func DeleteVolume(ctx context.Context, client *Client, volumeID string) error {
 	slog.Debug("deleting volume", "volume_id", volumeID)
-	_, err := VolumeDelete(ctx, client.GQL(), volumeID)
+	_, err := VolumeDelete(ctx, client.gql(), volumeID)
 	if err != nil {
 		return fmt.Errorf("deleting volume %q: %w", volumeID, err)
 	}

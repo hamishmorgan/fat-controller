@@ -14,7 +14,7 @@ type ServiceInfo struct {
 
 // ListServices returns the name/ID pairs for all services in a project.
 func ListServices(ctx context.Context, client *Client, projectID string) ([]ServiceInfo, error) {
-	resp, err := ProjectServices(ctx, client.GQL(), projectID)
+	resp, err := ProjectServices(ctx, client.gql(), projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func CreateService(ctx context.Context, client *Client, projectID, name string) 
 		ProjectId: projectID,
 		Name:      &name,
 	}
-	resp, err := ServiceCreate(ctx, client.GQL(), input)
+	resp, err := ServiceCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating service %q: %w", name, err)
 	}
@@ -43,29 +43,9 @@ func CreateService(ctx context.Context, client *Client, projectID, name string) 
 // DeleteService deletes a service by ID.
 func DeleteService(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting service", "id", id)
-	_, err := ServiceDelete(ctx, client.GQL(), id)
+	_, err := ServiceDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting service %q: %w", id, err)
-	}
-	return nil
-}
-
-// UpdateService updates a service's name and/or icon.
-func UpdateService(ctx context.Context, client *Client, id string, input ServiceUpdateInput) error {
-	slog.Debug("updating service", "id", id)
-	_, err := ServiceUpdate(ctx, client.GQL(), id, input)
-	if err != nil {
-		return fmt.Errorf("updating service %q: %w", id, err)
-	}
-	return nil
-}
-
-// ConnectService connects a service to a source repo or image.
-func ConnectService(ctx context.Context, client *Client, id string, input ServiceConnectInput) error {
-	slog.Debug("connecting service", "id", id)
-	_, err := ServiceConnect(ctx, client.GQL(), id, input)
-	if err != nil {
-		return fmt.Errorf("connecting service %q: %w", id, err)
 	}
 	return nil
 }

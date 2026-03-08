@@ -19,7 +19,7 @@ type WorkspaceInfo struct {
 
 // ListWorkspaces returns the name/ID pairs for all workspaces the token has access to.
 func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error) {
-	resp, err := ApiToken(ctx, client.GQL())
+	resp, err := ApiToken(ctx, client.gql())
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, p
 		return "", "", errors.New("missing auth")
 	}
 	if client.Auth().Source == auth.SourceEnvToken {
-		resp, err := ProjectToken(ctx, client.GQL())
+		resp, err := ProjectToken(ctx, client.gql())
 		if err != nil {
 			return "", "", err
 		}
@@ -73,7 +73,7 @@ func resolveProjectID(ctx context.Context, client *Client, workspace, project st
 	if err != nil {
 		return "", err
 	}
-	resp, err := Projects(ctx, client.GQL(), workspaceID)
+	resp, err := Projects(ctx, client.gql(), workspaceID)
 	if err != nil {
 		return "", err
 	}
@@ -97,7 +97,7 @@ func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, p
 	if workspace != "" && uuidPattern.MatchString(workspace) {
 		return &workspace, nil
 	}
-	resp, err := ApiToken(ctx, client.GQL())
+	resp, err := ApiToken(ctx, client.gql())
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func ResolveServiceID(ctx context.Context, client *Client, projectID, service st
 	if uuidPattern.MatchString(service) {
 		return service, nil
 	}
-	resp, err := ProjectServices(ctx, client.GQL(), projectID)
+	resp, err := ProjectServices(ctx, client.gql(), projectID)
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +168,7 @@ func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env st
 	if env != "" && uuidPattern.MatchString(env) {
 		return env, nil
 	}
-	resp, err := Environments(ctx, client.GQL(), projectID)
+	resp, err := Environments(ctx, client.gql(), projectID)
 	if err != nil {
 		return "", err
 	}

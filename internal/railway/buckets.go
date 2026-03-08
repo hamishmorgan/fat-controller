@@ -14,7 +14,7 @@ type BucketInfo struct {
 
 // ListBuckets returns the name/ID pairs for all buckets in a project.
 func ListBuckets(ctx context.Context, client *Client, projectID string) ([]BucketInfo, error) {
-	resp, err := ProjectBuckets(ctx, client.GQL(), projectID)
+	resp, err := ProjectBuckets(ctx, client.gql(), projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func CreateBucket(ctx context.Context, client *Client, projectID, name string) (
 		ProjectId: projectID,
 		Name:      &name,
 	}
-	resp, err := BucketCreate(ctx, client.GQL(), input)
+	resp, err := BucketCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating bucket %q: %w", name, err)
 	}
@@ -46,7 +46,7 @@ func UpdateBucket(ctx context.Context, client *Client, id, name string) error {
 	input := BucketUpdateInput{
 		Name: name,
 	}
-	_, err := BucketUpdate(ctx, client.GQL(), id, input)
+	_, err := BucketUpdate(ctx, client.gql(), id, input)
 	if err != nil {
 		return fmt.Errorf("updating bucket %q: %w", id, err)
 	}
@@ -66,7 +66,7 @@ type BucketCredentials struct {
 // GetBucketCredentials retrieves S3-compatible credentials for a bucket.
 func GetBucketCredentials(ctx context.Context, client *Client, bucketID, environmentID, projectID string) ([]BucketCredentials, error) {
 	slog.Debug("getting bucket credentials", "bucket_id", bucketID, "environment_id", environmentID)
-	resp, err := BucketS3Credentials(ctx, client.GQL(), bucketID, environmentID, projectID)
+	resp, err := BucketS3Credentials(ctx, client.gql(), bucketID, environmentID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket credentials for %q: %w", bucketID, err)
 	}

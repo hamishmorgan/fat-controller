@@ -18,7 +18,7 @@ func CreateDeploymentTrigger(ctx context.Context, client *Client, envID, project
 		Branch:        branch,
 		Provider:      "github",
 	}
-	resp, err := DeploymentTriggerCreate(ctx, client.GQL(), input)
+	resp, err := DeploymentTriggerCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating deployment trigger for %s@%s: %w", repo, branch, err)
 	}
@@ -28,7 +28,7 @@ func CreateDeploymentTrigger(ctx context.Context, client *Client, envID, project
 // DeleteDeploymentTrigger deletes a deployment trigger by ID.
 func DeleteDeploymentTrigger(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting deployment trigger", "id", id)
-	_, err := DeploymentTriggerDelete(ctx, client.GQL(), id)
+	_, err := DeploymentTriggerDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting deployment trigger %q: %w", id, err)
 	}

@@ -111,7 +111,7 @@ func (c *ListCmd) runListDeployments(globals *Globals) error {
 	for _, d := range deployments {
 		out = append(out, deployOut{
 			ID:        d.ID,
-			Status:    string(d.Status),
+			Status:    d.Status,
 			CreatedAt: d.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		})
 	}

@@ -17,7 +17,7 @@ func CreateCustomDomain(ctx context.Context, client *Client, projectID, envID, s
 		Domain:        domain,
 		TargetPort:    &port,
 	}
-	resp, err := CustomDomainCreate(ctx, client.GQL(), input)
+	resp, err := CustomDomainCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating custom domain %q: %w", domain, err)
 	}
@@ -27,7 +27,7 @@ func CreateCustomDomain(ctx context.Context, client *Client, projectID, envID, s
 // DeleteCustomDomain deletes a custom domain by ID.
 func DeleteCustomDomain(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting custom domain", "id", id)
-	_, err := CustomDomainDelete(ctx, client.GQL(), id)
+	_, err := CustomDomainDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting custom domain %q: %w", id, err)
 	}
@@ -43,7 +43,7 @@ func CreateServiceDomain(ctx context.Context, client *Client, envID, serviceID s
 		ServiceId:     serviceID,
 		TargetPort:    &port,
 	}
-	resp, err := ServiceDomainCreate(ctx, client.GQL(), input)
+	resp, err := ServiceDomainCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating service domain: %w", err)
 	}
@@ -53,7 +53,7 @@ func CreateServiceDomain(ctx context.Context, client *Client, envID, serviceID s
 // DeleteServiceDomain deletes a service domain by ID.
 func DeleteServiceDomain(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting service domain", "id", id)
-	_, err := ServiceDomainDelete(ctx, client.GQL(), id)
+	_, err := ServiceDomainDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting service domain %q: %w", id, err)
 	}

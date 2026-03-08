@@ -105,7 +105,7 @@ func RunStatus(ctx context.Context, globals *Globals, environmentID string, targ
 			} else {
 				d := deployments[0]
 				it.DeploymentID = d.ID
-				it.Status = strings.ToLower(string(d.Status))
+				it.Status = strings.ToLower(d.Status)
 				it.CreatedAt = d.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
 			}
 			populateSubResourceStatus(&it, live, svc.Name)
@@ -124,7 +124,7 @@ func RunStatus(ctx context.Context, globals *Globals, environmentID string, targ
 		status := "no deployments"
 		if len(deployments) > 0 {
 			d := deployments[0]
-			status = fmt.Sprintf("%s (deployed %s)", strings.ToLower(string(d.Status)), d.CreatedAt.Format("2006-01-02 15:04"))
+			status = fmt.Sprintf("%s (deployed %s)", strings.ToLower(d.Status), d.CreatedAt.Format("2006-01-02 15:04"))
 		}
 
 		// Build sub-resource summary.

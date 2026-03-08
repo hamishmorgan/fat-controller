@@ -18,7 +18,7 @@ func EnablePrivateNetwork(ctx context.Context, client *Client, envID, serviceID 
 		ServiceName:      "",
 		Tags:             []string{},
 	}
-	resp, err := PrivateNetworkEndpointCreateOrGet(ctx, client.GQL(), input)
+	resp, err := PrivateNetworkEndpointCreateOrGet(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("enabling private network for service %q: %w", serviceID, err)
 	}
@@ -28,7 +28,7 @@ func EnablePrivateNetwork(ctx context.Context, client *Client, envID, serviceID 
 // DisablePrivateNetworkEndpoint deletes a private network endpoint by ID.
 func DisablePrivateNetworkEndpoint(ctx context.Context, client *Client, id string) error {
 	slog.Debug("disabling private network endpoint", "id", id)
-	_, err := PrivateNetworkEndpointDelete(ctx, client.GQL(), id)
+	_, err := PrivateNetworkEndpointDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("disabling private network endpoint %q: %w", id, err)
 	}

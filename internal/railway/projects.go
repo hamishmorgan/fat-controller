@@ -14,7 +14,7 @@ type ProjectInfo struct {
 
 // ListProjects returns the name/ID pairs for all projects in a workspace.
 func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]ProjectInfo, error) {
-	resp, err := Projects(ctx, client.GQL(), &workspaceID)
+	resp, err := Projects(ctx, client.gql(), &workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func CreateProject(ctx context.Context, client *Client, name string) (string, er
 	input := ProjectCreateInput{
 		Name: &name,
 	}
-	resp, err := ProjectCreate(ctx, client.GQL(), input)
+	resp, err := ProjectCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating project %q: %w", name, err)
 	}
@@ -42,7 +42,7 @@ func CreateProject(ctx context.Context, client *Client, name string) (string, er
 // DeleteProject deletes a project by ID.
 func DeleteProject(ctx context.Context, client *Client, id string) error {
 	slog.Debug("deleting project", "id", id)
-	_, err := ProjectDelete(ctx, client.GQL(), id)
+	_, err := ProjectDelete(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("deleting project %q: %w", id, err)
 	}

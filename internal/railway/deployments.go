@@ -11,7 +11,7 @@ import (
 // Returns the deployment ID on success.
 func DeployService(ctx context.Context, client *Client, environmentID, serviceID string, commitSha *string) (string, error) {
 	slog.Debug("deploying service", "environment_id", environmentID, "service_id", serviceID, "commit_sha", commitSha)
-	resp, err := ServiceInstanceDeployV2(ctx, client.GQL(), environmentID, serviceID, commitSha)
+	resp, err := ServiceInstanceDeployV2(ctx, client.gql(), environmentID, serviceID, commitSha)
 	if err != nil {
 		return "", fmt.Errorf("deploying service %q: %w", serviceID, err)
 	}
@@ -22,7 +22,7 @@ func DeployService(ctx context.Context, client *Client, environmentID, serviceID
 // Returns the new deployment ID on success.
 func RedeployDeployment(ctx context.Context, client *Client, id string) (string, error) {
 	slog.Debug("redeploying deployment", "id", id)
-	resp, err := DeploymentRedeploy(ctx, client.GQL(), id, nil)
+	resp, err := DeploymentRedeploy(ctx, client.gql(), id, nil)
 	if err != nil {
 		return "", fmt.Errorf("redeploying deployment %q: %w", id, err)
 	}
@@ -32,7 +32,7 @@ func RedeployDeployment(ctx context.Context, client *Client, id string) (string,
 // RestartDeployment restarts a deployment.
 func RestartDeployment(ctx context.Context, client *Client, id string) error {
 	slog.Debug("restarting deployment", "id", id)
-	_, err := DeploymentRestart(ctx, client.GQL(), id)
+	_, err := DeploymentRestart(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("restarting deployment %q: %w", id, err)
 	}
@@ -42,7 +42,7 @@ func RestartDeployment(ctx context.Context, client *Client, id string) error {
 // CancelDeployment cancels a deployment.
 func CancelDeployment(ctx context.Context, client *Client, id string) error {
 	slog.Debug("cancelling deployment", "id", id)
-	_, err := DeploymentCancel(ctx, client.GQL(), id)
+	_, err := DeploymentCancel(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("cancelling deployment %q: %w", id, err)
 	}
@@ -52,7 +52,7 @@ func CancelDeployment(ctx context.Context, client *Client, id string) error {
 // RollbackDeployment rolls back to a deployment.
 func RollbackDeployment(ctx context.Context, client *Client, id string) error {
 	slog.Debug("rolling back deployment", "id", id)
-	_, err := DeploymentRollback(ctx, client.GQL(), id)
+	_, err := DeploymentRollback(ctx, client.gql(), id)
 	if err != nil {
 		return fmt.Errorf("rolling back deployment %q: %w", id, err)
 	}
@@ -62,7 +62,7 @@ func RollbackDeployment(ctx context.Context, client *Client, id string) error {
 // DeploymentInfo contains summary information about a deployment.
 type DeploymentInfo struct {
 	ID        string
-	Status    DeploymentStatus
+	Status    string
 	CreatedAt time.Time
 	StaticUrl *string
 }
@@ -75,7 +75,7 @@ func ListDeployments(ctx context.Context, client *Client, environmentID, service
 		EnvironmentId: &environmentID,
 		ServiceId:     &serviceID,
 	}
-	resp, err := Deployments(ctx, client.GQL(), input, &limit, after)
+	resp, err := Deployments(ctx, client.gql(), input, &limit, after)
 	if err != nil {
 		return nil, false, fmt.Errorf("listing deployments for service %q: %w", serviceID, err)
 	}
@@ -83,7 +83,7 @@ func ListDeployments(ctx context.Context, client *Client, environmentID, service
 	for i, edge := range resp.Deployments.Edges {
 		infos[i] = DeploymentInfo{
 			ID:        edge.Node.Id,
-			Status:    edge.Node.Status,
+			Status:    string(edge.Node.Status),
 			CreatedAt: edge.Node.CreatedAt,
 			StaticUrl: edge.Node.StaticUrl,
 		}

@@ -23,7 +23,7 @@ func TestRunStatus_JSON(t *testing.T) {
 		if serviceID == "svc-2" {
 			return nil, errors.New("list failed")
 		}
-		return []railway.DeploymentInfo{{ID: "dep-1", Status: railway.DeploymentStatusSuccess, CreatedAt: time.Date(2026, 3, 7, 12, 0, 0, 0, time.UTC)}}, nil
+		return []railway.DeploymentInfo{{ID: "dep-1", Status: "SUCCESS", CreatedAt: time.Date(2026, 3, 7, 12, 0, 0, 0, time.UTC)}}, nil
 	}
 
 	var buf bytes.Buffer

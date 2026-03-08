@@ -15,7 +15,7 @@ func CreateEgressGateway(ctx context.Context, client *Client, envID, serviceID, 
 		ServiceId:     serviceID,
 		Region:        &region,
 	}
-	resp, err := EgressGatewayAssociationCreate(ctx, client.GQL(), input)
+	resp, err := EgressGatewayAssociationCreate(ctx, client.gql(), input)
 	if err != nil {
 		return "", fmt.Errorf("creating egress gateway: %w", err)
 	}
@@ -32,7 +32,7 @@ func ClearEgressGateways(ctx context.Context, client *Client, envID, serviceID s
 		EnvironmentId: envID,
 		ServiceId:     serviceID,
 	}
-	_, err := EgressGatewayAssociationsClear(ctx, client.GQL(), input)
+	_, err := EgressGatewayAssociationsClear(ctx, client.gql(), input)
 	if err != nil {
 		return fmt.Errorf("clearing egress gateways for service %q: %w", serviceID, err)
 	}

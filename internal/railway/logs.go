@@ -18,7 +18,7 @@ type LogEntry struct {
 // limit defaults to 100 on the server side; max is 5000.
 func GetDeploymentLogs(ctx context.Context, client *Client, deploymentID string, limit *int, startDate, endDate *time.Time, filter *string) ([]LogEntry, error) {
 	slog.Debug("fetching deployment logs", "deployment_id", deploymentID, "limit", limit)
-	resp, err := DeploymentLogs(ctx, client.GQL(), deploymentID, limit, startDate, endDate, filter)
+	resp, err := DeploymentLogs(ctx, client.gql(), deploymentID, limit, startDate, endDate, filter)
 	if err != nil {
 		return nil, fmt.Errorf("fetching deployment logs for %q: %w", deploymentID, err)
 	}
@@ -33,7 +33,7 @@ func GetDeploymentLogs(ctx context.Context, client *Client, deploymentID string,
 // limit defaults to 100 on the server side; max is 5000.
 func GetBuildLogs(ctx context.Context, client *Client, deploymentID string, limit *int, startDate, endDate *time.Time, filter *string) ([]LogEntry, error) {
 	slog.Debug("fetching build logs", "deployment_id", deploymentID, "limit", limit)
-	resp, err := BuildLogs(ctx, client.GQL(), deploymentID, limit, startDate, endDate, filter)
+	resp, err := BuildLogs(ctx, client.gql(), deploymentID, limit, startDate, endDate, filter)
 	if err != nil {
 		return nil, fmt.Errorf("fetching build logs for %q: %w", deploymentID, err)
 	}
@@ -48,7 +48,7 @@ func GetBuildLogs(ctx context.Context, client *Client, deploymentID string, limi
 // Build logs are excluded unless a snapshot ID is explicitly provided in the filter.
 func GetEnvironmentLogs(ctx context.Context, client *Client, environmentID string, limit *int, filter *string) ([]LogEntry, error) {
 	slog.Debug("fetching environment logs", "environment_id", environmentID, "limit", limit)
-	resp, err := EnvironmentLogs(ctx, client.GQL(), environmentID, nil, nil, limit, nil, nil, filter)
+	resp, err := EnvironmentLogs(ctx, client.gql(), environmentID, nil, nil, limit, nil, nil, filter)
 	if err != nil {
 		return nil, fmt.Errorf("fetching environment logs for %q: %w", environmentID, err)
 	}

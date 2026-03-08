@@ -34,5 +34,4 @@ go.work
 *.local.*
 .config/mise/.env.local
 auth.json
-fat-controller
-fat-controller.secrets
+tmp

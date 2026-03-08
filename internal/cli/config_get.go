@@ -59,7 +59,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 
 	// Single key lookup: output just the raw value.
 	if parsed.Key != "" {
-		val, ok := lookupKey(*cfg, parsed)
+		val, ok := app.LookupKey(*cfg, parsed)
 		if !ok {
 			return fmt.Errorf("key %q not found in %s.%s", parsed.Key, parsed.Service, parsed.Section)
 		}
@@ -77,7 +77,7 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 
 	// Section-level lookup: filter config to just that section.
 	if parsed.Section != "" {
-		filtered := filterSection(*cfg, parsed)
+		filtered := app.FilterSection(*cfg, parsed)
 		cfg = &filtered
 	}
 
@@ -91,50 +91,4 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 	}
 	_, err = fmt.Fprintln(out, output)
 	return err
-}
-
-// lookupKey retrieves a single value from the config for a fully-qualified path.
-func lookupKey(cfg config.LiveConfig, p config.Path) (string, bool) {
-	switch p.Section {
-	case "variables":
-		if p.Service == "shared" {
-			val, found := cfg.Variables[p.Key]
-			return val, found
-		}
-		svc, ok := cfg.Services[p.Service]
-		if !ok {
-			return "", false
-		}
-		val, found := svc.Variables[p.Key]
-		return val, found
-	default:
-		return "", false
-	}
-}
-
-// filterSection returns a copy of cfg containing only the requested section.
-func filterSection(cfg config.LiveConfig, p config.Path) config.LiveConfig {
-	filtered := config.LiveConfig{
-		ProjectID:     cfg.ProjectID,
-		EnvironmentID: cfg.EnvironmentID,
-	}
-	switch p.Section {
-	case "variables":
-		if p.Service == "shared" {
-			filtered.Variables = cfg.Variables
-			return filtered
-		}
-		svc, ok := cfg.Services[p.Service]
-		if !ok {
-			return filtered
-		}
-		filtered.Services = map[string]*config.ServiceConfig{
-			p.Service: {
-				ID:        svc.ID,
-				Name:      svc.Name,
-				Variables: svc.Variables,
-			},
-		}
-	}
-	return filtered
 }

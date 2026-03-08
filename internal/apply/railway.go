@@ -19,6 +19,27 @@ type RailwayApplier struct {
 	serviceIDs map[string]string // cache: service name → service ID
 }
 
+// NewRailwayApplier constructs a RailwayApplier and pre-seeds the service ID
+// cache from live if non-nil, eliminating per-service ProjectServices lookups
+// during apply when the live config was already fetched.
+func NewRailwayApplier(client *railway.Client, projectID, environmentID string, live *config.LiveConfig) *RailwayApplier {
+	a := &RailwayApplier{
+		Client:        client,
+		ProjectID:     projectID,
+		EnvironmentID: environmentID,
+		serviceIDs:    make(map[string]string),
+	}
+	if live != nil {
+		for _, svc := range live.Services {
+			if svc.ID != "" && svc.Name != "" {
+				a.serviceIDs[svc.Name] = svc.ID
+			}
+		}
+		slog.Debug("pre-seeded service ID cache from live config", "count", len(a.serviceIDs))
+	}
+	return a
+}
+
 // resolveServiceID resolves a service name to an ID, caching the result.
 // Empty name = shared scope (returns "").
 func (r *RailwayApplier) resolveServiceID(ctx context.Context, name string) (string, error) {

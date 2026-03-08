@@ -235,6 +235,10 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleEgressGateways(w)
 	case "DeploymentTriggers":
 		m.handleDeploymentTriggers(w)
+	case "EnvironmentServiceInstances":
+		m.handleEnvironmentServiceInstances(w)
+	case "AllDeploymentTriggers":
+		m.handleAllDeploymentTriggers(w)
 	case "PrivateNetworkEndpoint":
 		m.handlePrivateNetworkEndpoint(w)
 	case "Deployments":
@@ -485,6 +489,62 @@ func (m *mockGraphQLServer) handleDeploymentTriggers(w http.ResponseWriter) {
 		"data": map[string]any{
 			"deploymentTriggers": map[string]any{
 				"edges": []any{},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleEnvironmentServiceInstances(w http.ResponseWriter) {
+	// Return one service instance node per fixture service with minimal settings.
+	makeInstance := func(serviceID string) map[string]any {
+		return map[string]any{
+			"serviceId":               serviceID,
+			"builder":                 "NIXPACKS",
+			"buildCommand":            nil,
+			"startCommand":            nil,
+			"dockerfilePath":          nil,
+			"rootDirectory":           nil,
+			"healthcheckPath":         nil,
+			"healthcheckTimeout":      nil,
+			"cronSchedule":            nil,
+			"numReplicas":             nil,
+			"region":                  nil,
+			"restartPolicyType":       "ON_FAILURE",
+			"restartPolicyMaxRetries": 0,
+			"drainingSeconds":         nil,
+			"overlapSeconds":          nil,
+			"sleepApplication":        nil,
+			"ipv6EgressEnabled":       nil,
+			"watchPatterns":           []any{},
+			"preDeployCommand":        nil,
+			"source":                  nil,
+			"domains": map[string]any{
+				"customDomains":  []any{},
+				"serviceDomains": []any{},
+			},
+		}
+	}
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"environment": map[string]any{
+				"serviceInstances": map[string]any{
+					"edges": []any{
+						map[string]any{"node": makeInstance(fixtureServiceAPIID)},
+						map[string]any{"node": makeInstance(fixtureServiceWorkID)},
+					},
+				},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleAllDeploymentTriggers(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"environment": map[string]any{
+				"deploymentTriggers": map[string]any{
+					"edges": []any{},
+				},
 			},
 		},
 	})

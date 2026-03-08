@@ -9,6 +9,87 @@ import (
 	"github.com/Khan/genqlient/graphql"
 )
 
+// AllDeploymentTriggersEnvironment includes the requested fields of the GraphQL type Environment.
+type AllDeploymentTriggersEnvironment struct {
+	DeploymentTriggers AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection `json:"deploymentTriggers"`
+}
+
+// GetDeploymentTriggers returns AllDeploymentTriggersEnvironment.DeploymentTriggers, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironment) GetDeploymentTriggers() AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection {
+	return v.DeploymentTriggers
+}
+
+// AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnection.
+type AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection struct {
+	Edges []AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge `json:"edges"`
+}
+
+// GetEdges returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection.Edges, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnection) GetEdges() []AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge {
+	return v.Edges
+}
+
+// AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge includes the requested fields of the GraphQL type EnvironmentDeploymentTriggersConnectionEdge.
+type AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge struct {
+	Node AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger `json:"node"`
+}
+
+// GetNode returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge.Node, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdge) GetNode() AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger {
+	return v.Node
+}
+
+// AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger includes the requested fields of the GraphQL type DeploymentTrigger.
+type AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger struct {
+	Id          string  `json:"id"`
+	ServiceId   *string `json:"serviceId"`
+	Branch      string  `json:"branch"`
+	Repository  string  `json:"repository"`
+	Provider    string  `json:"provider"`
+	CheckSuites bool    `json:"checkSuites"`
+}
+
+// GetId returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Id, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetId() string {
+	return v.Id
+}
+
+// GetServiceId returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.ServiceId, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetServiceId() *string {
+	return v.ServiceId
+}
+
+// GetBranch returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Branch, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetBranch() string {
+	return v.Branch
+}
+
+// GetRepository returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Repository, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetRepository() string {
+	return v.Repository
+}
+
+// GetProvider returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.Provider, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetProvider() string {
+	return v.Provider
+}
+
+// GetCheckSuites returns AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger.CheckSuites, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersEnvironmentDeploymentTriggersEnvironmentDeploymentTriggersConnectionEdgesEnvironmentDeploymentTriggersConnectionEdgeNodeDeploymentTrigger) GetCheckSuites() bool {
+	return v.CheckSuites
+}
+
+// AllDeploymentTriggersResponse is returned by AllDeploymentTriggers on success.
+type AllDeploymentTriggersResponse struct {
+	// Find a single environment
+	Environment AllDeploymentTriggersEnvironment `json:"environment"`
+}
+
+// GetEnvironment returns AllDeploymentTriggersResponse.Environment, and is useful for accessing the field via an interface.
+func (v *AllDeploymentTriggersResponse) GetEnvironment() AllDeploymentTriggersEnvironment {
+	return v.Environment
+}
+
 // ApiTokenApiTokenApiTokenContext includes the requested fields of the GraphQL type ApiTokenContext.
 // The GraphQL type's documentation follows.
 //
@@ -857,6 +938,259 @@ type EnvironmentLogsResponse struct {
 // GetEnvironmentLogs returns EnvironmentLogsResponse.EnvironmentLogs, and is useful for accessing the field via an interface.
 func (v *EnvironmentLogsResponse) GetEnvironmentLogs() []EnvironmentLogsEnvironmentLogsLog {
 	return v.EnvironmentLogs
+}
+
+// EnvironmentServiceInstancesEnvironment includes the requested fields of the GraphQL type Environment.
+type EnvironmentServiceInstancesEnvironment struct {
+	ServiceInstances EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection `json:"serviceInstances"`
+}
+
+// GetServiceInstances returns EnvironmentServiceInstancesEnvironment.ServiceInstances, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironment) GetServiceInstances() EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection {
+	return v.ServiceInstances
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnection.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection struct {
+	Edges []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge `json:"edges"`
+}
+
+// GetEdges returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection.Edges, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnection) GetEdges() []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge {
+	return v.Edges
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge includes the requested fields of the GraphQL type EnvironmentServiceInstancesConnectionEdge.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge struct {
+	Node EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance `json:"node"`
+}
+
+// GetNode returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge.Node, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdge) GetNode() EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance {
+	return v.Node
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance includes the requested fields of the GraphQL type ServiceInstance.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance struct {
+	ServiceId               string                                                                                                                                                                           `json:"serviceId"`
+	Builder                 Builder                                                                                                                                                                          `json:"builder"`
+	BuildCommand            *string                                                                                                                                                                          `json:"buildCommand"`
+	StartCommand            *string                                                                                                                                                                          `json:"startCommand"`
+	DockerfilePath          *string                                                                                                                                                                          `json:"dockerfilePath"`
+	RootDirectory           *string                                                                                                                                                                          `json:"rootDirectory"`
+	HealthcheckPath         *string                                                                                                                                                                          `json:"healthcheckPath"`
+	HealthcheckTimeout      *int                                                                                                                                                                             `json:"healthcheckTimeout"`
+	CronSchedule            *string                                                                                                                                                                          `json:"cronSchedule"`
+	NumReplicas             *int                                                                                                                                                                             `json:"numReplicas"`
+	Region                  *string                                                                                                                                                                          `json:"region"`
+	RestartPolicyType       RestartPolicyType                                                                                                                                                                `json:"restartPolicyType"`
+	RestartPolicyMaxRetries int                                                                                                                                                                              `json:"restartPolicyMaxRetries"`
+	DrainingSeconds         *int                                                                                                                                                                             `json:"drainingSeconds"`
+	OverlapSeconds          *int                                                                                                                                                                             `json:"overlapSeconds"`
+	SleepApplication        *bool                                                                                                                                                                            `json:"sleepApplication"`
+	Ipv6EgressEnabled       *bool                                                                                                                                                                            `json:"ipv6EgressEnabled"`
+	WatchPatterns           []string                                                                                                                                                                         `json:"watchPatterns"`
+	PreDeployCommand        *map[string]interface{}                                                                                                                                                          `json:"preDeployCommand"`
+	Source                  *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource `json:"source"`
+	Domains                 EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains    `json:"domains"`
+}
+
+// GetServiceId returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.ServiceId, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetServiceId() string {
+	return v.ServiceId
+}
+
+// GetBuilder returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Builder, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuilder() Builder {
+	return v.Builder
+}
+
+// GetBuildCommand returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.BuildCommand, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetBuildCommand() *string {
+	return v.BuildCommand
+}
+
+// GetStartCommand returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.StartCommand, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetStartCommand() *string {
+	return v.StartCommand
+}
+
+// GetDockerfilePath returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DockerfilePath, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDockerfilePath() *string {
+	return v.DockerfilePath
+}
+
+// GetRootDirectory returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RootDirectory, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRootDirectory() *string {
+	return v.RootDirectory
+}
+
+// GetHealthcheckPath returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckPath, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckPath() *string {
+	return v.HealthcheckPath
+}
+
+// GetHealthcheckTimeout returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.HealthcheckTimeout, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetHealthcheckTimeout() *int {
+	return v.HealthcheckTimeout
+}
+
+// GetCronSchedule returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.CronSchedule, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetCronSchedule() *string {
+	return v.CronSchedule
+}
+
+// GetNumReplicas returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.NumReplicas, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetNumReplicas() *int {
+	return v.NumReplicas
+}
+
+// GetRegion returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Region, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRegion() *string {
+	return v.Region
+}
+
+// GetRestartPolicyType returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyType, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyType() RestartPolicyType {
+	return v.RestartPolicyType
+}
+
+// GetRestartPolicyMaxRetries returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.RestartPolicyMaxRetries, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetRestartPolicyMaxRetries() int {
+	return v.RestartPolicyMaxRetries
+}
+
+// GetDrainingSeconds returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.DrainingSeconds, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDrainingSeconds() *int {
+	return v.DrainingSeconds
+}
+
+// GetOverlapSeconds returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.OverlapSeconds, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetOverlapSeconds() *int {
+	return v.OverlapSeconds
+}
+
+// GetSleepApplication returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.SleepApplication, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSleepApplication() *bool {
+	return v.SleepApplication
+}
+
+// GetIpv6EgressEnabled returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Ipv6EgressEnabled, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetIpv6EgressEnabled() *bool {
+	return v.Ipv6EgressEnabled
+}
+
+// GetWatchPatterns returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.WatchPatterns, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetWatchPatterns() []string {
+	return v.WatchPatterns
+}
+
+// GetPreDeployCommand returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.PreDeployCommand, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetPreDeployCommand() *map[string]interface{} {
+	return v.PreDeployCommand
+}
+
+// GetSource returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Source, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetSource() *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource {
+	return v.Source
+}
+
+// GetDomains returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance.Domains, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance) GetDomains() EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains {
+	return v.Domains
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains includes the requested fields of the GraphQL type AllDomains.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains struct {
+	CustomDomains  []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain   `json:"customDomains"`
+	ServiceDomains []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain `json:"serviceDomains"`
+}
+
+// GetCustomDomains returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains.CustomDomains, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains) GetCustomDomains() []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain {
+	return v.CustomDomains
+}
+
+// GetServiceDomains returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains.ServiceDomains, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomains) GetServiceDomains() []EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain {
+	return v.ServiceDomains
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain includes the requested fields of the GraphQL type CustomDomain.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain struct {
+	Id         string `json:"id"`
+	Domain     string `json:"domain"`
+	TargetPort *int   `json:"targetPort"`
+}
+
+// GetId returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Id, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetId() string {
+	return v.Id
+}
+
+// GetDomain returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.Domain, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsCustomDomainsCustomDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain includes the requested fields of the GraphQL type ServiceDomain.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain struct {
+	Id         string  `json:"id"`
+	Domain     string  `json:"domain"`
+	TargetPort *int    `json:"targetPort"`
+	Suffix     *string `json:"suffix"`
+}
+
+// GetId returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Id, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetId() string {
+	return v.Id
+}
+
+// GetDomain returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Domain, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetDomain() string {
+	return v.Domain
+}
+
+// GetTargetPort returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.TargetPort, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetTargetPort() *int {
+	return v.TargetPort
+}
+
+// GetSuffix returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain.Suffix, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceDomainsAllDomainsServiceDomainsServiceDomain) GetSuffix() *string {
+	return v.Suffix
+}
+
+// EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource includes the requested fields of the GraphQL type ServiceSource.
+type EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource struct {
+	Image *string `json:"image"`
+	Repo  *string `json:"repo"`
+}
+
+// GetImage returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource.Image, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource) GetImage() *string {
+	return v.Image
+}
+
+// GetRepo returns EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource.Repo, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstanceSourceServiceSource) GetRepo() *string {
+	return v.Repo
+}
+
+// EnvironmentServiceInstancesResponse is returned by EnvironmentServiceInstances on success.
+type EnvironmentServiceInstancesResponse struct {
+	// Find a single environment
+	Environment EnvironmentServiceInstancesEnvironment `json:"environment"`
+}
+
+// GetEnvironment returns EnvironmentServiceInstancesResponse.Environment, and is useful for accessing the field via an interface.
+func (v *EnvironmentServiceInstancesResponse) GetEnvironment() EnvironmentServiceInstancesEnvironment {
+	return v.Environment
 }
 
 // EnvironmentVolumesEnvironment includes the requested fields of the GraphQL type Environment.
@@ -2428,6 +2762,14 @@ var AllVolumeState = []VolumeState{
 	VolumeStateUpdating,
 }
 
+// __AllDeploymentTriggersInput is used internally by genqlient
+type __AllDeploymentTriggersInput struct {
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetEnvironmentId returns __AllDeploymentTriggersInput.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *__AllDeploymentTriggersInput) GetEnvironmentId() string { return v.EnvironmentId }
+
 // __BucketCreateInput is used internally by genqlient
 type __BucketCreateInput struct {
 	Input BucketCreateInput `json:"input"`
@@ -2701,6 +3043,14 @@ func (v *__EnvironmentLogsInput) GetBeforeLimit() *int { return v.BeforeLimit }
 
 // GetFilter returns __EnvironmentLogsInput.Filter, and is useful for accessing the field via an interface.
 func (v *__EnvironmentLogsInput) GetFilter() *string { return v.Filter }
+
+// __EnvironmentServiceInstancesInput is used internally by genqlient
+type __EnvironmentServiceInstancesInput struct {
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetEnvironmentId returns __EnvironmentServiceInstancesInput.EnvironmentId, and is useful for accessing the field via an interface.
+func (v *__EnvironmentServiceInstancesInput) GetEnvironmentId() string { return v.EnvironmentId }
 
 // __EnvironmentVolumesInput is used internally by genqlient
 type __EnvironmentVolumesInput struct {
@@ -3037,6 +3387,53 @@ func (v *__VolumeInstanceUpdateInput) GetInput() VolumeInstanceUpdateInput { ret
 
 // GetVolumeId returns __VolumeInstanceUpdateInput.VolumeId, and is useful for accessing the field via an interface.
 func (v *__VolumeInstanceUpdateInput) GetVolumeId() string { return v.VolumeId }
+
+// The query executed by AllDeploymentTriggers.
+const AllDeploymentTriggers_Operation = `
+query AllDeploymentTriggers ($environmentId: String!) {
+	environment(id: $environmentId) {
+		deploymentTriggers(first: 1000) {
+			edges {
+				node {
+					id
+					serviceId
+					branch
+					repository
+					provider
+					checkSuites
+				}
+			}
+		}
+	}
+}
+`
+
+// Batched environment-wide deployment triggers query (replaces N per-service DeploymentTriggers queries).
+// Returns all triggers for the environment; group by serviceId client-side.
+func AllDeploymentTriggers(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	environmentId string,
+) (data_ *AllDeploymentTriggersResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "AllDeploymentTriggers",
+		Query:  AllDeploymentTriggers_Operation,
+		Variables: &__AllDeploymentTriggersInput{
+			EnvironmentId: environmentId,
+		},
+	}
+
+	data_ = &AllDeploymentTriggersResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
 
 // The query executed by ApiToken.
 const ApiToken_Operation = `
@@ -3887,6 +4284,83 @@ func EnvironmentLogs(
 	}
 
 	data_ = &EnvironmentLogsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by EnvironmentServiceInstances.
+const EnvironmentServiceInstances_Operation = `
+query EnvironmentServiceInstances ($environmentId: String!) {
+	environment(id: $environmentId) {
+		serviceInstances(first: 200) {
+			edges {
+				node {
+					serviceId
+					builder
+					buildCommand
+					startCommand
+					dockerfilePath
+					rootDirectory
+					healthcheckPath
+					healthcheckTimeout
+					cronSchedule
+					numReplicas
+					region
+					restartPolicyType
+					restartPolicyMaxRetries
+					drainingSeconds
+					overlapSeconds
+					sleepApplication
+					ipv6EgressEnabled
+					watchPatterns
+					preDeployCommand
+					source {
+						image
+						repo
+					}
+					domains {
+						customDomains {
+							id
+							domain
+							targetPort
+						}
+						serviceDomains {
+							id
+							domain
+							targetPort
+							suffix
+						}
+					}
+				}
+			}
+		}
+	}
+}
+`
+
+// Batched environment-wide service instance query (replaces N per-service ServiceInstance queries).
+// Returns all service instances for the environment in one round-trip; group by serviceId client-side.
+func EnvironmentServiceInstances(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	environmentId string,
+) (data_ *EnvironmentServiceInstancesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "EnvironmentServiceInstances",
+		Query:  EnvironmentServiceInstances_Operation,
+		Variables: &__EnvironmentServiceInstancesInput{
+			EnvironmentId: environmentId,
+		},
+	}
+
+	data_ = &EnvironmentServiceInstancesResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

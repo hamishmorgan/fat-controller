@@ -45,11 +45,7 @@ func (c *ApplyCmd) Run(globals *Globals) error {
 	// Emit validation warnings to stderr.
 	emitWarnings(pair, globals.Quiet, wd)
 
-	applier := &apply.RailwayApplier{
-		Client:        client,
-		ProjectID:     pair.ProjectID,
-		EnvironmentID: pair.EnvironmentID,
-	}
+	applier := apply.NewRailwayApplier(client, pair.ProjectID, pair.EnvironmentID, pair.Live)
 
 	return runConfigApplyWithPairAndOpts(ctx, globals, pair, c.DryRun, c.Yes, c.ShowSecrets, c.SkipDeploys, c.FailFast, diff.Options{
 		Create: c.Create,

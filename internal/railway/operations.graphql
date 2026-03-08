@@ -441,6 +441,74 @@ query EnvironmentLogs(
   }
 }
 
+# Batched environment-wide service instance query (replaces N per-service ServiceInstance queries).
+# Returns all service instances for the environment in one round-trip; group by serviceId client-side.
+query EnvironmentServiceInstances($environmentId: String!) {
+  environment(id: $environmentId) {
+    serviceInstances(first: 200) {
+      edges {
+        node {
+          serviceId
+          builder
+          buildCommand
+          startCommand
+          dockerfilePath
+          rootDirectory
+          healthcheckPath
+          healthcheckTimeout
+          cronSchedule
+          numReplicas
+          region
+          restartPolicyType
+          restartPolicyMaxRetries
+          drainingSeconds
+          overlapSeconds
+          sleepApplication
+          ipv6EgressEnabled
+          watchPatterns
+          preDeployCommand
+          source {
+            image
+            repo
+          }
+          domains {
+            customDomains {
+              id
+              domain
+              targetPort
+            }
+            serviceDomains {
+              id
+              domain
+              targetPort
+              suffix
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Batched environment-wide deployment triggers query (replaces N per-service DeploymentTriggers queries).
+# Returns all triggers for the environment; group by serviceId client-side.
+query AllDeploymentTriggers($environmentId: String!) {
+  environment(id: $environmentId) {
+    deploymentTriggers(first: 1000) {
+      edges {
+        node {
+          id
+          serviceId
+          branch
+          repository
+          provider
+          checkSuites
+        }
+      }
+    }
+  }
+}
+
 # Sub-resource queries for live state
 query TCPProxies($environmentId: String!, $serviceId: String!) {
   tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {

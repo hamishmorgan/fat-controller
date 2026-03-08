@@ -11,6 +11,10 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
+// serviceInstanceNode is a type alias to shorten references to the generated
+// batched service-instance node type.
+type serviceInstanceNode = EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
+
 // FetchLiveConfig loads shared + per-service variables and settings.
 // serviceFilter limits which services are fetched — empty means all.
 // Per-service queries run concurrently via errgroup.
@@ -60,9 +64,11 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 		return cfg, nil
 	}
 
-	// Pre-fetch environment-wide data (volumes + private networks) concurrently.
+	// Pre-fetch environment-wide data concurrently (volumes, networks, service instances, triggers).
 	var volumesByService map[string][]config.LiveVolume
 	var networks []PrivateNetworksPrivateNetworksPrivateNetwork
+	var instancesByService map[string]*serviceInstanceNode
+	var triggersByService map[string][]config.LiveTrigger
 	{
 		g, gCtx := errgroup.WithContext(ctx)
 		g.Go(func() error {
@@ -73,7 +79,15 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			networks = fetchPrivateNetworks(gCtx, client, environmentID)
 			return nil
 		})
-		_ = g.Wait() // both are non-fatal internally
+		g.Go(func() error {
+			instancesByService = fetchAllServiceInstances(gCtx, client, environmentID)
+			return nil
+		})
+		g.Go(func() error {
+			triggersByService = fetchAllDeploymentTriggers(gCtx, client, environmentID)
+			return nil
+		})
+		_ = g.Wait() // all are non-fatal internally
 	}
 
 	// Fetch per-service details concurrently.
@@ -86,7 +100,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	g, gCtx := errgroup.WithContext(ctx)
 	for i, ref := range toFetch {
 		g.Go(func() error {
-			svc, err := fetchServiceState(gCtx, client, projectID, environmentID, ref.id, ref.name, ref.icon, volumesByService, networks)
+			svc, err := fetchServiceState(gCtx, client, projectID, environmentID, ref.id, ref.name, ref.icon, volumesByService, networks, instancesByService, triggersByService)
 			if err != nil {
 				return err
 			}
@@ -105,7 +119,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 }
 
 // fetchServiceState fetches all state for a single service. Called concurrently.
-func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork) (*config.ServiceConfig, error) {
+func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork, instancesByService map[string]*serviceInstanceNode, triggersByService map[string][]config.LiveTrigger) (*config.ServiceConfig, error) {
 	svc := &config.ServiceConfig{
 		ID:        serviceID,
 		Name:      serviceName,
@@ -113,72 +127,109 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 	}
 	svc.Icon = icon
 
-	// Variables and ServiceInstance are required — fetch concurrently.
-	var vars *VariablesResponse
-	var instance *ServiceInstanceResponse
-	g, gCtx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		var err error
-		vars, err = Variables(gCtx, client.gql(), projectID, environmentID, &serviceID)
-		return err
-	})
-	g.Go(func() error {
-		var err error
-		instance, err = ServiceInstance(gCtx, client.gql(), environmentID, serviceID)
-		if err != nil {
-			return fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
-		}
-		return nil
-	})
-	if err := g.Wait(); err != nil {
+	// Variables are required — fetch now.
+	vars, err := Variables(ctx, client.gql(), projectID, environmentID, &serviceID)
+	if err != nil {
 		return nil, err
 	}
-
 	for k, v := range vars.Variables {
 		svc.Variables[k] = fmt.Sprint(v)
 	}
 
-	si := instance.ServiceInstance
-	svc.Deploy = config.Deploy{
-		Builder:                 string(si.Builder),
-		BuildCommand:            si.BuildCommand,
-		DockerfilePath:          si.DockerfilePath,
-		RootDirectory:           si.RootDirectory,
-		WatchPatterns:           si.WatchPatterns,
-		PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
-		StartCommand:            si.StartCommand,
-		CronSchedule:            si.CronSchedule,
-		HealthcheckPath:         si.HealthcheckPath,
-		HealthcheckTimeout:      si.HealthcheckTimeout,
-		RestartPolicy:           string(si.RestartPolicyType),
-		RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
-		DrainingSeconds:         si.DrainingSeconds,
-		OverlapSeconds:          si.OverlapSeconds,
-		SleepApplication:        si.SleepApplication,
-		NumReplicas:             si.NumReplicas,
-		Region:                  si.Region,
-		IPv6Egress:              si.Ipv6EgressEnabled,
-	}
-	if si.Source != nil {
-		svc.Deploy.Repo = si.Source.Repo
-		svc.Deploy.Image = si.Source.Image
+	// Apply pre-fetched service instance settings.
+	if si, ok := instancesByService[serviceID]; ok {
+		svc.Deploy = config.Deploy{
+			Builder:                 string(si.Builder),
+			BuildCommand:            si.BuildCommand,
+			DockerfilePath:          si.DockerfilePath,
+			RootDirectory:           si.RootDirectory,
+			WatchPatterns:           si.WatchPatterns,
+			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
+			StartCommand:            si.StartCommand,
+			CronSchedule:            si.CronSchedule,
+			HealthcheckPath:         si.HealthcheckPath,
+			HealthcheckTimeout:      si.HealthcheckTimeout,
+			RestartPolicy:           string(si.RestartPolicyType),
+			RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
+			DrainingSeconds:         si.DrainingSeconds,
+			OverlapSeconds:          si.OverlapSeconds,
+			SleepApplication:        si.SleepApplication,
+			NumReplicas:             si.NumReplicas,
+			Region:                  si.Region,
+			IPv6Egress:              si.Ipv6EgressEnabled,
+		}
+		if si.Source != nil {
+			svc.Deploy.Repo = si.Source.Repo
+			svc.Deploy.Image = si.Source.Image
+		}
+
+		// Map domains into LiveDomain slice.
+		for _, cd := range si.Domains.CustomDomains {
+			svc.Domains = append(svc.Domains, config.LiveDomain{
+				ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
+			})
+		}
+		for _, sd := range si.Domains.ServiceDomains {
+			suffix := ""
+			if sd.Suffix != nil {
+				suffix = *sd.Suffix
+			}
+			svc.Domains = append(svc.Domains, config.LiveDomain{
+				ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
+				IsService: true, Suffix: suffix,
+			})
+		}
+	} else {
+		slog.Debug("no pre-fetched service instance, falling back to per-service query", "service", serviceName)
+		instance, err := ServiceInstance(ctx, client.gql(), environmentID, serviceID)
+		if err != nil {
+			return nil, fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
+		}
+		si := instance.ServiceInstance
+		svc.Deploy = config.Deploy{
+			Builder:                 string(si.Builder),
+			BuildCommand:            si.BuildCommand,
+			DockerfilePath:          si.DockerfilePath,
+			RootDirectory:           si.RootDirectory,
+			WatchPatterns:           si.WatchPatterns,
+			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
+			StartCommand:            si.StartCommand,
+			CronSchedule:            si.CronSchedule,
+			HealthcheckPath:         si.HealthcheckPath,
+			HealthcheckTimeout:      si.HealthcheckTimeout,
+			RestartPolicy:           string(si.RestartPolicyType),
+			RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
+			DrainingSeconds:         si.DrainingSeconds,
+			OverlapSeconds:          si.OverlapSeconds,
+			SleepApplication:        si.SleepApplication,
+			NumReplicas:             si.NumReplicas,
+			Region:                  si.Region,
+			IPv6Egress:              si.Ipv6EgressEnabled,
+		}
+		if si.Source != nil {
+			svc.Deploy.Repo = si.Source.Repo
+			svc.Deploy.Image = si.Source.Image
+		}
+		for _, cd := range si.Domains.CustomDomains {
+			svc.Domains = append(svc.Domains, config.LiveDomain{
+				ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
+			})
+		}
+		for _, sd := range si.Domains.ServiceDomains {
+			suffix := ""
+			if sd.Suffix != nil {
+				suffix = *sd.Suffix
+			}
+			svc.Domains = append(svc.Domains, config.LiveDomain{
+				ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
+				IsService: true, Suffix: suffix,
+			})
+		}
 	}
 
-	// Map domains into LiveDomain slice.
-	for _, cd := range si.Domains.CustomDomains {
-		svc.Domains = append(svc.Domains, config.LiveDomain{
-			ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
-		})
-	}
-	for _, sd := range si.Domains.ServiceDomains {
-		suffix := ""
-		if sd.Suffix != nil {
-			suffix = *sd.Suffix
-		}
-		svc.Domains = append(svc.Domains, config.LiveDomain{
-			ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
-			IsService: true, Suffix: suffix,
-		})
+	// Apply pre-fetched triggers.
+	if triggers, ok := triggersByService[serviceID]; ok {
+		svc.Triggers = triggers
 	}
 
 	// Non-fatal sub-resource queries — run concurrently.
@@ -212,10 +263,6 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 		return nil
 	})
 	subG.Go(func() error {
-		fetchTriggers(subCtx, client, environmentID, projectID, serviceID, svc)
-		return nil
-	})
-	subG.Go(func() error {
 		fetchNetworkEndpoint(subCtx, client, environmentID, serviceID, networks, svc)
 		return nil
 	})
@@ -226,6 +273,48 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 
 	slog.Debug("fetched service state", "service", serviceName, "variables", len(svc.Variables))
 	return svc, nil
+}
+
+// fetchAllServiceInstances fetches all service instances for an environment in
+// a single query and returns a map keyed by serviceId. Non-fatal: returns empty map on error.
+func fetchAllServiceInstances(ctx context.Context, client *Client, environmentID string) map[string]*serviceInstanceNode {
+	result := make(map[string]*serviceInstanceNode)
+	resp, err := EnvironmentServiceInstances(ctx, client.gql(), environmentID)
+	if err != nil {
+		slog.Debug("could not fetch environment service instances (will fall back to per-service)", "error", err)
+		return result
+	}
+	for i := range resp.Environment.ServiceInstances.Edges {
+		node := &resp.Environment.ServiceInstances.Edges[i].Node
+		result[node.ServiceId] = node
+	}
+	slog.Debug("fetched environment service instances", "count", len(result))
+	return result
+}
+
+// fetchAllDeploymentTriggers fetches all deployment triggers for an environment
+// in a single query and returns a map keyed by serviceId. Non-fatal: returns empty map on error.
+func fetchAllDeploymentTriggers(ctx context.Context, client *Client, environmentID string) map[string][]config.LiveTrigger {
+	result := make(map[string][]config.LiveTrigger)
+	resp, err := AllDeploymentTriggers(ctx, client.gql(), environmentID)
+	if err != nil {
+		slog.Debug("could not fetch environment deployment triggers (will fall back to per-service)", "error", err)
+		return result
+	}
+	for _, edge := range resp.Environment.DeploymentTriggers.Edges {
+		t := edge.Node
+		if t.ServiceId == nil {
+			continue
+		}
+		result[*t.ServiceId] = append(result[*t.ServiceId], config.LiveTrigger{
+			ID:         t.Id,
+			Branch:     t.Branch,
+			Repository: t.Repository,
+			Provider:   t.Provider,
+		})
+	}
+	slog.Debug("fetched environment deployment triggers", "count", len(result))
+	return result
 }
 
 // fetchVolumesByService fetches all volume instances for the environment and
@@ -295,24 +384,6 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 		svc.Egress = append(svc.Egress, config.LiveEgressGateway{
 			Region: g.Region,
 			IPv4:   g.Ipv4,
-		})
-	}
-}
-
-// fetchTriggers populates deployment triggers on the service config. Non-fatal.
-func fetchTriggers(ctx context.Context, client *Client, environmentID, projectID, serviceID string, svc *config.ServiceConfig) {
-	resp, err := DeploymentTriggers(ctx, client.gql(), environmentID, projectID, serviceID)
-	if err != nil {
-		slog.Debug("could not fetch triggers", "service", svc.Name, "error", err)
-		return
-	}
-	for _, edge := range resp.DeploymentTriggers.Edges {
-		t := edge.Node
-		svc.Triggers = append(svc.Triggers, config.LiveTrigger{
-			ID:         t.Id,
-			Branch:     t.Branch,
-			Repository: t.Repository,
-			Provider:   t.Provider,
 		})
 	}
 }

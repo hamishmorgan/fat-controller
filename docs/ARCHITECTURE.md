@@ -26,6 +26,32 @@ fat-controller.
 
 ---
 
+## Package layout
+
+```text
+internal/
+  app/        — application orchestration (load, resolve, scope, merge, target resolution)
+  apply/      — mutation execution (Applier interface + Railway adapter)
+  auth/       — token management, OAuth flow
+  cli/        — CLI wiring (Kong commands, output formatting, prompts)
+  config/     — config schema, parsing, merge, interpolation, validation
+  diff/       — change computation
+  logger/     — structured logging setup
+  platform/   — OS-specific paths
+  prompt/     — interactive UI (pickers, confirmations)
+  railway/    — Railway GraphQL API adapter
+  version/    — build version info
+```
+
+Dependency rules:
+
+- `app` depends on `config` and `diff`. Does not import `cli`, `prompt`, `railway`, `auth`, or `apply`.
+- `cli` depends on everything (it's the outermost layer).
+- `railway` depends on `config` and `auth`. Does not import `cli` or `prompt`.
+- `apply` depends on `config` and `diff`. Does not import `cli`, `railway`, or `prompt`. Railway coupling is via the `Applier` interface.
+
+---
+
 ## Railway object hierarchy
 
 ```text

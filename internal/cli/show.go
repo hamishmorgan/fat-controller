@@ -9,7 +9,6 @@ type ShowCmd struct {
 	ServiceFlags `kong:"embed"`
 	ShowSecrets  bool   `help:"Show secret values instead of masking." name:"show-secrets" env:"FAT_CONTROLLER_SHOW_SECRETS"`
 	Full         bool   `help:"Include IDs and read-only fields."`
-	Raw          bool   `help:"Output raw value (no formatting)."`
 	Path         string `arg:"" optional:"" help:"Dot-path to show (e.g. api, api.variables.PORT, workspace, project)."`
 }
 
@@ -22,10 +21,5 @@ func (c *ShowCmd) Run(globals *Globals) error {
 		return err
 	}
 	fetcher := &defaultConfigFetcher{client: client}
-	if c.Raw {
-		copy := *globals
-		copy.Output = "raw"
-		globals = &copy
-	}
 	return RunConfigGet(ctx, globals, c.Workspace, c.Project, c.Environment, c.Path, c.Full, c.Service, c.ShowSecrets, fetcher, os.Stdout)
 }

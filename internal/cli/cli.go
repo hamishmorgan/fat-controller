@@ -18,6 +18,9 @@ import (
 // or directly on command structs — not here.
 type Globals struct {
 	Output  string `help:"Output format: text, json, toml, raw." enum:"text,json,toml,raw" default:"text" short:"o" env:"FAT_CONTROLLER_OUTPUT_FORMAT"`
+	JSON    bool   `help:"Output as JSON (shorthand for --output=json)." name:"json"`
+	TOML    bool   `help:"Output as TOML (shorthand for --output=toml)." name:"toml"`
+	Raw     bool   `help:"Output bare value, no formatting (shorthand for --output=raw)." name:"raw"`
 	Color   string `help:"Color mode: auto, always, never." enum:"auto,always,never" default:"auto" env:"FAT_CONTROLLER_OUTPUT_COLOR"`
 	Verbose int    `help:"Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace)." short:"v" type:"counter"`
 	Quiet   int    `help:"Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only)." short:"q" type:"counter"`
@@ -27,6 +30,19 @@ type Globals struct {
 	// signal.NotifyContext so that SIGINT/SIGTERM cancels in-flight work.
 	// Commands use this as the parent for TimeoutContext.
 	BaseCtx context.Context `kong:"-"`
+}
+
+// ResolveOutputFormat applies --json/--toml/--raw shorthand flags to the
+// Output field. Shorthands take precedence over --output when set.
+func (g *Globals) ResolveOutputFormat() {
+	switch {
+	case g.JSON:
+		g.Output = "json"
+	case g.TOML:
+		g.Output = "toml"
+	case g.Raw:
+		g.Output = "raw"
+	}
 }
 
 // Resolution flag hierarchy: each level embeds its parent so that a command

@@ -26,13 +26,15 @@ fat-controller show [<path>] [flags]
 | `--service` | string |  | `FAT_CONTROLLER_SERVICE` | Scope to a single service. |
 | `--show-secrets` | bool |  | `FAT_CONTROLLER_SHOW_SECRETS` | Show secret values instead of masking. |
 | `--full` | bool |  |  | Include IDs and read-only fields. |
-| `--raw` | bool |  |  | Output raw value (no formatting). |
 
 ## Global Flags
 
 | Flag | Type | Default | Env | Description |
 |------|------|---------|-----|-------------|
 | `-o`, `--output` | text\|json\|toml\|raw | `text` | `FAT_CONTROLLER_OUTPUT_FORMAT` | Output format: text, json, toml, raw. |
+| `--json` | bool |  |  | Output as JSON (shorthand for --output=json). |
+| `--toml` | bool |  |  | Output as TOML (shorthand for --output=toml). |
+| `--raw` | bool |  |  | Output bare value, no formatting (shorthand for --output=raw). |
 | `--color` | auto\|always\|never | `auto` | `FAT_CONTROLLER_OUTPUT_COLOR` | Color mode: auto, always, never. |
 | `-v`, `--verbose` | int |  |  | Increase log verbosity. Repeat for more detail (-v = debug, -vv = trace). |
 | `-q`, `--quiet` | int |  |  | Decrease log verbosity. Repeat for less output (-q = warn, -qq = error only). |

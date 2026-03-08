@@ -46,6 +46,9 @@ func main() {
 	kongCtx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 
+	// Resolve --json/--toml/--raw shorthands to --output value.
+	c.ResolveOutputFormat()
+
 	// Configure structured logging based on --verbose / --quiet.
 	slog.SetDefault(c.Logger())
 

@@ -409,6 +409,42 @@ func TestRenderInitTOML_SharedVariables(t *testing.T) {
 	}
 }
 
+func TestRenderInitTOML_IncludesEnvFileWhenSecretsPresent(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name: "api",
+				Variables: map[string]string{
+					"PORT":              "8080",
+					"DATABASE_PASSWORD": "hunter2",
+				},
+			},
+		},
+	}
+	got := config.RenderInitTOML("", "proj", "env", cfg)
+	if !strings.Contains(got, "[tool]") {
+		t.Errorf("expected [tool] section when secrets present:\n%s", got)
+	}
+	if !strings.Contains(got, `env_file = ".env.fat-controller"`) {
+		t.Errorf("expected env_file setting:\n%s", got)
+	}
+}
+
+func TestRenderInitTOML_OmitsToolWhenNoSecrets(t *testing.T) {
+	cfg := config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080", "NODE_ENV": "production"},
+			},
+		},
+	}
+	got := config.RenderInitTOML("", "proj", "env", cfg)
+	if strings.Contains(got, "[tool]") {
+		t.Errorf("should not include [tool] section when no secrets:\n%s", got)
+	}
+}
+
 func TestRenderInitTOML_IncludesIDs(t *testing.T) {
 	cfg := config.LiveConfig{
 		ProjectID:     "proj-abc123",

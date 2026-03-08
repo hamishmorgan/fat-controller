@@ -13,6 +13,8 @@ const (
 	BaseConfigFile = "fat-controller.toml"
 	// LocalConfigFile is the auto-discovered local override.
 	LocalConfigFile = "fat-controller.local.toml"
+	// DefaultEnvFile is the default env file for secret values.
+	DefaultEnvFile = ".env.fat-controller"
 )
 
 // LoadConfigs loads and merges config files:

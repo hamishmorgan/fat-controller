@@ -123,7 +123,7 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	_, _ = fmt.Fprintf(out, "  Services: %s (%d)\n", joinServiceNames(adopted), len(adopted.Services))
 	_, _ = fmt.Fprintln(out)
 
-	const envFileName = ".env.fat-controller"
+	envFileName := config.DefaultEnvFile
 	envContent := renderEnvFile(adopted)
 
 	if c.DryRun {

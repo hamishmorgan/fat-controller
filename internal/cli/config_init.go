@@ -340,7 +340,7 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	slog.Debug("rendering config file", "services", len(filtered.Services))
 	content := config.RenderInitTOML(wsName, projName, envName, *filtered)
 
-	const envFileName = ".env.fat-controller"
+	envFileName := config.DefaultEnvFile
 
 	// Collect secrets for .env.fat-controller.
 	envContent := renderEnvFile(filtered)

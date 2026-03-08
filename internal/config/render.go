@@ -57,10 +57,15 @@ type tomlDeploy struct {
 type tomlInitConfig struct {
 	Name      string            `toml:"name"`
 	ID        string            `toml:"id,omitempty"`
+	Tool      *tomlToolSettings `toml:"tool,omitempty"`
 	Workspace *tomlContextBlock `toml:"workspace,omitempty"`
 	Project   *tomlContextBlock `toml:"project,omitempty"`
 	Variables map[string]string `toml:"variables,omitempty"`
 	Service   []tomlService     `toml:"service,omitempty"`
+}
+
+type tomlToolSettings struct {
+	EnvFile string `toml:"env_file,omitempty"`
 }
 
 type tomlContextBlock struct {
@@ -364,6 +369,8 @@ func CollectSecrets(cfg LiveConfig) map[string]string {
 // It includes workspace/project/environment header (when provided), uses
 // ${VAR} env references for secrets, and records IDs for pinning.
 // Deploy settings are excluded (those are operational, fetched live).
+// When secrets are detected, a [tool] section with env_file is included
+// so the loader knows where to find the secret values.
 func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) string {
 	replaced := envRefConfig(cfg)
 
@@ -376,6 +383,10 @@ func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) stri
 	}
 	if workspace != "" {
 		tc.Workspace = &tomlContextBlock{Name: workspace}
+	}
+	// Include [tool] env_file when secrets were replaced with ${VAR} refs.
+	if len(CollectSecrets(cfg)) > 0 {
+		tc.Tool = &tomlToolSettings{EnvFile: DefaultEnvFile}
 	}
 	return marshalTOML(tc) + "\n"
 }

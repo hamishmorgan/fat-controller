@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,10 +16,12 @@ type fakeFetcher struct {
 	resolveWorkspace   string
 	resolveProject     string
 	resolveEnvironment string
+	resolveErr         error
 
 	fetchProjectID     string
 	fetchEnvironmentID string
 	fetchServices      []string
+	fetchErr           error
 
 	projectID     string
 	environmentID string
@@ -29,6 +32,9 @@ func (f *fakeFetcher) Resolve(_ context.Context, workspace, project, environment
 	f.resolveWorkspace = workspace
 	f.resolveProject = project
 	f.resolveEnvironment = environment
+	if f.resolveErr != nil {
+		return "", "", f.resolveErr
+	}
 	return f.projectID, f.environmentID, nil
 }
 
@@ -36,6 +42,9 @@ func (f *fakeFetcher) Fetch(_ context.Context, projectID, environmentID string, 
 	f.fetchProjectID = projectID
 	f.fetchEnvironmentID = environmentID
 	f.fetchServices = services
+	if f.fetchErr != nil {
+		return nil, f.fetchErr
+	}
 	return f.live, nil
 }
 
@@ -169,6 +178,85 @@ func TestScopeDesiredByPath(t *testing.T) {
 	unknown := app.ScopeDesiredByPath(cfg, "missing")
 	if unknown != cfg {
 		t.Fatalf("missing path should return original config")
+	}
+}
+
+func TestLoadAndFetch_ErrorFromLoadCascade(t *testing.T) {
+	dir := t.TempDir()
+	fetcher := &fakeFetcher{}
+
+	_, err := app.LoadAndFetch(context.Background(), "", "", "", dir, "", "", fetcher)
+	if err == nil {
+		t.Fatal("expected error when no config files found")
+	}
+}
+
+func TestLoadAndFetch_ErrorFromInterpolate(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "fat-controller.toml")
+
+	writeFile(t, configPath, `name = "production"
+
+[project]
+name = "proj"
+
+[variables]
+TOKEN = "${TOKEN}"
+`)
+
+	fetcher := &fakeFetcher{
+		projectID:     "proj-1",
+		environmentID: "env-1",
+	}
+
+	_, err := app.LoadAndFetch(context.Background(), "", "", "", dir, configPath, "", fetcher)
+	if err == nil {
+		t.Fatal("expected error for unresolved environment variables")
+	}
+}
+
+func TestLoadAndFetch_ErrorFromResolve(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "fat-controller.toml")
+
+	writeFile(t, configPath, `name = "production"
+
+[project]
+name = "proj"
+`)
+
+	fetcher := &fakeFetcher{
+		resolveErr:    errors.New("resolve failed"),
+		projectID:     "proj-1",
+		environmentID: "env-1",
+		live:          &config.LiveConfig{},
+	}
+
+	_, err := app.LoadAndFetch(context.Background(), "", "", "", dir, configPath, "", fetcher)
+	if err == nil {
+		t.Fatal("expected error from Resolve")
+	}
+}
+
+func TestLoadAndFetch_ErrorFromFetch(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "fat-controller.toml")
+
+	writeFile(t, configPath, `name = "production"
+
+[project]
+name = "proj"
+`)
+
+	fetcher := &fakeFetcher{
+		projectID:     "proj-1",
+		environmentID: "env-1",
+		fetchErr:      errors.New("fetch failed"),
+	}
+
+	_, err := app.LoadAndFetch(context.Background(), "", "", "", dir, configPath, "", fetcher)
+	if err == nil {
+		t.Fatal("expected error from Fetch")
 	}
 }
 

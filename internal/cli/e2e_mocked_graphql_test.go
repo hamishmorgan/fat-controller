@@ -914,8 +914,7 @@ func TestCLIE2E_MockedGraphQL(t *testing.T) {
 			`[project]`,
 			`name = "` + fixtureProjectName + `"`,
 			`name = "` + fixtureEnvironment + `"`,
-			"[variables]",
-			"[service.variables]",
+			"variables = {",
 		} {
 			if !strings.Contains(got, want) {
 				t.Errorf("expected %q in config file, got:\n%s", want, got)
@@ -1049,8 +1048,8 @@ name = "existing"`)
 			t.Fatalf("RunConfigGet() error: %v", err)
 		}
 		output := out.String()
-		if !strings.Contains(output, "[variables]") {
-			t.Errorf("expected TOML variables section, got:\n%s", output)
+		if !strings.Contains(output, "variables = {") {
+			t.Errorf("expected TOML variables inline table, got:\n%s", output)
 		}
 		if !strings.Contains(output, `GLOBAL = "one"`) {
 			t.Errorf("expected TOML quoted value, got:\n%s", output)

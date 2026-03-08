@@ -161,7 +161,8 @@ func deployMap(d Deploy) map[string]any {
 	return m
 }
 
-// renderTOML builds valid TOML output using [[service]] array-of-tables syntax.
+// renderTOML builds valid TOML output using [[service]] array-of-tables syntax
+// with TOML v1.1 multiline inline tables for sub-fields (variables, deploy).
 func renderTOML(cfg LiveConfig, full bool) string {
 	var out strings.Builder
 	if full {
@@ -169,11 +170,7 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		out.WriteString("environment_id = " + tomlQuote(cfg.EnvironmentID) + "\n\n")
 	}
 	if len(cfg.Variables) > 0 {
-		out.WriteString("[variables]\n")
-		keys := sortedKeys(cfg.Variables)
-		for _, k := range keys {
-			out.WriteString(tomlKey(k) + " = " + tomlQuote(cfg.Variables[k]) + "\n")
-		}
+		writeTOMLInlineVars(&out, "variables", cfg.Variables)
 		out.WriteString("\n")
 	}
 	serviceNames := sortedServiceNames(cfg.Services)
@@ -184,19 +181,14 @@ func renderTOML(cfg LiveConfig, full bool) string {
 		if full && svc.ID != "" {
 			out.WriteString("id = " + tomlQuote(svc.ID) + "\n")
 		}
-		out.WriteString("\n")
 
 		if len(svc.Variables) > 0 {
-			out.WriteString("[service.variables]\n")
-			keys := sortedKeys(svc.Variables)
-			for _, k := range keys {
-				out.WriteString(tomlKey(k) + " = " + tomlQuote(svc.Variables[k]) + "\n")
-			}
-			out.WriteString("\n")
+			writeTOMLInlineVars(&out, "variables", svc.Variables)
 		}
 		if full {
-			writeTOMLDeploy(&out, svc.Deploy)
+			writeTOMLInlineDeploy(&out, svc.Deploy)
 		}
+		out.WriteString("\n")
 	}
 	return strings.TrimRight(out.String(), "\n")
 }
@@ -290,14 +282,31 @@ func RenderInitTOML(workspace, project, environment string, cfg LiveConfig) stri
 	return out.String()
 }
 
-func writeTOMLDeploy(out *strings.Builder, d Deploy) {
+// writeTOMLInlineVars writes a multiline inline table of key-value string pairs.
+// Example output:
+//
+//	variables = {
+//	    PORT = "8080",
+//	    NODE_ENV = "production",
+//	}
+func writeTOMLInlineVars(out *strings.Builder, tableName string, vars map[string]string) {
+	keys := sortedKeys(vars)
+	out.WriteString(tableName + " = {\n")
+	for _, k := range keys {
+		out.WriteString("    " + tomlKey(k) + " = " + tomlQuote(vars[k]) + ",\n")
+	}
+	out.WriteString("}\n")
+}
+
+// writeTOMLInlineDeploy writes deploy settings as a multiline inline table.
+func writeTOMLInlineDeploy(out *strings.Builder, d Deploy) {
 	lines := deployLines(d)
 	if len(lines) > 0 {
-		out.WriteString("[service.deploy]\n")
+		out.WriteString("deploy = {\n")
 		for _, line := range lines {
-			out.WriteString(line + "\n")
+			out.WriteString("    " + line + ",\n")
 		}
-		out.WriteString("\n")
+		out.WriteString("}\n")
 	}
 }
 

@@ -105,8 +105,8 @@ func TestRunConfigInit_WritesConfigFile(t *testing.T) {
 	if !strings.Contains(got, `name = "production"`) {
 		t.Errorf("expected environment name in file:\n%s", got)
 	}
-	if !strings.Contains(got, "[service.variables]") {
-		t.Errorf("expected service section in file:\n%s", got)
+	if !strings.Contains(got, "variables = {") {
+		t.Errorf("expected variables inline table in file:\n%s", got)
 	}
 	if !strings.Contains(got, "PORT") {
 		t.Errorf("expected PORT in file:\n%s", got)
@@ -370,7 +370,7 @@ func TestRunConfigInit_NonInteractiveIncludesAllServices(t *testing.T) {
 	}
 	got := string(content)
 
-	// In the new format, each service uses [[service]] + [service.variables].
+	// Each service uses [[service]] + variables = { ... } inline table.
 	// Verify all service names appear and we have the right number of service sections.
 	for _, svc := range []string{"api", "worker", "web"} {
 		if !strings.Contains(got, `name = "`+svc+`"`) {

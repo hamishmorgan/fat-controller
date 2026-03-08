@@ -141,8 +141,8 @@ func TestRender_TOMLFullIncludesIDs(t *testing.T) {
 	if !strings.Contains(got, `project_id = "proj-1"`) {
 		t.Errorf("expected project_id in full TOML, got:\n%s", got)
 	}
-	if !strings.Contains(got, `[service.deploy]`) {
-		t.Errorf("expected deploy section in full TOML, got:\n%s", got)
+	if !strings.Contains(got, `deploy = {`) {
+		t.Errorf("expected deploy inline table in full TOML, got:\n%s", got)
 	}
 }
 
@@ -267,8 +267,8 @@ func TestRenderInitTOML_Header(t *testing.T) {
 	if strings.Contains(got, `[workspace]`) {
 		t.Errorf("did not expect workspace header when not provided:\n%s", got)
 	}
-	if !strings.Contains(got, "[service.variables]") {
-		t.Errorf("expected service section:\n%s", got)
+	if !strings.Contains(got, "variables = {") {
+		t.Errorf("expected variables inline table:\n%s", got)
 	}
 	if !strings.Contains(got, `PORT = "8080"`) {
 		t.Errorf("expected PORT variable:\n%s", got)
@@ -404,7 +404,7 @@ func TestRenderInitTOML_SharedVariables(t *testing.T) {
 	if !strings.Contains(got, `[workspace]`) || !strings.Contains(got, `name = "ws"`) {
 		t.Errorf("expected workspace header:\n%s", got)
 	}
-	if !strings.Contains(got, "[variables]") {
-		t.Errorf("expected variables section:\n%s", got)
+	if !strings.Contains(got, "variables = {") {
+		t.Errorf("expected variables inline table:\n%s", got)
 	}
 }

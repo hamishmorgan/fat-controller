@@ -153,7 +153,6 @@ func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, enviro
 			region = *vi.Region
 		}
 		volumesByService[*vi.ServiceId] = append(volumesByService[*vi.ServiceId], config.LiveVolume{
-			ID:        vi.Id,
 			VolumeID:  vi.VolumeId,
 			Name:      vi.Volume.Name,
 			MountPath: vi.MountPath,

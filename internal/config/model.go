@@ -19,7 +19,6 @@ type LiveDomain struct {
 
 // LiveVolume represents a volume instance attached to a service.
 type LiveVolume struct {
-	ID        string
 	VolumeID  string
 	Name      string
 	MountPath string

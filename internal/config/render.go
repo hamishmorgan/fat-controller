@@ -214,7 +214,7 @@ func liveToTOMLServices(cfg LiveConfig, full bool) []tomlService {
 			if len(svc.Egress) > 0 {
 				ts.Egress = make([]tomlEgress, 0, len(svc.Egress))
 				for _, gateway := range sortedEgress(svc.Egress) {
-					ts.Egress = append(ts.Egress, tomlEgress{Region: gateway.Region, IPv4: gateway.IPv4})
+					ts.Egress = append(ts.Egress, tomlEgress(gateway))
 				}
 			}
 		}
@@ -653,17 +653,17 @@ func renderText(cfg LiveConfig, full bool) string {
 			if svc.VCPUs != nil || svc.MemoryGB != nil {
 				out.WriteString("[service.resources]\n")
 				if svc.VCPUs != nil {
-					out.WriteString(fmt.Sprintf("vcpus = %v\n", *svc.VCPUs))
+					_, _ = fmt.Fprintf(&out, "vcpus = %v\n", *svc.VCPUs)
 				}
 				if svc.MemoryGB != nil {
-					out.WriteString(fmt.Sprintf("memory_gb = %v\n", *svc.MemoryGB))
+					_, _ = fmt.Fprintf(&out, "memory_gb = %v\n", *svc.MemoryGB)
 				}
 				out.WriteString("\n")
 			}
 			for _, domain := range sortedDomains(svc.Domains) {
 				out.WriteString("[service.domains." + domain.Domain + "]\n")
 				if domain.TargetPort != nil {
-					out.WriteString(fmt.Sprintf("port = %d\n", *domain.TargetPort))
+					_, _ = fmt.Fprintf(&out, "port = %d\n", *domain.TargetPort)
 				}
 				if domain.Suffix != "" {
 					out.WriteString("suffix = " + domain.Suffix + "\n")
@@ -680,9 +680,9 @@ func renderText(cfg LiveConfig, full bool) string {
 			}
 			for _, proxy := range sortedTCPProxies(svc.TCPProxies) {
 				out.WriteString("[[service.tcp_proxies]]\n")
-				out.WriteString(fmt.Sprintf("application_port = %d\n", proxy.ApplicationPort))
+				_, _ = fmt.Fprintf(&out, "application_port = %d\n", proxy.ApplicationPort)
 				if proxy.ProxyPort != 0 {
-					out.WriteString(fmt.Sprintf("proxy_port = %d\n", proxy.ProxyPort))
+					_, _ = fmt.Fprintf(&out, "proxy_port = %d\n", proxy.ProxyPort)
 				}
 				if proxy.Domain != "" {
 					out.WriteString("domain = " + proxy.Domain + "\n")

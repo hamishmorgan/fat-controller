@@ -50,7 +50,7 @@ func RunOpen(ctx context.Context, globals *Globals, projectID, environmentID str
 	}
 	_ = ctx
 
-	url := fmt.Sprintf("https://railway.com/project/%s/environment/%s", projectID, environmentID)
+	url := fmt.Sprintf("https://railway.com/project/%s?environmentId=%s", projectID, environmentID)
 	if isStructuredOutput(globals) {
 		payload := OpenOutput{URL: url, ProjectID: projectID, EnvironmentID: environmentID}
 		if printOnly {

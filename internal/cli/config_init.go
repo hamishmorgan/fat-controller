@@ -429,7 +429,7 @@ func confirmWrite(path, displayName string, yes, interactive bool) (bool, error)
 	if !interactive {
 		return false, nil // skip silently in non-interactive mode
 	}
-	return prompt.Confirm(displayName+" already exists — overwrite?", false)
+	return prompt.Confirm(displayName+" already exists — overwrite?", true)
 }
 
 // renderEnvFile generates a .env file with KEY=VALUE lines for each secret

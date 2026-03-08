@@ -37,6 +37,10 @@ type Change struct {
 	Action       Action
 	LiveValue    string // current value in Railway (empty for Create)
 	DesiredValue string // desired value from config (empty for Delete)
+	// Explicit marks a delete that was explicitly requested in the config
+	// (empty-string sentinel), as opposed to inferred from absence. Explicit
+	// deletes are applied regardless of the --delete flag.
+	Explicit bool
 }
 
 // SubResourceChange represents a create or delete for a sub-resource
@@ -108,15 +112,16 @@ func ComputeWithOptions(desired *config.DesiredConfig, live *config.LiveConfig, 
 		return result
 	}
 
-	// Diff shared variables.
-	if len(desired.Variables) > 0 {
-		var liveShared map[string]string
-		if live != nil {
-			liveShared = live.Variables
-		}
-		if liveShared == nil {
-			liveShared = map[string]string{}
-		}
+	// Diff shared variables. Run even when desired.Variables is empty so that
+	// live-only variables can be emitted as deletes when opts.Delete is true.
+	var liveShared map[string]string
+	if live != nil {
+		liveShared = live.Variables
+	}
+	if liveShared == nil {
+		liveShared = map[string]string{}
+	}
+	if len(desired.Variables) > 0 || len(liveShared) > 0 {
 		changes := diffVariables(map[string]string(desired.Variables), liveShared)
 		changes = filterChanges(changes, opts)
 		if len(changes) > 0 {
@@ -141,10 +146,9 @@ func ComputeWithOptions(desired *config.DesiredConfig, live *config.LiveConfig, 
 }
 
 // filterChanges removes changes not permitted by the options.
+// Explicit deletes (empty-string sentinel in desired config) are always
+// included regardless of opts.Delete.
 func filterChanges(changes []Change, opts Options) []Change {
-	if opts.Create && opts.Update && opts.Delete {
-		return changes
-	}
 	filtered := changes[:0]
 	for _, c := range changes {
 		switch c.Action {
@@ -157,7 +161,9 @@ func filterChanges(changes []Change, opts Options) []Change {
 				filtered = append(filtered, c)
 			}
 		case ActionDelete:
-			if opts.Delete {
+			// Explicit deletes (empty-string sentinel) are always applied.
+			// Implicit deletes (absent from desired) require opts.Delete.
+			if opts.Delete || c.Explicit {
 				filtered = append(filtered, c)
 			}
 		}
@@ -181,7 +187,10 @@ func findLiveService(live *config.LiveConfig, name, id string) *config.ServiceCo
 	return live.Services[name]
 }
 
-// diffVariables computes additive-only variable diffs.
+// diffVariables computes variable diffs between desired and live state.
+// Keys present in desired with empty value are treated as explicit deletes.
+// Keys present in live but absent from desired are also emitted as deletes
+// (filtered later by opts.Delete in filterChanges).
 func diffVariables(desired, live map[string]string) []Change {
 	var changes []Change
 	// Sort keys for deterministic output.
@@ -196,12 +205,13 @@ func diffVariables(desired, live map[string]string) []Change {
 		liveVal, existsInLive := live[key]
 
 		if desiredVal == "" {
-			// Empty string = delete.
+			// Empty string = explicit delete sentinel.
 			if existsInLive {
 				changes = append(changes, Change{
 					Key:       key,
 					Action:    ActionDelete,
 					LiveValue: liveVal,
+					Explicit:  true,
 				})
 			}
 			// If not in live, nothing to delete — skip.
@@ -224,6 +234,24 @@ func diffVariables(desired, live map[string]string) []Change {
 		}
 		// If same value: no-op.
 	}
+
+	// Keys present in live but absent from desired → delete.
+	// Collect and sort for deterministic output.
+	var liveOnlyKeys []string
+	for k := range live {
+		if _, inDesired := desired[k]; !inDesired {
+			liveOnlyKeys = append(liveOnlyKeys, k)
+		}
+	}
+	sort.Strings(liveOnlyKeys)
+	for _, key := range liveOnlyKeys {
+		changes = append(changes, Change{
+			Key:       key,
+			Action:    ActionDelete,
+			LiveValue: live[key],
+		})
+	}
+
 	return changes
 }
 
@@ -232,6 +260,27 @@ func diffService(desired *config.DesiredService, live *config.ServiceConfig) *Se
 	sd := &SectionDiff{}
 
 	// Variables.
+	// Icon (project-level property, not per-environment).
+	// Only diff if the desired value is non-empty — empty means "unspecified".
+	if desired.Icon != "" {
+		liveIcon := ""
+		if live != nil {
+			liveIcon = live.Icon
+		}
+		if desired.Icon != liveIcon {
+			action := ActionCreate
+			if liveIcon != "" {
+				action = ActionUpdate
+			}
+			sd.Settings = append(sd.Settings, Change{
+				Key:          config.KeyIcon,
+				Action:       action,
+				LiveValue:    liveIcon,
+				DesiredValue: desired.Icon,
+			})
+		}
+	}
+
 	if desired.Variables != nil {
 		liveVars := map[string]string{}
 		if live != nil {

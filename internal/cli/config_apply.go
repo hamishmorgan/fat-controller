@@ -16,13 +16,16 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
 )
 
-// ApplyOpts holds command-specific options for RunConfigApply / runConfigApplyWithPair.
+// ApplyOpts holds command-specific options for RunConfigApply.
 type ApplyOpts struct {
 	DryRun      bool
 	Yes         bool
 	ShowSecrets bool
 	SkipDeploys bool
 	FailFast    bool
+	Create      bool // include creates (default true when all three are zero)
+	Update      bool // include updates (default true when all three are zero)
+	Delete      bool // include deletes (default false)
 }
 
 // RunConfigApply is the testable core of `config apply`.
@@ -33,13 +36,13 @@ func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, e
 	}
 	// Emit validation warnings to stderr.
 	emitWarnings(pair, globals.Quiet, configDir)
-	return runConfigApplyWithPair(ctx, globals, pair, opts.DryRun, opts.Yes, opts.ShowSecrets, opts.SkipDeploys, opts.FailFast, applier, out)
-}
-
-// runConfigApplyWithPair contains the apply logic once configs are loaded and fetched.
-// diffOpts defaults to create+update+delete if nil-like (all false).
-func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *app.ConfigPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, applier apply.Applier, out io.Writer) error {
-	return runConfigApplyWithPairAndOpts(ctx, globals, pair, dryRun, yes, showSecrets, skipDeploys, failFast, diff.Options{Create: true, Update: true, Delete: true}, "", applier, out)
+	diffOpts := diff.Options{Create: opts.Create, Update: opts.Update, Delete: opts.Delete}
+	// Default to create+update when none are explicitly set.
+	if !diffOpts.Create && !diffOpts.Update && !diffOpts.Delete {
+		diffOpts.Create = true
+		diffOpts.Update = true
+	}
+	return runConfigApplyWithPairAndOpts(ctx, globals, pair, opts.DryRun, opts.Yes, opts.ShowSecrets, opts.SkipDeploys, opts.FailFast, diffOpts, "", applier, out)
 }
 
 func runConfigApplyWithPairAndOpts(ctx context.Context, globals *Globals, pair *app.ConfigPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, diffOpts diff.Options, path string, applier apply.Applier, out io.Writer) error {

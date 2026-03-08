@@ -76,7 +76,9 @@ func TestComputeDiff_DeleteVariable(t *testing.T) {
 	}
 }
 
-func TestComputeDiff_DeleteVariable_FilteredByDefault(t *testing.T) {
+func TestComputeDiff_DeleteVariable_SentinelAlwaysApplies(t *testing.T) {
+	// Empty-string sentinel is an explicit user intent — it always applies
+	// regardless of whether --delete is set.
 	desired := &config.DesiredConfig{
 		Services: []*config.DesiredService{
 			{Name: "api", Variables: config.Variables{"OLD": ""}},
@@ -87,10 +89,123 @@ func TestComputeDiff_DeleteVariable_FilteredByDefault(t *testing.T) {
 			"api": {Name: "api", Variables: map[string]string{"OLD": "value"}},
 		},
 	}
-	// Default options exclude deletes.
+	// Default options (no --delete flag).
+	result := diff.Compute(desired, live)
+	svc, ok := result.Services["api"]
+	if !ok || len(svc.Variables) != 1 {
+		t.Fatalf("expected explicit sentinel delete to be present with default options, got %v", svc)
+	}
+	if svc.Variables[0].Action != diff.ActionDelete {
+		t.Errorf("action = %v, want Delete", svc.Variables[0].Action)
+	}
+	if !svc.Variables[0].Explicit {
+		t.Error("expected Explicit = true for sentinel delete")
+	}
+}
+
+func TestComputeDiff_DeleteVariable_ImplicitFilteredByDefault(t *testing.T) {
+	// Variables absent from desired but present in live are implicit deletes.
+	// They are filtered out unless --delete is set.
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"KEEP": "value"}},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"KEEP": "value", "STALE": "old"}},
+		},
+	}
+	// Default options (no --delete flag) — implicit delete should be filtered.
 	result := diff.Compute(desired, live)
 	if _, ok := result.Services["api"]; ok {
-		t.Error("expected delete to be filtered out with default options")
+		t.Error("expected implicit delete to be filtered out with default options")
+	}
+}
+
+func TestComputeDiff_DeleteVariable_AbsentFromDesired(t *testing.T) {
+	// Variable exists in live but is simply not mentioned in desired.
+	// With --delete this should produce an ActionDelete change.
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"KEEP": "value"}},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"KEEP": "value", "STALE": "old"}},
+		},
+	}
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	svc := result.Services["api"]
+	if svc == nil || len(svc.Variables) != 1 {
+		t.Fatalf("expected 1 variable change, got %v", svc)
+	}
+	ch := svc.Variables[0]
+	if ch.Action != diff.ActionDelete {
+		t.Errorf("action = %v, want Delete", ch.Action)
+	}
+	if ch.Key != "STALE" {
+		t.Errorf("key = %q, want STALE", ch.Key)
+	}
+	if ch.LiveValue != "old" {
+		t.Errorf("live value = %q, want old", ch.LiveValue)
+	}
+}
+
+func TestComputeDiff_DeleteVariable_AbsentFromDesired_FilteredByDefault(t *testing.T) {
+	// Without --delete, absent-from-desired variables should not appear.
+	desired := &config.DesiredConfig{
+		Services: []*config.DesiredService{
+			{Name: "api", Variables: config.Variables{"KEEP": "value"}},
+		},
+	}
+	live := &config.LiveConfig{
+		Services: map[string]*config.ServiceConfig{
+			"api": {Name: "api", Variables: map[string]string{"KEEP": "value", "STALE": "old"}},
+		},
+	}
+	result := diff.Compute(desired, live)
+	if _, ok := result.Services["api"]; ok {
+		t.Error("expected no changes with default options when only live-only key differs")
+	}
+}
+
+func TestComputeDiff_DeleteSharedVariable_AbsentFromDesired(t *testing.T) {
+	// Shared variable exists in live but is absent from desired config.
+	desired := &config.DesiredConfig{
+		Variables: config.Variables{"KEEP": "value"},
+	}
+	live := &config.LiveConfig{
+		Variables: map[string]string{"KEEP": "value", "STALE": "old"},
+	}
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	if result.Shared == nil || len(result.Shared.Variables) != 1 {
+		t.Fatalf("expected 1 shared variable change, got %v", result.Shared)
+	}
+	ch := result.Shared.Variables[0]
+	if ch.Action != diff.ActionDelete || ch.Key != "STALE" {
+		t.Errorf("unexpected change: %+v", ch)
+	}
+}
+
+func TestComputeDiff_DeleteAllSharedVariables(t *testing.T) {
+	// All shared variables removed from desired — live-only vars should be deleted.
+	desired := &config.DesiredConfig{}
+	live := &config.LiveConfig{
+		Variables: map[string]string{"A": "1", "B": "2"},
+	}
+	opts := diff.Options{Create: true, Update: true, Delete: true}
+	result := diff.ComputeWithOptions(desired, live, opts)
+	if result.Shared == nil || len(result.Shared.Variables) != 2 {
+		t.Fatalf("expected 2 shared variable deletes, got %v", result.Shared)
+	}
+	for _, ch := range result.Shared.Variables {
+		if ch.Action != diff.ActionDelete {
+			t.Errorf("expected delete action, got %v for key %q", ch.Action, ch.Key)
+		}
 	}
 }
 

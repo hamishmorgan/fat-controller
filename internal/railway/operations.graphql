@@ -1,11 +1,87 @@
 # ---------------------------------------------------------------------------
-# Shared fragments — reused across multiple queries to avoid field duplication
-# and to produce clean, shared Go types via genqlient.
+# Shared fragments — reused across queries/mutations to avoid field
+# duplication and to produce clean, shared Go types via genqlient.
 # ---------------------------------------------------------------------------
 
+# -- Entity summaries (id + display fields) --------------------------------
+
+fragment ProjectSummaryFields on Project {
+  id
+  name
+}
+
+fragment EnvironmentSummaryFields on Environment {
+  id
+  name
+}
+
+fragment ServiceSummaryFields on Service {
+  id
+  name
+  icon
+}
+
+fragment BucketSummaryFields on Bucket {
+  id
+  name
+}
+
+# -- Sub-resource fields ---------------------------------------------------
+
+fragment DeploymentTriggerFields on DeploymentTrigger {
+  id
+  serviceId
+  branch
+  repository
+  provider
+  checkSuites
+}
+
+fragment VolumeInstanceFields on VolumeInstance {
+  id
+  mountPath
+  region
+  serviceId
+  volumeId
+  volume {
+    id
+    name
+  }
+}
+
+fragment TCPProxyFields on TCPProxy {
+  id
+  applicationPort
+  proxyPort
+  domain
+}
+
+fragment EgressGatewayFields on EgressGateway {
+  ipv4
+  region
+}
+
+fragment PrivateNetworkFields on PrivateNetwork {
+  publicId
+  dnsName
+  name
+}
+
+fragment PrivateNetworkEndpointFields on PrivateNetworkEndpoint {
+  publicId
+  dnsName
+  serviceInstanceId
+}
+
+fragment LogEntryFields on Log {
+  message
+  severity
+  timestamp
+}
+
+# -- Composite fragments ---------------------------------------------------
+
 # Deploy settings and domains for a single service instance.
-# Used by both the standalone ServiceInstance query (per-service fallback)
-# and the EnvironmentBulk query (environment-wide batch).
 fragment ServiceInstanceFields on ServiceInstance {
   serviceId
   builder
@@ -45,101 +121,6 @@ fragment ServiceInstanceFields on ServiceInstance {
   }
 }
 
-# Deployment trigger metadata.
-# Used by EnvironmentBulk (env-wide) and DeploymentTriggers (per-service).
-fragment DeploymentTriggerFields on DeploymentTrigger {
-  id
-  serviceId
-  branch
-  repository
-  provider
-  checkSuites
-}
-
-# Volume instance with its parent volume name.
-# Used by EnvironmentBulk and EnvironmentVolumes.
-fragment VolumeInstanceFields on VolumeInstance {
-  id
-  mountPath
-  region
-  serviceId
-  volumeId
-  volume {
-    id
-    name
-  }
-}
-
-# Private network summary.
-# Used by EnvironmentBulk and PrivateNetworks.
-fragment PrivateNetworkFields on PrivateNetwork {
-  publicId
-  dnsName
-  name
-}
-
-# Log entry fields shared across all log queries.
-fragment LogEntryFields on Log {
-  message
-  severity
-  timestamp
-}
-
-# Service summary (id, name, icon).
-# Used by ProjectServices, ProjectsResolution, ServiceCreate, ServiceUpdate.
-fragment ServiceSummaryFields on Service {
-  id
-  name
-  icon
-}
-
-# Environment summary (id, name).
-# Used by Environments, EnvironmentCreate, ProjectsResolution.
-fragment EnvironmentSummaryFields on Environment {
-  id
-  name
-}
-
-# Project summary (id, name).
-# Used by Projects, ProjectCreate, ProjectsResolution.
-fragment ProjectSummaryFields on Project {
-  id
-  name
-}
-
-# Bucket summary (id, name).
-# Used by BucketCreate, BucketUpdate, ProjectBuckets.
-fragment BucketSummaryFields on Bucket {
-  id
-  name
-}
-
-# TCP proxy fields.
-# Used by TCPProxies query and TcpProxyCreate mutation.
-fragment TCPProxyFields on TCPProxy {
-  id
-  applicationPort
-  proxyPort
-  domain
-}
-
-# Egress gateway fields.
-# Used by EgressGateways query and EgressGatewayAssociationCreate mutation.
-fragment EgressGatewayFields on EgressGateway {
-  ipv4
-  region
-}
-
-# Private network endpoint fields.
-# Used by PrivateNetworkEndpoint query and PrivateNetworkEndpointCreateOrGet mutation.
-fragment PrivateNetworkEndpointFields on PrivateNetworkEndpoint {
-  publicId
-  dnsName
-  serviceInstanceId
-}
-
-# S3-compatible bucket credentials.
-# Used by BucketS3Credentials query.
 fragment BucketCredentialFields on BucketS3CompatibleCredentials {
   accessKeyId
   bucketName
@@ -150,11 +131,10 @@ fragment BucketCredentialFields on BucketS3CompatibleCredentials {
 }
 
 # ---------------------------------------------------------------------------
-# Queries
+# Auth & resolution
 # ---------------------------------------------------------------------------
 
-# ProjectToken resolves a project-scoped token to its project and environment IDs.
-# Used by auth status and as a basic connectivity check.
+# Resolve a project-scoped token to its project and environment IDs.
 query ProjectToken {
   projectToken {
     projectId
@@ -162,7 +142,7 @@ query ProjectToken {
   }
 }
 
-# Project and environment resolution
+# List workspaces visible to the current account token.
 query ApiToken {
   apiToken {
     workspaces {
@@ -172,6 +152,7 @@ query ApiToken {
   }
 }
 
+# Flat project list for a workspace.
 query Projects($workspaceId: String) {
   projects(first: 100, workspaceId: $workspaceId) {
     edges {
@@ -182,9 +163,8 @@ query Projects($workspaceId: String) {
   }
 }
 
-# Combined project resolution query: fetches projects with their environments
-# and services in a single round-trip, replacing separate Projects + Environments
-# + ProjectServices queries (3 HTTP requests → 1) during ResolveProjectEnvironment.
+# Projects with nested environments and services in a single round-trip
+# (replaces separate Projects + Environments + ProjectServices calls).
 query ProjectsResolution($workspaceId: String) {
   projects(first: 100, workspaceId: $workspaceId) {
     edges {
@@ -219,7 +199,6 @@ query Environments($projectId: String!) {
   }
 }
 
-# Service list for a project
 query ProjectServices($projectId: String!) {
   project(id: $projectId) {
     services(first: 200) {
@@ -232,9 +211,58 @@ query ProjectServices($projectId: String!) {
   }
 }
 
-# Variables (shared + service).
-# With serviceId=nil returns shared variables; with serviceId returns service variables.
-# unrendered=true returns source values (not interpolated).
+# ---------------------------------------------------------------------------
+# Entity CRUD (projects, environments, services)
+# ---------------------------------------------------------------------------
+
+mutation ProjectCreate($input: ProjectCreateInput!) {
+  projectCreate(input: $input) {
+    ...ProjectSummaryFields
+  }
+}
+
+mutation ProjectDelete($id: String!) {
+  projectDelete(id: $id)
+}
+
+mutation EnvironmentCreate($input: EnvironmentCreateInput!) {
+  environmentCreate(input: $input) {
+    ...EnvironmentSummaryFields
+  }
+}
+
+mutation EnvironmentDelete($id: String!) {
+  environmentDelete(id: $id)
+}
+
+mutation ServiceCreate($input: ServiceCreateInput!) {
+  serviceCreate(input: $input) {
+    ...ServiceSummaryFields
+  }
+}
+
+mutation ServiceDelete($id: String!) {
+  serviceDelete(id: $id)
+}
+
+mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
+  serviceUpdate(id: $id, input: $input) {
+    ...ServiceSummaryFields
+  }
+}
+
+mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
+  serviceConnect(id: $id, input: $input) {
+    id
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Variables
+# ---------------------------------------------------------------------------
+
+# With serviceId omitted returns shared variables; with serviceId set
+# returns service-scoped variables. unrendered=true returns source values.
 query Variables(
   $projectId: String!
   $environmentId: String!
@@ -248,19 +276,6 @@ query Variables(
   )
 }
 
-# Service deploy settings (per-service fallback; see EnvironmentBulk for batch path)
-query ServiceInstance($environmentId: String!, $serviceId: String!) {
-  serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
-    ...ServiceInstanceFields
-  }
-}
-
-# Service resource limits (merged, includes plan defaults)
-query ServiceInstanceLimits($environmentId: String!, $serviceId: String!) {
-  serviceInstanceLimits(environmentId: $environmentId, serviceId: $serviceId)
-}
-
-# Mutations for set/delete
 mutation VariableUpsert($input: VariableUpsertInput!) {
   variableUpsert(input: $input)
 }
@@ -269,16 +284,20 @@ mutation VariableDelete($input: VariableDeleteInput!) {
   variableDelete(input: $input)
 }
 
-# serviceInstanceUpdate takes serviceId as a top-level argument, not inside the input.
+mutation VariableCollectionUpsert($input: VariableCollectionUpsertInput!) {
+  variableCollectionUpsert(input: $input)
+}
+
+# ---------------------------------------------------------------------------
+# Service instance settings (deploy config + resource limits)
+# ---------------------------------------------------------------------------
+
+# serviceInstanceUpdate takes serviceId as a top-level argument, not inside input.
 mutation ServiceInstanceUpdate(
   $serviceId: String!
   $input: ServiceInstanceUpdateInput!
 ) {
   serviceInstanceUpdate(serviceId: $serviceId, input: $input)
-}
-
-mutation VariableCollectionUpsert($input: VariableCollectionUpsertInput!) {
-  variableCollectionUpsert(input: $input)
 }
 
 mutation ServiceInstanceLimitsUpdate(
@@ -287,7 +306,10 @@ mutation ServiceInstanceLimitsUpdate(
   serviceInstanceLimitsUpdate(input: $input)
 }
 
+# ---------------------------------------------------------------------------
 # Domain operations
+# ---------------------------------------------------------------------------
+
 mutation CustomDomainCreate($input: CustomDomainCreateInput!) {
   customDomainCreate(input: $input) {
     id
@@ -310,7 +332,24 @@ mutation ServiceDomainDelete($id: String!) {
   serviceDomainDelete(id: $id)
 }
 
+# ---------------------------------------------------------------------------
 # Volume operations
+# ---------------------------------------------------------------------------
+
+query ProjectVolumes($projectId: String!) {
+  project(id: $projectId) {
+    volumes(first: 200) {
+      edges {
+        node {
+          id
+          name
+          projectId
+        }
+      }
+    }
+  }
+}
+
 mutation VolumeCreate($input: VolumeCreateInput!) {
   volumeCreate(input: $input) {
     id
@@ -334,7 +373,24 @@ mutation VolumeInstanceUpdate(
   )
 }
 
-# TCP proxy operations
+# ---------------------------------------------------------------------------
+# Networking (TCP proxies, private networks, egress gateways)
+# ---------------------------------------------------------------------------
+
+query PrivateNetworkEndpoint(
+  $environmentId: String!
+  $privateNetworkId: String!
+  $serviceId: String!
+) {
+  privateNetworkEndpoint(
+    environmentId: $environmentId
+    privateNetworkId: $privateNetworkId
+    serviceId: $serviceId
+  ) {
+    ...PrivateNetworkEndpointFields
+  }
+}
+
 mutation TcpProxyCreate($input: TCPProxyCreateInput!) {
   tcpProxyCreate(input: $input) {
     ...TCPProxyFields
@@ -345,7 +401,6 @@ mutation TcpProxyDelete($id: String!) {
   tcpProxyDelete(id: $id)
 }
 
-# Private network operations
 mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
   privateNetworkCreateOrGet(input: $input) {
     ...PrivateNetworkFields
@@ -364,7 +419,6 @@ mutation PrivateNetworkEndpointDelete($id: String!) {
   privateNetworkEndpointDelete(id: $id)
 }
 
-# Egress gateway operations
 mutation EgressGatewayAssociationCreate($input: EgressGatewayCreateInput!) {
   egressGatewayAssociationCreate(input: $input) {
     ...EgressGatewayFields
@@ -377,7 +431,10 @@ mutation EgressGatewayAssociationsClear(
   egressGatewayAssociationsClear(input: $input)
 }
 
-# Deployment trigger operations
+# ---------------------------------------------------------------------------
+# Deployment triggers
+# ---------------------------------------------------------------------------
+
 mutation DeploymentTriggerCreate($input: DeploymentTriggerCreateInput!) {
   deploymentTriggerCreate(input: $input) {
     id
@@ -397,52 +454,27 @@ mutation DeploymentTriggerDelete($id: String!) {
   deploymentTriggerDelete(id: $id)
 }
 
-# Service CRUD operations
-mutation ServiceCreate($input: ServiceCreateInput!) {
-  serviceCreate(input: $input) {
-    ...ServiceSummaryFields
+# ---------------------------------------------------------------------------
+# Deployments (listing + lifecycle)
+# ---------------------------------------------------------------------------
+
+query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
+  deployments(input: $input, first: $first, after: $after) {
+    edges {
+      node {
+        id
+        status
+        createdAt
+        staticUrl
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
 }
 
-mutation ServiceDelete($id: String!) {
-  serviceDelete(id: $id)
-}
-
-mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
-  serviceUpdate(id: $id, input: $input) {
-    ...ServiceSummaryFields
-  }
-}
-
-mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
-  serviceConnect(id: $id, input: $input) {
-    id
-  }
-}
-
-# Project CRUD operations
-mutation ProjectCreate($input: ProjectCreateInput!) {
-  projectCreate(input: $input) {
-    ...ProjectSummaryFields
-  }
-}
-
-mutation ProjectDelete($id: String!) {
-  projectDelete(id: $id)
-}
-
-# Environment CRUD operations
-mutation EnvironmentCreate($input: EnvironmentCreateInput!) {
-  environmentCreate(input: $input) {
-    ...EnvironmentSummaryFields
-  }
-}
-
-mutation EnvironmentDelete($id: String!) {
-  environmentDelete(id: $id)
-}
-
-# Deployment lifecycle operations
 mutation ServiceInstanceDeployV2(
   $environmentId: String!
   $serviceId: String!
@@ -474,16 +506,20 @@ mutation DeploymentRollback($id: String!) {
   deploymentRollback(id: $id)
 }
 
+# ---------------------------------------------------------------------------
 # Bucket operations
-mutation BucketCreate($input: BucketCreateInput!) {
-  bucketCreate(input: $input) {
-    ...BucketSummaryFields
-  }
-}
+# ---------------------------------------------------------------------------
 
-mutation BucketUpdate($id: String!, $input: BucketUpdateInput!) {
-  bucketUpdate(id: $id, input: $input) {
-    ...BucketSummaryFields
+query ProjectBuckets($projectId: String!) {
+  project(id: $projectId) {
+    buckets(first: 200) {
+      edges {
+        node {
+          ...BucketSummaryFields
+          projectId
+        }
+      }
+    }
   }
 }
 
@@ -501,7 +537,121 @@ query BucketS3Credentials(
   }
 }
 
-# Log fetching operations
+mutation BucketCreate($input: BucketCreateInput!) {
+  bucketCreate(input: $input) {
+    ...BucketSummaryFields
+  }
+}
+
+mutation BucketUpdate($id: String!, $input: BucketUpdateInput!) {
+  bucketUpdate(id: $id, input: $input) {
+    ...BucketSummaryFields
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Live-state queries (environment-wide + per-service fallbacks)
+# ---------------------------------------------------------------------------
+
+# Fetches service instances, deployment triggers, volume instances, and
+# private networks in one round-trip (replaces 4 separate HTTP requests).
+query EnvironmentBulk($environmentId: String!, $projectId: String) {
+  environment(id: $environmentId, projectId: $projectId) {
+    serviceInstances(first: 200) {
+      edges {
+        node {
+          ...ServiceInstanceFields
+        }
+      }
+    }
+    deploymentTriggers(first: 1000) {
+      edges {
+        node {
+          ...DeploymentTriggerFields
+        }
+      }
+    }
+    volumeInstances(first: 100) {
+      edges {
+        node {
+          ...VolumeInstanceFields
+        }
+      }
+    }
+  }
+  privateNetworks(environmentId: $environmentId) {
+    ...PrivateNetworkFields
+  }
+}
+
+# Per-service fallback when EnvironmentBulk data is unavailable.
+query ServiceInstance($environmentId: String!, $serviceId: String!) {
+  serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
+    ...ServiceInstanceFields
+  }
+}
+
+# Resource limits (merged with plan defaults).
+query ServiceInstanceLimits($environmentId: String!, $serviceId: String!) {
+  serviceInstanceLimits(environmentId: $environmentId, serviceId: $serviceId)
+}
+
+query TCPProxies($environmentId: String!, $serviceId: String!) {
+  tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {
+    ...TCPProxyFields
+  }
+}
+
+query EgressGateways($environmentId: String!, $serviceId: String!) {
+  egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
+    ...EgressGatewayFields
+  }
+}
+
+query DeploymentTriggers(
+  $environmentId: String!
+  $projectId: String!
+  $serviceId: String!
+) {
+  deploymentTriggers(
+    environmentId: $environmentId
+    projectId: $projectId
+    serviceId: $serviceId
+    first: 100
+  ) {
+    edges {
+      node {
+        ...DeploymentTriggerFields
+      }
+    }
+  }
+}
+
+# Standalone volume/network queries — subsumed by EnvironmentBulk for the
+# primary live-state path but retained for list commands and test mocks.
+
+query EnvironmentVolumes($environmentId: String!, $projectId: String) {
+  environment(id: $environmentId, projectId: $projectId) {
+    volumeInstances(first: 100) {
+      edges {
+        node {
+          ...VolumeInstanceFields
+        }
+      }
+    }
+  }
+}
+
+query PrivateNetworks($environmentId: String!) {
+  privateNetworks(environmentId: $environmentId) {
+    ...PrivateNetworkFields
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Log fetching
+# ---------------------------------------------------------------------------
+
 query DeploymentLogs(
   $deploymentId: String!
   $limit: Int
@@ -557,154 +707,5 @@ query EnvironmentLogs(
     filter: $filter
   ) {
     ...LogEntryFields
-  }
-}
-
-# Single environment-wide bulk query that fetches service instances, deployment
-# triggers, volume instances, and private networks in one round-trip.
-# Replaces the previous separate EnvironmentServiceInstances, AllDeploymentTriggers,
-# EnvironmentVolumes, and PrivateNetworks queries (4 HTTP requests → 1).
-query EnvironmentBulk($environmentId: String!, $projectId: String) {
-  environment(id: $environmentId, projectId: $projectId) {
-    serviceInstances(first: 200) {
-      edges {
-        node {
-          ...ServiceInstanceFields
-        }
-      }
-    }
-    deploymentTriggers(first: 1000) {
-      edges {
-        node {
-          ...DeploymentTriggerFields
-        }
-      }
-    }
-    volumeInstances(first: 100) {
-      edges {
-        node {
-          ...VolumeInstanceFields
-        }
-      }
-    }
-  }
-  privateNetworks(environmentId: $environmentId) {
-    ...PrivateNetworkFields
-  }
-}
-
-# Sub-resource queries for live state
-query TCPProxies($environmentId: String!, $serviceId: String!) {
-  tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {
-    ...TCPProxyFields
-  }
-}
-
-query EgressGateways($environmentId: String!, $serviceId: String!) {
-  egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
-    ...EgressGatewayFields
-  }
-}
-
-query DeploymentTriggers(
-  $environmentId: String!
-  $projectId: String!
-  $serviceId: String!
-) {
-  deploymentTriggers(
-    environmentId: $environmentId
-    projectId: $projectId
-    serviceId: $serviceId
-    first: 100
-  ) {
-    edges {
-      node {
-        ...DeploymentTriggerFields
-      }
-    }
-  }
-}
-
-# NOTE: EnvironmentVolumes and PrivateNetworks were merged into the
-# EnvironmentBulk query above. The standalone queries are no longer used
-# by FetchLiveConfig but are kept for other callers (list commands, etc.)
-# if needed in the future.
-
-query EnvironmentVolumes($environmentId: String!, $projectId: String) {
-  environment(id: $environmentId, projectId: $projectId) {
-    volumeInstances(first: 100) {
-      edges {
-        node {
-          ...VolumeInstanceFields
-        }
-      }
-    }
-  }
-}
-
-query PrivateNetworks($environmentId: String!) {
-  privateNetworks(environmentId: $environmentId) {
-    ...PrivateNetworkFields
-  }
-}
-
-query PrivateNetworkEndpoint(
-  $environmentId: String!
-  $privateNetworkId: String!
-  $serviceId: String!
-) {
-  privateNetworkEndpoint(
-    environmentId: $environmentId
-    privateNetworkId: $privateNetworkId
-    serviceId: $serviceId
-  ) {
-    ...PrivateNetworkEndpointFields
-  }
-}
-
-# Project-level volume listing
-query ProjectVolumes($projectId: String!) {
-  project(id: $projectId) {
-    volumes(first: 200) {
-      edges {
-        node {
-          id
-          name
-          projectId
-        }
-      }
-    }
-  }
-}
-
-# Project-level bucket listing
-query ProjectBuckets($projectId: String!) {
-  project(id: $projectId) {
-    buckets(first: 200) {
-      edges {
-        node {
-          ...BucketSummaryFields
-          projectId
-        }
-      }
-    }
-  }
-}
-
-# Deployment listing
-query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
-  deployments(input: $input, first: $first, after: $after) {
-    edges {
-      node {
-        id
-        status
-        createdAt
-        staticUrl
-      }
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
   }
 }

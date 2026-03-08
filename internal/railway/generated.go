@@ -132,8 +132,7 @@ func (v *BucketCreateResponse) GetBucketCreate() BucketCreateBucketCreateBucket 
 	return v.BucketCreate
 }
 
-// S3-compatible bucket credentials.
-// Used by BucketS3Credentials query.
+// BucketCredentialFields includes the GraphQL fields of BucketS3CompatibleCredentials requested by the fragment BucketCredentialFields.
 type BucketCredentialFields struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	BucketName      string `json:"bucketName"`
@@ -266,8 +265,7 @@ func (v *BucketS3CredentialsResponse) GetBucketS3Credentials() []BucketS3Credent
 	return v.BucketS3Credentials
 }
 
-// Bucket summary (id, name).
-// Used by BucketCreate, BucketUpdate, ProjectBuckets.
+// BucketSummaryFields includes the GraphQL fields of Bucket requested by the fragment BucketSummaryFields.
 type BucketSummaryFields struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
@@ -765,8 +763,7 @@ func (v *DeploymentTriggerDeleteResponse) GetDeploymentTriggerDelete() bool {
 	return v.DeploymentTriggerDelete
 }
 
-// Deployment trigger metadata.
-// Used by EnvironmentBulk (env-wide) and DeploymentTriggers (per-service).
+// DeploymentTriggerFields includes the GraphQL fields of DeploymentTrigger requested by the fragment DeploymentTriggerFields.
 type DeploymentTriggerFields struct {
 	Id          string  `json:"id"`
 	ServiceId   *string `json:"serviceId"`
@@ -1137,8 +1134,7 @@ func (v *EgressGatewayCreateInput) GetRegion() *string { return v.Region }
 // GetServiceId returns EgressGatewayCreateInput.ServiceId, and is useful for accessing the field via an interface.
 func (v *EgressGatewayCreateInput) GetServiceId() string { return v.ServiceId }
 
-// Egress gateway fields.
-// Used by EgressGateways query and EgressGatewayAssociationCreate mutation.
+// EgressGatewayFields includes the GraphQL fields of EgressGateway requested by the fragment EgressGatewayFields.
 type EgressGatewayFields struct {
 	Ipv4   string `json:"ipv4"`
 	Region string `json:"region"`
@@ -2001,8 +1997,7 @@ func (v *EnvironmentLogsResponse) GetEnvironmentLogs() []EnvironmentLogsEnvironm
 	return v.EnvironmentLogs
 }
 
-// Environment summary (id, name).
-// Used by Environments, EnvironmentCreate, ProjectsResolution.
+// EnvironmentSummaryFields includes the GraphQL fields of Environment requested by the fragment EnvironmentSummaryFields.
 type EnvironmentSummaryFields struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
@@ -2242,7 +2237,10 @@ func (v *EnvironmentsResponse) GetEnvironments() EnvironmentsEnvironmentsQueryEn
 	return v.Environments
 }
 
-// Log entry fields shared across all log queries.
+// LogEntryFields includes the GraphQL fields of Log requested by the fragment LogEntryFields.
+// The GraphQL type's documentation follows.
+//
+// The result of a logs query.
 type LogEntryFields struct {
 	// The contents of the log message
 	Message string `json:"message"`
@@ -2478,8 +2476,7 @@ func (v *PrivateNetworkEndpointDeleteResponse) GetPrivateNetworkEndpointDelete()
 	return v.PrivateNetworkEndpointDelete
 }
 
-// Private network endpoint fields.
-// Used by PrivateNetworkEndpoint query and PrivateNetworkEndpointCreateOrGet mutation.
+// PrivateNetworkEndpointFields includes the GraphQL fields of PrivateNetworkEndpoint requested by the fragment PrivateNetworkEndpointFields.
 type PrivateNetworkEndpointFields struct {
 	PublicId          string `json:"publicId"`
 	DnsName           string `json:"dnsName"`
@@ -2576,8 +2573,7 @@ func (v *PrivateNetworkEndpointResponse) GetPrivateNetworkEndpoint() *PrivateNet
 	return v.PrivateNetworkEndpoint
 }
 
-// Private network summary.
-// Used by EnvironmentBulk and PrivateNetworks.
+// PrivateNetworkFields includes the GraphQL fields of PrivateNetwork requested by the fragment PrivateNetworkFields.
 type PrivateNetworkFields struct {
 	PublicId string `json:"publicId"`
 	DnsName  string `json:"dnsName"`
@@ -3029,8 +3025,7 @@ type ProjectServicesResponse struct {
 // GetProject returns ProjectServicesResponse.Project, and is useful for accessing the field via an interface.
 func (v *ProjectServicesResponse) GetProject() ProjectServicesProject { return v.Project }
 
-// Project summary (id, name).
-// Used by Projects, ProjectCreate, ProjectsResolution.
+// ProjectSummaryFields includes the GraphQL fields of Project requested by the fragment ProjectSummaryFields.
 type ProjectSummaryFields struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
@@ -3766,8 +3761,6 @@ func (v *ServiceInstanceDeployV2Response) GetServiceInstanceDeployV2() string {
 }
 
 // Deploy settings and domains for a single service instance.
-// Used by both the standalone ServiceInstance query (per-service fallback)
-// and the EnvironmentBulk query (environment-wide batch).
 type ServiceInstanceFields struct {
 	ServiceId               string                                    `json:"serviceId"`
 	Builder                 Builder                                   `json:"builder"`
@@ -4324,8 +4317,7 @@ func (v *ServiceSourceInput) GetImage() *string { return v.Image }
 // GetRepo returns ServiceSourceInput.Repo, and is useful for accessing the field via an interface.
 func (v *ServiceSourceInput) GetRepo() *string { return v.Repo }
 
-// Service summary (id, name, icon).
-// Used by ProjectServices, ProjectsResolution, ServiceCreate, ServiceUpdate.
+// ServiceSummaryFields includes the GraphQL fields of Service requested by the fragment ServiceSummaryFields.
 type ServiceSummaryFields struct {
 	Id   string  `json:"id"`
 	Name string  `json:"name"`
@@ -4523,8 +4515,7 @@ func (v *TCPProxyCreateInput) GetEnvironmentId() string { return v.EnvironmentId
 // GetServiceId returns TCPProxyCreateInput.ServiceId, and is useful for accessing the field via an interface.
 func (v *TCPProxyCreateInput) GetServiceId() string { return v.ServiceId }
 
-// TCP proxy fields.
-// Used by TCPProxies query and TcpProxyCreate mutation.
+// TCPProxyFields includes the GraphQL fields of TCPProxy requested by the fragment TCPProxyFields.
 type TCPProxyFields struct {
 	Id              string `json:"id"`
 	ApplicationPort int    `json:"applicationPort"`
@@ -4810,8 +4801,7 @@ type VolumeDeleteResponse struct {
 // GetVolumeDelete returns VolumeDeleteResponse.VolumeDelete, and is useful for accessing the field via an interface.
 func (v *VolumeDeleteResponse) GetVolumeDelete() bool { return v.VolumeDelete }
 
-// Volume instance with its parent volume name.
-// Used by EnvironmentBulk and EnvironmentVolumes.
+// VolumeInstanceFields includes the GraphQL fields of VolumeInstance requested by the fragment VolumeInstanceFields.
 type VolumeInstanceFields struct {
 	Id        string                     `json:"id"`
 	MountPath string                     `json:"mountPath"`
@@ -5544,7 +5534,7 @@ query ApiToken {
 }
 `
 
-// Project and environment resolution
+// List workspaces visible to the current account token.
 func ApiToken(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -5579,7 +5569,6 @@ fragment BucketSummaryFields on Bucket {
 }
 `
 
-// Bucket operations
 func BucketCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -5748,7 +5737,6 @@ mutation CustomDomainCreate ($input: CustomDomainCreateInput!) {
 }
 `
 
-// Domain operations
 func CustomDomainCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -5852,7 +5840,6 @@ fragment LogEntryFields on Log {
 }
 `
 
-// Log fetching operations
 func DeploymentLogs(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -5996,7 +5983,6 @@ mutation DeploymentTriggerCreate ($input: DeploymentTriggerCreateInput!) {
 }
 `
 
-// Deployment trigger operations
 func DeploymentTriggerCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6160,7 +6146,6 @@ query Deployments ($input: DeploymentListInput!, $first: Int, $after: String) {
 }
 `
 
-// Deployment listing
 func Deployments(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6203,7 +6188,6 @@ fragment EgressGatewayFields on EgressGateway {
 }
 `
 
-// Egress gateway operations
 func EgressGatewayAssociationCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6395,10 +6379,8 @@ fragment PrivateNetworkFields on PrivateNetwork {
 }
 `
 
-// Single environment-wide bulk query that fetches service instances, deployment
-// triggers, volume instances, and private networks in one round-trip.
-// Replaces the previous separate EnvironmentServiceInstances, AllDeploymentTriggers,
-// EnvironmentVolumes, and PrivateNetworks queries (4 HTTP requests → 1).
+// Fetches service instances, deployment triggers, volume instances, and
+// private networks in one round-trip (replaces 4 separate HTTP requests).
 func EnvironmentBulk(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6439,7 +6421,6 @@ fragment EnvironmentSummaryFields on Environment {
 }
 `
 
-// Environment CRUD operations
 func EnvironmentCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6657,7 +6638,6 @@ fragment PrivateNetworkFields on PrivateNetwork {
 }
 `
 
-// Private network operations
 func PrivateNetworkCreateOrGet(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6856,7 +6836,6 @@ fragment BucketSummaryFields on Bucket {
 }
 `
 
-// Project-level bucket listing
 func ProjectBuckets(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6895,7 +6874,6 @@ fragment ProjectSummaryFields on Project {
 }
 `
 
-// Project CRUD operations
 func ProjectCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -6973,7 +6951,6 @@ fragment ServiceSummaryFields on Service {
 }
 `
 
-// Service list for a project
 func ProjectServices(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7009,8 +6986,7 @@ query ProjectToken {
 }
 `
 
-// ProjectToken resolves a project-scoped token to its project and environment IDs.
-// Used by auth status and as a basic connectivity check.
+// Resolve a project-scoped token to its project and environment IDs.
 func ProjectToken(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7049,7 +7025,6 @@ query ProjectVolumes ($projectId: String!) {
 }
 `
 
-// Project-level volume listing
 func ProjectVolumes(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7092,6 +7067,7 @@ fragment ProjectSummaryFields on Project {
 }
 `
 
+// Flat project list for a workspace.
 func Projects(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7157,9 +7133,8 @@ fragment ServiceSummaryFields on Service {
 }
 `
 
-// Combined project resolution query: fetches projects with their environments
-// and services in a single round-trip, replacing separate Projects + Environments
-// + ProjectServices queries (3 HTTP requests → 1) during ResolveProjectEnvironment.
+// Projects with nested environments and services in a single round-trip
+// (replaces separate Projects + Environments + ProjectServices calls).
 func ProjectsResolution(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7235,7 +7210,6 @@ fragment ServiceSummaryFields on Service {
 }
 `
 
-// Service CRUD operations
 func ServiceCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7407,7 +7381,7 @@ fragment ServiceInstanceFields on ServiceInstance {
 }
 `
 
-// Service deploy settings (per-service fallback; see EnvironmentBulk for batch path)
+// Per-service fallback when EnvironmentBulk data is unavailable.
 func ServiceInstance(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7442,7 +7416,6 @@ mutation ServiceInstanceDeployV2 ($environmentId: String!, $serviceId: String!, 
 }
 `
 
-// Deployment lifecycle operations
 func ServiceInstanceDeployV2(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7479,7 +7452,7 @@ query ServiceInstanceLimits ($environmentId: String!, $serviceId: String!) {
 }
 `
 
-// Service resource limits (merged, includes plan defaults)
+// Resource limits (merged with plan defaults).
 func ServiceInstanceLimits(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7546,7 +7519,7 @@ mutation ServiceInstanceUpdate ($serviceId: String!, $input: ServiceInstanceUpda
 }
 `
 
-// serviceInstanceUpdate takes serviceId as a top-level argument, not inside the input.
+// serviceInstanceUpdate takes serviceId as a top-level argument, not inside input.
 func ServiceInstanceUpdate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7630,7 +7603,6 @@ fragment TCPProxyFields on TCPProxy {
 }
 `
 
-// Sub-resource queries for live state
 func TCPProxies(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7673,7 +7645,6 @@ fragment TCPProxyFields on TCPProxy {
 }
 `
 
-// TCP proxy operations
 func TcpProxyCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7802,7 +7773,6 @@ mutation VariableUpsert ($input: VariableUpsertInput!) {
 }
 `
 
-// Mutations for set/delete
 func VariableUpsert(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7835,9 +7805,8 @@ query Variables ($projectId: String!, $environmentId: String!, $serviceId: Strin
 }
 `
 
-// Variables (shared + service).
-// With serviceId=nil returns shared variables; with serviceId returns service variables.
-// unrendered=true returns source values (not interpolated).
+// With serviceId omitted returns shared variables; with serviceId set
+// returns service-scoped variables. unrendered=true returns source values.
 func Variables(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -7877,7 +7846,6 @@ mutation VolumeCreate ($input: VolumeCreateInput!) {
 }
 `
 
-// Volume operations
 func VolumeCreate(
 	ctx_ context.Context,
 	client_ graphql.Client,

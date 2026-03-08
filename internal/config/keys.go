@@ -1,6 +1,9 @@
 package config
 
 const (
+	// Service identity keys.
+	KeyIcon = "icon"
+
 	// Deploy setting keys — used as diff change labels.
 	KeyBuilder                 = "builder"
 	KeyRepo                    = "repo"

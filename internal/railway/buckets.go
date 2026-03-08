@@ -12,6 +12,12 @@ type BucketInfo struct {
 	Name string `json:"name" toml:"name"`
 }
 
+// bucketInfoFromSummary converts a generated BucketSummaryFields
+// fragment into the public BucketInfo type.
+func bucketInfoFromSummary(b *BucketSummaryFields) BucketInfo {
+	return BucketInfo{ID: b.Id, Name: b.Name}
+}
+
 // ListBuckets returns the name/ID pairs for all buckets in a project.
 func ListBuckets(ctx context.Context, client *Client, projectID string) ([]BucketInfo, error) {
 	resp, err := ProjectBuckets(ctx, client.gql(), projectID)
@@ -20,7 +26,7 @@ func ListBuckets(ctx context.Context, client *Client, projectID string) ([]Bucke
 	}
 	buckets := make([]BucketInfo, len(resp.Project.Buckets.Edges))
 	for i, edge := range resp.Project.Buckets.Edges {
-		buckets[i] = BucketInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		buckets[i] = bucketInfoFromSummary(&edge.Node.BucketSummaryFields)
 	}
 	return buckets, nil
 }
@@ -53,33 +59,17 @@ func UpdateBucket(ctx context.Context, client *Client, id, name string) error {
 	return nil
 }
 
-// BucketCredentials contains S3-compatible credentials for a bucket.
-type BucketCredentials struct {
-	AccessKeyId     string
-	SecretAccessKey string
-	BucketName      string
-	Endpoint        string
-	Region          string
-	UrlStyle        string
-}
-
 // GetBucketCredentials retrieves S3-compatible credentials for a bucket.
-func GetBucketCredentials(ctx context.Context, client *Client, bucketID, environmentID, projectID string) ([]BucketCredentials, error) {
+// Returns the generated BucketCredentialFields fragment type directly.
+func GetBucketCredentials(ctx context.Context, client *Client, bucketID, environmentID, projectID string) ([]BucketCredentialFields, error) {
 	slog.Debug("getting bucket credentials", "bucket_id", bucketID, "environment_id", environmentID)
 	resp, err := BucketS3Credentials(ctx, client.gql(), bucketID, environmentID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket credentials for %q: %w", bucketID, err)
 	}
-	creds := make([]BucketCredentials, len(resp.BucketS3Credentials))
-	for i, c := range resp.BucketS3Credentials {
-		creds[i] = BucketCredentials{
-			AccessKeyId:     c.AccessKeyId,
-			SecretAccessKey: c.SecretAccessKey,
-			BucketName:      c.BucketName,
-			Endpoint:        c.Endpoint,
-			Region:          c.Region,
-			UrlStyle:        c.UrlStyle,
-		}
+	creds := make([]BucketCredentialFields, len(resp.BucketS3Credentials))
+	for i := range resp.BucketS3Credentials {
+		creds[i] = resp.BucketS3Credentials[i].BucketCredentialFields
 	}
 	return creds, nil
 }

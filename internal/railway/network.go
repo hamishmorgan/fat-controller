@@ -22,7 +22,7 @@ func EnablePrivateNetwork(ctx context.Context, client *Client, envID, serviceID 
 	if err != nil {
 		return "", fmt.Errorf("enabling private network for service %q: %w", serviceID, err)
 	}
-	return resp.PrivateNetworkEndpointCreateOrGet.DnsName, nil
+	return resp.PrivateNetworkEndpointCreateOrGet.PrivateNetworkEndpointFields.DnsName, nil
 }
 
 // DisablePrivateNetworkEndpoint deletes a private network endpoint by ID.

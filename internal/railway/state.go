@@ -61,11 +61,8 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
 				continue
 			}
-			icon := ""
-			if edge.Node.Icon != nil {
-				icon = *edge.Node.Icon
-			}
-			toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id, icon: icon})
+			si := serviceInfoFromSummary(&edge.Node.ServiceSummaryFields)
+			toFetch = append(toFetch, svcRef{name: si.Name, id: si.ID, icon: si.Icon})
 		}
 	}
 
@@ -302,11 +299,12 @@ func fetchTCPProxies(ctx context.Context, client *Client, environmentID, service
 		return
 	}
 	for _, p := range resp.TcpProxies {
+		f := &p.TCPProxyFields
 		svc.TCPProxies = append(svc.TCPProxies, config.LiveTCPProxy{
-			ID:              p.Id,
-			ApplicationPort: p.ApplicationPort,
-			ProxyPort:       p.ProxyPort,
-			Domain:          p.Domain,
+			ID:              f.Id,
+			ApplicationPort: f.ApplicationPort,
+			ProxyPort:       f.ProxyPort,
+			Domain:          f.Domain,
 		})
 	}
 }
@@ -319,9 +317,10 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 		return
 	}
 	for _, g := range resp.EgressGateways {
+		f := &g.EgressGatewayFields
 		svc.Egress = append(svc.Egress, config.LiveEgressGateway{
-			Region: g.Region,
-			IPv4:   g.Ipv4,
+			Region: f.Region,
+			IPv4:   f.Ipv4,
 		})
 	}
 }
@@ -335,9 +334,10 @@ func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, se
 			continue
 		}
 		if resp.PrivateNetworkEndpoint != nil {
+			f := &resp.PrivateNetworkEndpoint.PrivateNetworkEndpointFields
 			svc.Network = &config.LiveNetworkEndpoint{
-				ID:      resp.PrivateNetworkEndpoint.PublicId,
-				DNSName: resp.PrivateNetworkEndpoint.DnsName,
+				ID:      f.PublicId,
+				DNSName: f.DnsName,
 			}
 			return // one endpoint is enough to know it's enabled
 		}

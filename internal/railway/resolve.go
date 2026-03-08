@@ -111,9 +111,9 @@ func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, projec
 		return nil, err
 	}
 
-	// Resolve project from the results.
-	type projNode = ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
-	var matchedProject *projNode
+	// Resolve project from the results. Each edge node embeds ProjectSummaryFields.
+	type projEdge = ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
+	var matchedProject *projEdge
 
 	if project != "" && uuidPattern.MatchString(project) {
 		for i, edge := range resp.Projects.Edges {
@@ -153,6 +153,7 @@ func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, projec
 	}
 
 	// Resolve environment from the matched project's environments.
+	// Each edge node embeds EnvironmentSummaryFields.
 	var envID, envName string
 	if environment != "" && uuidPattern.MatchString(environment) {
 		envID = environment
@@ -193,18 +194,10 @@ func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, projec
 
 	slog.Debug("resolved environment", "name", envName, "id", envID)
 
-	// Collect services from the matched project.
+	// Collect services from the matched project using the shared fragment type.
 	var services []ServiceInfo
 	for _, edge := range matchedProject.Services.Edges {
-		icon := ""
-		if edge.Node.Icon != nil {
-			icon = *edge.Node.Icon
-		}
-		services = append(services, ServiceInfo{
-			ID:   edge.Node.Id,
-			Name: edge.Node.Name,
-			Icon: icon,
-		})
+		services = append(services, serviceInfoFromSummary(&edge.Node.ServiceSummaryFields))
 	}
 
 	return &ResolveResult{

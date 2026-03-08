@@ -12,6 +12,12 @@ type ProjectInfo struct {
 	Name string `json:"name" toml:"name"`
 }
 
+// projectInfoFromSummary converts a generated ProjectSummaryFields
+// fragment into the public ProjectInfo type.
+func projectInfoFromSummary(p *ProjectSummaryFields) ProjectInfo {
+	return ProjectInfo{ID: p.Id, Name: p.Name}
+}
+
 // ListProjects returns the name/ID pairs for all projects in a workspace.
 func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]ProjectInfo, error) {
 	resp, err := Projects(ctx, client.gql(), &workspaceID)
@@ -20,7 +26,7 @@ func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]Pr
 	}
 	projects := make([]ProjectInfo, len(resp.Projects.Edges))
 	for i, edge := range resp.Projects.Edges {
-		projects[i] = ProjectInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		projects[i] = projectInfoFromSummary(&edge.Node.ProjectSummaryFields)
 	}
 	return projects, nil
 }

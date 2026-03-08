@@ -19,7 +19,7 @@ func CreateTCPProxy(ctx context.Context, client *Client, envID, serviceID string
 	if err != nil {
 		return "", fmt.Errorf("creating TCP proxy on port %d: %w", port, err)
 	}
-	return resp.TcpProxyCreate.Id, nil
+	return resp.TcpProxyCreate.TCPProxyFields.Id, nil
 }
 
 // DeleteTCPProxy deletes a TCP proxy by ID.

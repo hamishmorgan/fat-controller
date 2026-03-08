@@ -85,6 +85,70 @@ fragment LogEntryFields on Log {
   timestamp
 }
 
+# Service summary (id, name, icon).
+# Used by ProjectServices, ProjectsResolution, ServiceCreate, ServiceUpdate.
+fragment ServiceSummaryFields on Service {
+  id
+  name
+  icon
+}
+
+# Environment summary (id, name).
+# Used by Environments, EnvironmentCreate, ProjectsResolution.
+fragment EnvironmentSummaryFields on Environment {
+  id
+  name
+}
+
+# Project summary (id, name).
+# Used by Projects, ProjectCreate, ProjectsResolution.
+fragment ProjectSummaryFields on Project {
+  id
+  name
+}
+
+# Bucket summary (id, name).
+# Used by BucketCreate, BucketUpdate, ProjectBuckets.
+fragment BucketSummaryFields on Bucket {
+  id
+  name
+}
+
+# TCP proxy fields.
+# Used by TCPProxies query and TcpProxyCreate mutation.
+fragment TCPProxyFields on TCPProxy {
+  id
+  applicationPort
+  proxyPort
+  domain
+}
+
+# Egress gateway fields.
+# Used by EgressGateways query and EgressGatewayAssociationCreate mutation.
+fragment EgressGatewayFields on EgressGateway {
+  ipv4
+  region
+}
+
+# Private network endpoint fields.
+# Used by PrivateNetworkEndpoint query and PrivateNetworkEndpointCreateOrGet mutation.
+fragment PrivateNetworkEndpointFields on PrivateNetworkEndpoint {
+  publicId
+  dnsName
+  serviceInstanceId
+}
+
+# S3-compatible bucket credentials.
+# Used by BucketS3Credentials query.
+fragment BucketCredentialFields on BucketS3CompatibleCredentials {
+  accessKeyId
+  bucketName
+  endpoint
+  region
+  secretAccessKey
+  urlStyle
+}
+
 # ---------------------------------------------------------------------------
 # Queries
 # ---------------------------------------------------------------------------
@@ -112,8 +176,7 @@ query Projects($workspaceId: String) {
   projects(first: 100, workspaceId: $workspaceId) {
     edges {
       node {
-        id
-        name
+        ...ProjectSummaryFields
       }
     }
   }
@@ -126,22 +189,18 @@ query ProjectsResolution($workspaceId: String) {
   projects(first: 100, workspaceId: $workspaceId) {
     edges {
       node {
-        id
-        name
+        ...ProjectSummaryFields
         environments(first: 100) {
           edges {
             node {
-              id
-              name
+              ...EnvironmentSummaryFields
             }
           }
         }
         services(first: 200) {
           edges {
             node {
-              id
-              name
-              icon
+              ...ServiceSummaryFields
             }
           }
         }
@@ -154,8 +213,7 @@ query Environments($projectId: String!) {
   environments(projectId: $projectId, first: 100) {
     edges {
       node {
-        id
-        name
+        ...EnvironmentSummaryFields
       }
     }
   }
@@ -167,9 +225,7 @@ query ProjectServices($projectId: String!) {
     services(first: 200) {
       edges {
         node {
-          id
-          name
-          icon
+          ...ServiceSummaryFields
         }
       }
     }
@@ -281,10 +337,7 @@ mutation VolumeInstanceUpdate(
 # TCP proxy operations
 mutation TcpProxyCreate($input: TCPProxyCreateInput!) {
   tcpProxyCreate(input: $input) {
-    id
-    applicationPort
-    proxyPort
-    domain
+    ...TCPProxyFields
   }
 }
 
@@ -295,9 +348,7 @@ mutation TcpProxyDelete($id: String!) {
 # Private network operations
 mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
   privateNetworkCreateOrGet(input: $input) {
-    dnsName
-    name
-    publicId
+    ...PrivateNetworkFields
   }
 }
 
@@ -305,9 +356,7 @@ mutation PrivateNetworkEndpointCreateOrGet(
   $input: PrivateNetworkEndpointCreateOrGetInput!
 ) {
   privateNetworkEndpointCreateOrGet(input: $input) {
-    dnsName
-    publicId
-    serviceInstanceId
+    ...PrivateNetworkEndpointFields
   }
 }
 
@@ -318,8 +367,7 @@ mutation PrivateNetworkEndpointDelete($id: String!) {
 # Egress gateway operations
 mutation EgressGatewayAssociationCreate($input: EgressGatewayCreateInput!) {
   egressGatewayAssociationCreate(input: $input) {
-    ipv4
-    region
+    ...EgressGatewayFields
   }
 }
 
@@ -352,8 +400,7 @@ mutation DeploymentTriggerDelete($id: String!) {
 # Service CRUD operations
 mutation ServiceCreate($input: ServiceCreateInput!) {
   serviceCreate(input: $input) {
-    id
-    name
+    ...ServiceSummaryFields
   }
 }
 
@@ -363,8 +410,7 @@ mutation ServiceDelete($id: String!) {
 
 mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
   serviceUpdate(id: $id, input: $input) {
-    id
-    name
+    ...ServiceSummaryFields
   }
 }
 
@@ -377,8 +423,7 @@ mutation ServiceConnect($id: String!, $input: ServiceConnectInput!) {
 # Project CRUD operations
 mutation ProjectCreate($input: ProjectCreateInput!) {
   projectCreate(input: $input) {
-    id
-    name
+    ...ProjectSummaryFields
   }
 }
 
@@ -389,8 +434,7 @@ mutation ProjectDelete($id: String!) {
 # Environment CRUD operations
 mutation EnvironmentCreate($input: EnvironmentCreateInput!) {
   environmentCreate(input: $input) {
-    id
-    name
+    ...EnvironmentSummaryFields
   }
 }
 
@@ -433,15 +477,13 @@ mutation DeploymentRollback($id: String!) {
 # Bucket operations
 mutation BucketCreate($input: BucketCreateInput!) {
   bucketCreate(input: $input) {
-    id
-    name
+    ...BucketSummaryFields
   }
 }
 
 mutation BucketUpdate($id: String!, $input: BucketUpdateInput!) {
   bucketUpdate(id: $id, input: $input) {
-    id
-    name
+    ...BucketSummaryFields
   }
 }
 
@@ -455,12 +497,7 @@ query BucketS3Credentials(
     environmentId: $environmentId
     projectId: $projectId
   ) {
-    accessKeyId
-    bucketName
-    endpoint
-    region
-    secretAccessKey
-    urlStyle
+    ...BucketCredentialFields
   }
 }
 
@@ -559,17 +596,13 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
 # Sub-resource queries for live state
 query TCPProxies($environmentId: String!, $serviceId: String!) {
   tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {
-    id
-    applicationPort
-    proxyPort
-    domain
+    ...TCPProxyFields
   }
 }
 
 query EgressGateways($environmentId: String!, $serviceId: String!) {
   egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
-    ipv4
-    region
+    ...EgressGatewayFields
   }
 }
 
@@ -625,9 +658,7 @@ query PrivateNetworkEndpoint(
     privateNetworkId: $privateNetworkId
     serviceId: $serviceId
   ) {
-    publicId
-    dnsName
-    serviceInstanceId
+    ...PrivateNetworkEndpointFields
   }
 }
 
@@ -652,8 +683,7 @@ query ProjectBuckets($projectId: String!) {
     buckets(first: 200) {
       edges {
         node {
-          id
-          name
+          ...BucketSummaryFields
           projectId
         }
       }

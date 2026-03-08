@@ -13,6 +13,16 @@ type ServiceInfo struct {
 	Icon string `json:"icon,omitempty" toml:"icon,omitempty"`
 }
 
+// serviceInfoFromSummary converts a generated ServiceSummaryFields fragment
+// into the public ServiceInfo type (which carries toml struct tags for CLI output).
+func serviceInfoFromSummary(s *ServiceSummaryFields) ServiceInfo {
+	icon := ""
+	if s.Icon != nil {
+		icon = *s.Icon
+	}
+	return ServiceInfo{ID: s.Id, Name: s.Name, Icon: icon}
+}
+
 // ListServices returns the name/ID pairs for all services in a project.
 func ListServices(ctx context.Context, client *Client, projectID string) ([]ServiceInfo, error) {
 	resp, err := ProjectServices(ctx, client.gql(), projectID)
@@ -21,7 +31,7 @@ func ListServices(ctx context.Context, client *Client, projectID string) ([]Serv
 	}
 	services := make([]ServiceInfo, len(resp.Project.Services.Edges))
 	for i, edge := range resp.Project.Services.Edges {
-		services[i] = ServiceInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+		services[i] = serviceInfoFromSummary(&edge.Node.ServiceSummaryFields)
 	}
 	return services, nil
 }

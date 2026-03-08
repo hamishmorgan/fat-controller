@@ -194,12 +194,6 @@ type CLI struct {
 	// Auth
 	Auth AuthCmd `cmd:"" help:"Manage authentication."`
 
-	// Legacy (hidden, deprecated — will be removed)
-	Config      ConfigCmd      `cmd:"" name:"config" help:"Declarative configuration management." hidden:""`
-	Project     ProjectCmd     `cmd:"" help:"Manage projects." hidden:""`
-	Environment EnvironmentCmd `cmd:"" help:"Manage environments." hidden:""`
-	Workspace   WorkspaceCmd   `cmd:"" help:"Manage workspaces." hidden:""`
-
 	// Utility
 	Completion CompletionCmd `cmd:"" help:"Generate shell completions." hidden:""`
 }

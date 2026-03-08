@@ -8,6 +8,10 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
+func renderIntPtr(v int) *int { return &v }
+
+func renderFloat64Ptr(v float64) *float64 { return &v }
+
 func sampleConfig() config.LiveConfig {
 	startCmd := "npm start"
 	return config.LiveConfig{
@@ -119,6 +123,159 @@ func TestRender_JSONFullIncludesIDsAndDeploy(t *testing.T) {
 	}
 }
 
+func TestRender_JSONFullIncludesSubResources(t *testing.T) {
+	cfg := config.LiveConfig{
+		ProjectID:     "proj-1",
+		EnvironmentID: "env-1",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				ID:        "svc-1",
+				Name:      "api",
+				Variables: map[string]string{"PORT": "8080"},
+				Deploy: config.Deploy{
+					Builder:          "NIXPACKS",
+					WatchPatterns:    []string{"apps/api/**"},
+					PreDeployCommand: []string{"go", "test", "./..."},
+				},
+				VCPUs:    renderFloat64Ptr(2),
+				MemoryGB: renderFloat64Ptr(4),
+				Domains: []config.LiveDomain{
+					{Domain: "api.example.com", TargetPort: renderIntPtr(8080)},
+					{Domain: "api.up.railway.app", TargetPort: renderIntPtr(8080), Suffix: "up.railway.app"},
+				},
+				Volumes: []config.LiveVolume{{Name: "data", MountPath: "/data", Region: "us-west1"}},
+				TCPProxies: []config.LiveTCPProxy{{
+					ApplicationPort: 5432,
+					ProxyPort:       32000,
+					Domain:          "tcp.example.com",
+				}},
+				Network:  &config.LiveNetworkEndpoint{ID: "ne-1", DNSName: "api.railway.internal"},
+				Triggers: []config.LiveTrigger{{Repository: "org/repo", Branch: "main", Provider: "github"}},
+				Egress:   []config.LiveEgressGateway{{Region: "us-west1", IPv4: "1.2.3.4"}},
+			},
+		},
+	}
+
+	got, err := config.Render(cfg, config.RenderOptions{Format: "json", Full: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	api := m["api"].(map[string]any)
+
+	deploy := api["deploy"].(map[string]any)
+	if deploy["watch_patterns"].([]any)[0] != "apps/api/**" {
+		t.Fatalf("watch_patterns = %v, want apps/api/**", deploy["watch_patterns"])
+	}
+	if deploy["pre_deploy_command"].([]any)[0] != "go" {
+		t.Fatalf("pre_deploy_command = %v, want go prefix", deploy["pre_deploy_command"])
+	}
+
+	resources := api["resources"].(map[string]any)
+	if resources["vcpus"] != 2.0 || resources["memory_gb"] != 4.0 {
+		t.Fatalf("resources = %v, want vcpus=2 memory_gb=4", resources)
+	}
+
+	domains := api["domains"].(map[string]any)
+	railwayDomain := domains["api.up.railway.app"].(map[string]any)
+	if railwayDomain["suffix"] != "up.railway.app" {
+		t.Fatalf("suffix = %v, want up.railway.app", railwayDomain["suffix"])
+	}
+
+	volumes := api["volumes"].(map[string]any)
+	volume := volumes["data"].(map[string]any)
+	if volume["mount"] != "/data" || volume["region"] != "us-west1" {
+		t.Fatalf("volume = %v, want mount=/data region=us-west1", volume)
+	}
+
+	network := api["network"].(map[string]any)
+	if network["enabled"] != true || network["dns_name"] != "api.railway.internal" {
+		t.Fatalf("network = %v, want enabled=true dns_name=api.railway.internal", network)
+	}
+	proxy := api["tcp_proxies"].([]any)[0].(map[string]any)
+	if proxy["application_port"] != 5432.0 || proxy["proxy_port"] != 32000.0 || proxy["domain"] != "tcp.example.com" {
+		t.Fatalf("tcp_proxy = %v, want application/proxy/domain fields", proxy)
+	}
+	trigger := api["triggers"].([]any)[0].(map[string]any)
+	if trigger["provider"] != "github" {
+		t.Fatalf("trigger provider = %v, want github", trigger["provider"])
+	}
+	egress := api["egress"].([]any)[0].(map[string]any)
+	if egress["region"] != "us-west1" || egress["ipv4"] != "1.2.3.4" {
+		t.Fatalf("egress = %v, want region/us-west1 ipv4/1.2.3.4", egress)
+	}
+}
+
+func TestRender_TextFullIncludesSubResources(t *testing.T) {
+	cfg := config.LiveConfig{
+		ProjectID:     "proj-1",
+		EnvironmentID: "env-1",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				ID:        "svc-1",
+				Name:      "api",
+				Icon:      "server",
+				Variables: map[string]string{"PORT": "8080"},
+				Deploy: config.Deploy{
+					Builder:          "NIXPACKS",
+					WatchPatterns:    []string{"apps/api/**"},
+					PreDeployCommand: []string{"go", "test", "./..."},
+				},
+				VCPUs:    renderFloat64Ptr(2),
+				MemoryGB: renderFloat64Ptr(4),
+				Domains: []config.LiveDomain{
+					{Domain: "api.example.com", TargetPort: renderIntPtr(8080)},
+					{Domain: "api.up.railway.app", TargetPort: renderIntPtr(8080), Suffix: "up.railway.app"},
+				},
+				Volumes: []config.LiveVolume{{Name: "data", MountPath: "/data", Region: "us-west1"}},
+				TCPProxies: []config.LiveTCPProxy{{
+					ApplicationPort: 5432,
+					ProxyPort:       32000,
+					Domain:          "tcp.example.com",
+				}},
+				Network:  &config.LiveNetworkEndpoint{ID: "ne-1", DNSName: "api.railway.internal"},
+				Triggers: []config.LiveTrigger{{Repository: "org/repo", Branch: "main", Provider: "github"}},
+				Egress:   []config.LiveEgressGateway{{Region: "us-west1", IPv4: "1.2.3.4"}},
+			},
+		},
+	}
+
+	got, err := config.Render(cfg, config.RenderOptions{Format: "text", Full: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checks := []string{
+		"[service.resources]",
+		"vcpus = 2",
+		"memory_gb = 4",
+		"[service.domains.api.example.com]",
+		"suffix = up.railway.app",
+		"[service.volumes.data]",
+		"mount = /data",
+		"[[service.tcp_proxies]]",
+		"application_port = 5432",
+		"proxy_port = 32000",
+		"domain = tcp.example.com",
+		"[service.network]",
+		"enabled = true",
+		"dns_name = api.railway.internal",
+		"[[service.triggers]]",
+		"provider = github",
+		"[[service.egress]]",
+		"ipv4 = 1.2.3.4",
+	}
+	for _, want := range checks {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in text output:\n%s", want, got)
+		}
+	}
+}
+
 func TestRender_TOMLQuotesValues(t *testing.T) {
 	cfg := config.LiveConfig{
 		Variables: map[string]string{"CONNECTION_INFO": `host="db" port=5432`},
@@ -143,6 +300,79 @@ func TestRender_TOMLFullIncludesIDs(t *testing.T) {
 	}
 	if !strings.Contains(got, `[service.deploy]`) {
 		t.Errorf("expected deploy section in full TOML, got:\n%s", got)
+	}
+}
+
+func TestRender_TOMLFullIncludesSubResources(t *testing.T) {
+	cfg := config.LiveConfig{
+		ProjectID:     "proj-1",
+		EnvironmentID: "env-1",
+		Services: map[string]*config.ServiceConfig{
+			"api": {
+				ID:        "svc-1",
+				Name:      "api",
+				Icon:      "server",
+				Variables: map[string]string{"PORT": "8080"},
+				Deploy: config.Deploy{
+					Builder:          "NIXPACKS",
+					WatchPatterns:    []string{"apps/api/**"},
+					PreDeployCommand: []string{"go", "test", "./..."},
+				},
+				VCPUs:    renderFloat64Ptr(2),
+				MemoryGB: renderFloat64Ptr(4),
+				Domains: []config.LiveDomain{
+					{Domain: "api.example.com", TargetPort: renderIntPtr(8080)},
+					{Domain: "api.up.railway.app", TargetPort: renderIntPtr(8080), Suffix: "up.railway.app"},
+				},
+				Volumes: []config.LiveVolume{{Name: "data", MountPath: "/data", Region: "us-west1"}},
+				TCPProxies: []config.LiveTCPProxy{{
+					ApplicationPort: 5432,
+					ProxyPort:       32000,
+					Domain:          "tcp.example.com",
+				}},
+				Network:  &config.LiveNetworkEndpoint{ID: "ne-1", DNSName: "api.railway.internal"},
+				Triggers: []config.LiveTrigger{{Repository: "org/repo", Branch: "main", Provider: "github"}},
+				Egress:   []config.LiveEgressGateway{{Region: "us-west1", IPv4: "1.2.3.4"}},
+			},
+		},
+	}
+
+	got, err := config.Render(cfg, config.RenderOptions{Format: "toml", Full: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checks := []string{
+		`watch_patterns = ["apps/api/**"]`,
+		`pre_deploy_command = ["go", "test", "./..."]`,
+		`[service.resources]`,
+		`vcpus = 2.0`,
+		`memory_gb = 4.0`,
+		`[service.domains."api.example.com"]`,
+		`[service.domains."api.up.railway.app"]`,
+		`suffix = "up.railway.app"`,
+		`[service.volumes.data]`,
+		`mount = "/data"`,
+		`region = "us-west1"`,
+		`[[service.tcp_proxies]]`,
+		`application_port = 5432`,
+		`proxy_port = 32000`,
+		`domain = "tcp.example.com"`,
+		`[service.network]`,
+		`enabled = true`,
+		`dns_name = "api.railway.internal"`,
+		`[[service.triggers]]`,
+		`repository = "org/repo"`,
+		`branch = "main"`,
+		`provider = "github"`,
+		`[[service.egress]]`,
+		`region = "us-west1"`,
+		`ipv4 = "1.2.3.4"`,
+	}
+	for _, want := range checks {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in TOML output:\n%s", want, got)
+		}
 	}
 }
 

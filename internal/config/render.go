@@ -25,33 +25,79 @@ type tomlShowConfig struct {
 
 // tomlService represents one [[service]] entry in rendered TOML.
 type tomlService struct {
-	Name      string            `toml:"name"`
-	ID        string            `toml:"id,omitempty"`
-	Icon      string            `toml:"icon,omitempty"`
-	Variables map[string]string `toml:"variables,omitempty"`
-	Deploy    *tomlDeploy       `toml:"deploy,omitempty"`
+	Name       string                `toml:"name"`
+	ID         string                `toml:"id,omitempty"`
+	Icon       string                `toml:"icon,omitempty"`
+	Variables  map[string]string     `toml:"variables,omitempty"`
+	Deploy     *tomlDeploy           `toml:"deploy,omitempty"`
+	Resources  *tomlResources        `toml:"resources,omitempty"`
+	Domains    map[string]tomlDomain `toml:"domains,omitempty"`
+	Volumes    map[string]tomlVolume `toml:"volumes,omitempty"`
+	TCPProxies []tomlTCPProxy        `toml:"tcp_proxies,omitempty"`
+	Network    *tomlNetwork          `toml:"network,omitempty"`
+	Triggers   []tomlTrigger         `toml:"triggers,omitempty"`
+	Egress     []tomlEgress          `toml:"egress,omitempty"`
 }
 
 // tomlDeploy mirrors Deploy with toml tags for marshalling.
 type tomlDeploy struct {
-	Builder                 string  `toml:"builder,omitempty"`
-	Repo                    *string `toml:"repo,omitempty"`
-	Image                   *string `toml:"image,omitempty"`
-	BuildCommand            *string `toml:"build_command,omitempty"`
-	DockerfilePath          *string `toml:"dockerfile_path,omitempty"`
-	RootDirectory           *string `toml:"root_directory,omitempty"`
-	StartCommand            *string `toml:"start_command,omitempty"`
-	CronSchedule            *string `toml:"cron_schedule,omitempty"`
-	HealthcheckPath         *string `toml:"healthcheck_path,omitempty"`
-	HealthcheckTimeout      *int    `toml:"healthcheck_timeout,omitempty"`
-	RestartPolicy           string  `toml:"restart_policy,omitempty"`
-	RestartPolicyMaxRetries *int    `toml:"restart_policy_max_retries,omitempty"`
-	DrainingSeconds         *int    `toml:"draining_seconds,omitempty"`
-	OverlapSeconds          *int    `toml:"overlap_seconds,omitempty"`
-	SleepApplication        *bool   `toml:"sleep_application,omitempty"`
-	NumReplicas             *int    `toml:"num_replicas,omitempty"`
-	Region                  *string `toml:"region,omitempty"`
-	IPv6Egress              *bool   `toml:"ipv6_egress,omitempty"`
+	Builder                 string   `toml:"builder,omitempty"`
+	Repo                    *string  `toml:"repo,omitempty"`
+	Image                   *string  `toml:"image,omitempty"`
+	BuildCommand            *string  `toml:"build_command,omitempty"`
+	DockerfilePath          *string  `toml:"dockerfile_path,omitempty"`
+	RootDirectory           *string  `toml:"root_directory,omitempty"`
+	StartCommand            *string  `toml:"start_command,omitempty"`
+	CronSchedule            *string  `toml:"cron_schedule,omitempty"`
+	HealthcheckPath         *string  `toml:"healthcheck_path,omitempty"`
+	HealthcheckTimeout      *int     `toml:"healthcheck_timeout,omitempty"`
+	RestartPolicy           string   `toml:"restart_policy,omitempty"`
+	RestartPolicyMaxRetries *int     `toml:"restart_policy_max_retries,omitempty"`
+	DrainingSeconds         *int     `toml:"draining_seconds,omitempty"`
+	OverlapSeconds          *int     `toml:"overlap_seconds,omitempty"`
+	WatchPatterns           []string `toml:"watch_patterns,omitempty"`
+	PreDeployCommand        []string `toml:"pre_deploy_command,omitempty"`
+	SleepApplication        *bool    `toml:"sleep_application,omitempty"`
+	NumReplicas             *int     `toml:"num_replicas,omitempty"`
+	Region                  *string  `toml:"region,omitempty"`
+	IPv6Egress              *bool    `toml:"ipv6_egress,omitempty"`
+}
+
+type tomlResources struct {
+	VCPUs    *float64 `toml:"vcpus,omitempty"`
+	MemoryGB *float64 `toml:"memory_gb,omitempty"`
+}
+
+type tomlDomain struct {
+	Port   *int   `toml:"port,omitempty"`
+	Suffix string `toml:"suffix,omitempty"`
+}
+
+type tomlVolume struct {
+	Mount  string `toml:"mount"`
+	Region string `toml:"region,omitempty"`
+}
+
+type tomlTrigger struct {
+	Repository string `toml:"repository"`
+	Branch     string `toml:"branch"`
+	Provider   string `toml:"provider,omitempty"`
+}
+
+type tomlTCPProxy struct {
+	ApplicationPort int    `toml:"application_port"`
+	ProxyPort       int    `toml:"proxy_port,omitempty"`
+	Domain          string `toml:"domain,omitempty"`
+}
+
+type tomlNetwork struct {
+	Enabled bool   `toml:"enabled"`
+	DNSName string `toml:"dns_name,omitempty"`
+}
+
+type tomlEgress struct {
+	Region string `toml:"region"`
+	IPv4   string `toml:"ipv4,omitempty"`
 }
 
 // tomlInitConfig is the top-level struct for init/adopt output.
@@ -92,6 +138,8 @@ func deployToTOML(d Deploy) *tomlDeploy {
 		RestartPolicyMaxRetries: d.RestartPolicyMaxRetries,
 		DrainingSeconds:         d.DrainingSeconds,
 		OverlapSeconds:          d.OverlapSeconds,
+		WatchPatterns:           d.WatchPatterns,
+		PreDeployCommand:        d.PreDeployCommand,
 		SleepApplication:        d.SleepApplication,
 		NumReplicas:             d.NumReplicas,
 		Region:                  d.Region,
@@ -104,7 +152,8 @@ func deployToTOML(d Deploy) *tomlDeploy {
 		td.CronSchedule == nil && td.HealthcheckPath == nil &&
 		td.HealthcheckTimeout == nil && td.RestartPolicy == "" &&
 		td.RestartPolicyMaxRetries == nil && td.DrainingSeconds == nil &&
-		td.OverlapSeconds == nil && td.SleepApplication == nil &&
+		td.OverlapSeconds == nil && td.WatchPatterns == nil &&
+		td.PreDeployCommand == nil && td.SleepApplication == nil &&
 		td.NumReplicas == nil && td.Region == nil && td.IPv6Egress == nil {
 		return nil
 	}
@@ -124,6 +173,50 @@ func liveToTOMLServices(cfg LiveConfig, full bool) []tomlService {
 		}
 		if full {
 			ts.Deploy = deployToTOML(svc.Deploy)
+			if svc.VCPUs != nil || svc.MemoryGB != nil {
+				ts.Resources = &tomlResources{VCPUs: svc.VCPUs, MemoryGB: svc.MemoryGB}
+			}
+			if len(svc.Domains) > 0 {
+				ts.Domains = make(map[string]tomlDomain, len(svc.Domains))
+				for _, domain := range sortedDomains(svc.Domains) {
+					ts.Domains[domain.Domain] = tomlDomain{Port: domain.TargetPort, Suffix: domain.Suffix}
+				}
+			}
+			if len(svc.Volumes) > 0 {
+				ts.Volumes = make(map[string]tomlVolume, len(svc.Volumes))
+				for _, volume := range sortedVolumes(svc.Volumes) {
+					ts.Volumes[volume.Name] = tomlVolume{Mount: volume.MountPath, Region: volume.Region}
+				}
+			}
+			if len(svc.TCPProxies) > 0 {
+				ts.TCPProxies = make([]tomlTCPProxy, 0, len(svc.TCPProxies))
+				for _, proxy := range sortedTCPProxies(svc.TCPProxies) {
+					ts.TCPProxies = append(ts.TCPProxies, tomlTCPProxy{
+						ApplicationPort: proxy.ApplicationPort,
+						ProxyPort:       proxy.ProxyPort,
+						Domain:          proxy.Domain,
+					})
+				}
+			}
+			if svc.Network != nil {
+				ts.Network = &tomlNetwork{Enabled: true, DNSName: svc.Network.DNSName}
+			}
+			if len(svc.Triggers) > 0 {
+				ts.Triggers = make([]tomlTrigger, 0, len(svc.Triggers))
+				for _, trigger := range sortedTriggers(svc.Triggers) {
+					ts.Triggers = append(ts.Triggers, tomlTrigger{
+						Repository: trigger.Repository,
+						Branch:     trigger.Branch,
+						Provider:   trigger.Provider,
+					})
+				}
+			}
+			if len(svc.Egress) > 0 {
+				ts.Egress = make([]tomlEgress, 0, len(svc.Egress))
+				for _, gateway := range sortedEgress(svc.Egress) {
+					ts.Egress = append(ts.Egress, tomlEgress{Region: gateway.Region, IPv4: gateway.IPv4})
+				}
+			}
 		}
 		services = append(services, ts)
 	}
@@ -189,11 +282,19 @@ func maskConfig(cfg LiveConfig, masker *Masker) LiveConfig {
 	}
 	for name, svc := range cfg.Services {
 		out.Services[name] = &ServiceConfig{
-			ID:        svc.ID,
-			Name:      svc.Name,
-			Icon:      svc.Icon,
-			Variables: maskVars(svc.Variables, masker),
-			Deploy:    svc.Deploy,
+			ID:         svc.ID,
+			Name:       svc.Name,
+			Icon:       svc.Icon,
+			Variables:  maskVars(svc.Variables, masker),
+			Deploy:     svc.Deploy,
+			VCPUs:      svc.VCPUs,
+			MemoryGB:   svc.MemoryGB,
+			Domains:    svc.Domains,
+			Volumes:    svc.Volumes,
+			TCPProxies: svc.TCPProxies,
+			Triggers:   svc.Triggers,
+			Egress:     svc.Egress,
+			Network:    svc.Network,
 		}
 	}
 	return out
@@ -230,6 +331,87 @@ func toJSONMap(cfg LiveConfig, full bool) map[string]any {
 				svcMap["icon"] = svc.Icon
 			}
 			svcMap["deploy"] = deployMap(svc.Deploy)
+			if svc.VCPUs != nil || svc.MemoryGB != nil {
+				res := map[string]any{}
+				if svc.VCPUs != nil {
+					res["vcpus"] = *svc.VCPUs
+				}
+				if svc.MemoryGB != nil {
+					res["memory_gb"] = *svc.MemoryGB
+				}
+				svcMap["resources"] = res
+			}
+			if len(svc.Domains) > 0 {
+				domains := map[string]any{}
+				for _, domain := range sortedDomains(svc.Domains) {
+					domainMap := map[string]any{}
+					if domain.TargetPort != nil {
+						domainMap["port"] = *domain.TargetPort
+					}
+					if domain.Suffix != "" {
+						domainMap["suffix"] = domain.Suffix
+					}
+					domains[domain.Domain] = domainMap
+				}
+				svcMap["domains"] = domains
+			}
+			if len(svc.Volumes) > 0 {
+				volumes := map[string]any{}
+				for _, volume := range sortedVolumes(svc.Volumes) {
+					volumeMap := map[string]any{"mount": volume.MountPath}
+					if volume.Region != "" {
+						volumeMap["region"] = volume.Region
+					}
+					volumes[volume.Name] = volumeMap
+				}
+				svcMap["volumes"] = volumes
+			}
+			if len(svc.TCPProxies) > 0 {
+				tcpProxies := make([]map[string]any, 0, len(svc.TCPProxies))
+				for _, proxy := range sortedTCPProxies(svc.TCPProxies) {
+					proxyMap := map[string]any{"application_port": proxy.ApplicationPort}
+					if proxy.ProxyPort != 0 {
+						proxyMap["proxy_port"] = proxy.ProxyPort
+					}
+					if proxy.Domain != "" {
+						proxyMap["domain"] = proxy.Domain
+					}
+					tcpProxies = append(tcpProxies, proxyMap)
+				}
+				svcMap["tcp_proxies"] = tcpProxies
+			}
+			if svc.Network != nil {
+				network := map[string]any{"enabled": true}
+				if svc.Network.DNSName != "" {
+					network["dns_name"] = svc.Network.DNSName
+				}
+				svcMap["network"] = network
+			}
+			if len(svc.Triggers) > 0 {
+				triggers := make([]map[string]any, 0, len(svc.Triggers))
+				for _, trigger := range sortedTriggers(svc.Triggers) {
+					triggerMap := map[string]any{
+						"repository": trigger.Repository,
+						"branch":     trigger.Branch,
+					}
+					if trigger.Provider != "" {
+						triggerMap["provider"] = trigger.Provider
+					}
+					triggers = append(triggers, triggerMap)
+				}
+				svcMap["triggers"] = triggers
+			}
+			if len(svc.Egress) > 0 {
+				egress := make([]map[string]any, 0, len(svc.Egress))
+				for _, gateway := range sortedEgress(svc.Egress) {
+					gatewayMap := map[string]any{"region": gateway.Region}
+					if gateway.IPv4 != "" {
+						gatewayMap["ipv4"] = gateway.IPv4
+					}
+					egress = append(egress, gatewayMap)
+				}
+				svcMap["egress"] = egress
+			}
 		}
 		m[name] = svcMap
 	}
@@ -281,6 +463,12 @@ func deployMap(d Deploy) map[string]any {
 	if d.OverlapSeconds != nil {
 		m["overlap_seconds"] = *d.OverlapSeconds
 	}
+	if len(d.WatchPatterns) > 0 {
+		m["watch_patterns"] = d.WatchPatterns
+	}
+	if len(d.PreDeployCommand) > 0 {
+		m["pre_deploy_command"] = d.PreDeployCommand
+	}
 	if d.SleepApplication != nil {
 		m["sleep_application"] = *d.SleepApplication
 	}
@@ -322,11 +510,19 @@ func envRefConfig(cfg LiveConfig) LiveConfig {
 	}
 	for name, svc := range cfg.Services {
 		out.Services[name] = &ServiceConfig{
-			ID:        svc.ID,
-			Name:      svc.Name,
-			Icon:      svc.Icon,
-			Variables: envRefVars(svc.Variables, masker),
-			Deploy:    svc.Deploy,
+			ID:         svc.ID,
+			Name:       svc.Name,
+			Icon:       svc.Icon,
+			Variables:  envRefVars(svc.Variables, masker),
+			Deploy:     svc.Deploy,
+			VCPUs:      svc.VCPUs,
+			MemoryGB:   svc.MemoryGB,
+			Domains:    svc.Domains,
+			Volumes:    svc.Volumes,
+			TCPProxies: svc.TCPProxies,
+			Triggers:   svc.Triggers,
+			Egress:     svc.Egress,
+			Network:    svc.Network,
 		}
 	}
 	return out
@@ -454,6 +650,70 @@ func renderText(cfg LiveConfig, full bool) string {
 				out.WriteString(marshalTOML(td))
 				out.WriteString("\n\n")
 			}
+			if svc.VCPUs != nil || svc.MemoryGB != nil {
+				out.WriteString("[service.resources]\n")
+				if svc.VCPUs != nil {
+					out.WriteString(fmt.Sprintf("vcpus = %v\n", *svc.VCPUs))
+				}
+				if svc.MemoryGB != nil {
+					out.WriteString(fmt.Sprintf("memory_gb = %v\n", *svc.MemoryGB))
+				}
+				out.WriteString("\n")
+			}
+			for _, domain := range sortedDomains(svc.Domains) {
+				out.WriteString("[service.domains." + domain.Domain + "]\n")
+				if domain.TargetPort != nil {
+					out.WriteString(fmt.Sprintf("port = %d\n", *domain.TargetPort))
+				}
+				if domain.Suffix != "" {
+					out.WriteString("suffix = " + domain.Suffix + "\n")
+				}
+				out.WriteString("\n")
+			}
+			for _, volume := range sortedVolumes(svc.Volumes) {
+				out.WriteString("[service.volumes." + volume.Name + "]\n")
+				out.WriteString("mount = " + volume.MountPath + "\n")
+				if volume.Region != "" {
+					out.WriteString("region = " + volume.Region + "\n")
+				}
+				out.WriteString("\n")
+			}
+			for _, proxy := range sortedTCPProxies(svc.TCPProxies) {
+				out.WriteString("[[service.tcp_proxies]]\n")
+				out.WriteString(fmt.Sprintf("application_port = %d\n", proxy.ApplicationPort))
+				if proxy.ProxyPort != 0 {
+					out.WriteString(fmt.Sprintf("proxy_port = %d\n", proxy.ProxyPort))
+				}
+				if proxy.Domain != "" {
+					out.WriteString("domain = " + proxy.Domain + "\n")
+				}
+				out.WriteString("\n")
+			}
+			if svc.Network != nil {
+				out.WriteString("[service.network]\n")
+				out.WriteString("enabled = true\n")
+				if svc.Network.DNSName != "" {
+					out.WriteString("dns_name = " + svc.Network.DNSName + "\n")
+				}
+				out.WriteString("\n")
+			}
+			for _, trigger := range sortedTriggers(svc.Triggers) {
+				out.WriteString("[[service.triggers]]\n")
+				out.WriteString("repository = " + trigger.Repository + "\n")
+				out.WriteString("branch = " + trigger.Branch + "\n")
+				if trigger.Provider != "" {
+					out.WriteString("provider = " + trigger.Provider + "\n")
+				}
+				out.WriteString("\n")
+			}
+			for _, gateway := range sortedEgress(svc.Egress) {
+				out.WriteString("[[service.egress]]\n")
+				out.WriteString("region = " + gateway.Region + "\n")
+				if gateway.IPv4 != "" {
+					out.WriteString("ipv4 = " + gateway.IPv4 + "\n")
+				}
+				out.WriteString("\n")
+			}
 		}
 	}
 
@@ -476,4 +736,59 @@ func sortedServiceNames(services map[string]*ServiceConfig) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func sortedDomains(domains []LiveDomain) []LiveDomain {
+	out := append([]LiveDomain(nil), domains...)
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Domain < out[j].Domain
+	})
+	return out
+}
+
+func sortedVolumes(volumes []LiveVolume) []LiveVolume {
+	out := append([]LiveVolume(nil), volumes...)
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+func sortedTCPProxies(proxies []LiveTCPProxy) []LiveTCPProxy {
+	out := append([]LiveTCPProxy(nil), proxies...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].ApplicationPort != out[j].ApplicationPort {
+			return out[i].ApplicationPort < out[j].ApplicationPort
+		}
+		if out[i].ProxyPort != out[j].ProxyPort {
+			return out[i].ProxyPort < out[j].ProxyPort
+		}
+		return out[i].Domain < out[j].Domain
+	})
+	return out
+}
+
+func sortedTriggers(triggers []LiveTrigger) []LiveTrigger {
+	out := append([]LiveTrigger(nil), triggers...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Repository != out[j].Repository {
+			return out[i].Repository < out[j].Repository
+		}
+		if out[i].Branch != out[j].Branch {
+			return out[i].Branch < out[j].Branch
+		}
+		return out[i].Provider < out[j].Provider
+	})
+	return out
+}
+
+func sortedEgress(gateways []LiveEgressGateway) []LiveEgressGateway {
+	out := append([]LiveEgressGateway(nil), gateways...)
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Region != out[j].Region {
+			return out[i].Region < out[j].Region
+		}
+		return out[i].IPv4 < out[j].IPv4
+	})
+	return out
 }

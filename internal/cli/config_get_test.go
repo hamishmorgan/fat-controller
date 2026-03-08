@@ -138,9 +138,11 @@ func (s *serviceCaptureFetcher) Resolve(ctx context.Context, workspace, project,
 	return s.inner.Resolve(ctx, workspace, project, environment)
 }
 
-func (s *serviceCaptureFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {
-	*s.captured = service
-	return s.inner.Fetch(ctx, projectID, environmentID, service)
+func (s *serviceCaptureFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
+	if len(services) > 0 {
+		*s.captured = services[0]
+	}
+	return s.inner.Fetch(ctx, projectID, environmentID, services)
 }
 
 func TestRunConfigGet_ResolveError(t *testing.T) {

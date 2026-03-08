@@ -803,8 +803,8 @@ func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environmen
 	return railway.ResolveProjectEnvironment(ctx, e.client, workspace, project, environment)
 }
 
-func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, service)
+func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services)
 }
 
 // e2eInitResolver implements initResolver for e2e tests, delegating to the
@@ -849,8 +849,12 @@ func (e *e2eInitResolver) FetchEnvironments(ctx context.Context, projectID strin
 	return items, nil
 }
 
-func (e *e2eInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, "")
+func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]config.ServiceInfo, error) {
+	return railway.FetchServiceList(ctx, e.client, projectID)
+}
+
+func (e *e2eInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services)
 }
 
 // dedent strips the common leading whitespace from all non-empty lines

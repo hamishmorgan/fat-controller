@@ -84,7 +84,11 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 
 	// Fetch live state.
 	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)
-	live, err := fetcher.Fetch(ctx, projID, envID, c.Service)
+	var adoptFilter []string
+	if c.Service != "" {
+		adoptFilter = []string{c.Service}
+	}
+	live, err := fetcher.Fetch(ctx, projID, envID, adoptFilter)
 	if err != nil {
 		return err
 	}

@@ -107,7 +107,7 @@ type serviceTarget struct {
 // resolveServiceTargets resolves the service arguments to name+ID pairs.
 // If no service names are given, returns all services in the environment.
 func resolveServiceTargets(ctx context.Context, client *railway.Client, projectID, envID string, serviceNames []string) ([]serviceTarget, error) {
-	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, "")
+	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("fetching services: %w", err)
 	}

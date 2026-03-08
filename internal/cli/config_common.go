@@ -70,7 +70,11 @@ func loadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 
 	// 5. Fetch live state.
 	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)
-	live, err := fetcher.Fetch(ctx, projID, envID, service)
+	var svcFilter []string
+	if service != "" {
+		svcFilter = []string{service}
+	}
+	live, err := fetcher.Fetch(ctx, projID, envID, svcFilter)
 	if err != nil {
 		return nil, err
 	}

@@ -68,7 +68,8 @@ type initResolver interface {
 	FetchWorkspaces(ctx context.Context) ([]prompt.Item, error)
 	FetchProjects(ctx context.Context, workspaceID string) ([]prompt.Item, error)
 	FetchEnvironments(ctx context.Context, projectID string) ([]prompt.Item, error)
-	FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error)
+	FetchServiceList(ctx context.Context, projectID string) ([]config.ServiceInfo, error)
+	FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
 }
 
 // railwayInitResolver implements initResolver using the Railway API.
@@ -112,8 +113,12 @@ func (r *railwayInitResolver) FetchEnvironments(ctx context.Context, projectID s
 	return items, nil
 }
 
-func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, "")
+func (r *railwayInitResolver) FetchServiceList(ctx context.Context, projectID string) ([]config.ServiceInfo, error) {
+	return railway.FetchServiceList(ctx, r.client, projectID)
+}
+
+func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, services)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is
@@ -281,10 +286,10 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		_, _ = fmt.Fprintf(out, "  Environment: %s\n", envName)
 	}
 
-	// 3. Fetch live state.
-	var live *config.LiveConfig
-	if err := withSpinner(ctx, "Fetching live state…", interactive, func() {
-		live, fetchErr = resolver.FetchLiveState(ctx, projID, envID)
+	// 3. Fetch service list (lightweight — single query).
+	var svcList []config.ServiceInfo
+	if err := withSpinner(ctx, "Fetching services…", interactive, func() {
+		svcList, fetchErr = resolver.FetchServiceList(ctx, projID)
 	}); err != nil {
 		return err
 	}
@@ -292,11 +297,12 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 		return fetchErr
 	}
 
-	// 4. Let the user choose which services to include.
-	serviceNames := make([]string, 0, len(live.Services))
-	for name := range live.Services {
-		serviceNames = append(serviceNames, name)
+	serviceNames := make([]string, 0, len(svcList))
+	for _, si := range svcList {
+		serviceNames = append(serviceNames, si.Name)
 	}
+
+	// 4. Let the user choose which services to include.
 	var selected []string
 	if interactive {
 		err = prompt.RunFields(
@@ -317,21 +323,15 @@ func RunConfigInit(ctx context.Context, dir, workspace, project, environment str
 	}
 	_, _ = fmt.Fprintf(out, "  Services: %s (%d selected)\n", strings.Join(selected, ", "), len(selected))
 
-	selectedSet := make(map[string]bool, len(selected))
-	for _, name := range selected {
-		selectedSet[name] = true
+	// 5. Fetch full live state for only the selected services.
+	var filtered *config.LiveConfig
+	if err := withSpinner(ctx, "Fetching live state…", interactive, func() {
+		filtered, fetchErr = resolver.FetchLiveState(ctx, projID, envID, selected)
+	}); err != nil {
+		return err
 	}
-	// Filter live config to only selected services.
-	filtered := &config.LiveConfig{
-		ProjectID:     live.ProjectID,
-		EnvironmentID: live.EnvironmentID,
-		Variables:     live.Variables,
-		Services:      make(map[string]*config.ServiceConfig, len(selected)),
-	}
-	for name, svc := range live.Services {
-		if selectedSet[name] {
-			filtered.Services[name] = svc
-		}
+	if fetchErr != nil {
+		return fetchErr
 	}
 
 	_, _ = fmt.Fprintln(out)

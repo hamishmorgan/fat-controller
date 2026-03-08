@@ -60,7 +60,7 @@ func TestFetchLiveConfig_IncludesSharedAndServiceVars(t *testing.T) {
 		HeaderValue: "Bearer test-token",
 		Source:      auth.SourceFlag,
 	}, nil, nil)
-	cfg, err := railway.FetchLiveConfig(context.Background(), client, "proj-1", "env-1", "")
+	cfg, err := railway.FetchLiveConfig(context.Background(), client, "proj-1", "env-1", nil)
 	if err != nil {
 		t.Fatalf("FetchLiveConfig() error: %v", err)
 	}

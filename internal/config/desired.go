@@ -2,6 +2,13 @@ package config
 
 import "fmt"
 
+// ServiceInfo is a lightweight name+ID pair, used to populate a service
+// picker without fetching the full live config per service.
+type ServiceInfo struct {
+	Name string
+	ID   string
+}
+
 // Override records that a variable was overridden by a later config file.
 type Override struct {
 	Path   string // dot-path e.g. "api.variables.PORT"

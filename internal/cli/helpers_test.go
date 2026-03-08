@@ -62,7 +62,7 @@ func (f *fakeFetcher) Resolve(_ context.Context, _, _, _ string) (string, string
 	return "proj-1", "env-1", nil
 }
 
-func (f *fakeFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
+func (f *fakeFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {
 	if f.fetchErr != nil {
 		return nil, f.fetchErr
 	}
@@ -82,6 +82,6 @@ func (f *capturingFetcher) Resolve(_ context.Context, _, project, environment st
 	return "proj-1", "env-1", nil
 }
 
-func (f *capturingFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
+func (f *capturingFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {
 	return f.cfg, nil
 }

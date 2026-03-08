@@ -6,11 +6,30 @@ import (
 	"fmt"
 	"log/slog"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
-// FetchLiveConfig loads shared + per-service variables and basic settings.
-func FetchLiveConfig(ctx context.Context, client *Client, projectID, environmentID, serviceFilter string) (*config.LiveConfig, error) {
+// FetchServiceList returns the name/ID pairs for all services in a project.
+// This is a lightweight query (single API call) suitable for showing a service
+// picker before fetching full live state.
+func FetchServiceList(ctx context.Context, client *Client, projectID string) ([]config.ServiceInfo, error) {
+	resp, err := ProjectServices(ctx, client.GQL(), projectID)
+	if err != nil {
+		return nil, err
+	}
+	services := make([]config.ServiceInfo, len(resp.Project.Services.Edges))
+	for i, edge := range resp.Project.Services.Edges {
+		services[i] = config.ServiceInfo{Name: edge.Node.Name, ID: edge.Node.Id}
+	}
+	return services, nil
+}
+
+// FetchLiveConfig loads shared + per-service variables and settings.
+// serviceFilter limits which services are fetched — empty means all.
+// Per-service queries run concurrently via errgroup.
+func FetchLiveConfig(ctx context.Context, client *Client, projectID, environmentID string, serviceFilter []string) (*config.LiveConfig, error) {
 	slog.Debug("fetching live config", "project_id", projectID, "environment_id", environmentID, "service_filter", serviceFilter)
 	cfg := &config.LiveConfig{
 		ProjectID:     projectID,
@@ -19,12 +38,15 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 		Services:      map[string]*config.ServiceConfig{},
 	}
 
+	filterSet := make(map[string]bool, len(serviceFilter))
+	for _, name := range serviceFilter {
+		filterSet[name] = true
+	}
+
 	shared, err := Variables(ctx, client.GQL(), projectID, environmentID, nil)
 	if err != nil {
 		return nil, err
 	}
-	// Variables returns EnvironmentVariables which genqlient maps to
-	// map[string]interface{} — convert values to strings.
 	for k, v := range shared.Variables {
 		cfg.Variables[k] = fmt.Sprint(v)
 	}
@@ -35,81 +57,149 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 		return nil, err
 	}
 
-	// Pre-fetch environment-wide volume instances (keyed by serviceId).
-	volumesByService := fetchVolumesByService(ctx, client, projectID, environmentID)
-
-	// Pre-fetch private networks for the environment (needed for per-service endpoint check).
-	networks := fetchPrivateNetworks(ctx, client, environmentID)
-
+	// Collect the services to fetch based on the filter.
+	type svcRef struct{ name, id string }
+	var toFetch []svcRef
 	for _, edge := range services.Project.Services.Edges {
-		if serviceFilter != "" && edge.Node.Name != serviceFilter {
+		if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
 			continue
 		}
-		svc := &config.ServiceConfig{
-			ID:        edge.Node.Id,
-			Name:      edge.Node.Name,
-			Variables: map[string]string{},
-		}
-		vars, err := Variables(ctx, client.GQL(), projectID, environmentID, &edge.Node.Id)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range vars.Variables {
-			svc.Variables[k] = fmt.Sprint(v)
-		}
+		toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id})
+	}
 
-		instance, err := ServiceInstance(ctx, client.GQL(), environmentID, edge.Node.Id)
-		if err != nil {
-			return nil, fmt.Errorf("fetching deploy settings for %s: %w", edge.Node.Name, err)
-		}
-		si := instance.ServiceInstance
-		svc.Deploy = config.Deploy{
-			Builder:                 string(si.Builder),
-			BuildCommand:            si.BuildCommand,
-			DockerfilePath:          si.DockerfilePath,
-			RootDirectory:           si.RootDirectory,
-			WatchPatterns:           si.WatchPatterns,
-			PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
-			StartCommand:            si.StartCommand,
-			CronSchedule:            si.CronSchedule,
-			HealthcheckPath:         si.HealthcheckPath,
-			HealthcheckTimeout:      si.HealthcheckTimeout,
-			RestartPolicy:           string(si.RestartPolicyType),
-			RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
-			DrainingSeconds:         si.DrainingSeconds,
-			OverlapSeconds:          si.OverlapSeconds,
-			SleepApplication:        si.SleepApplication,
-			NumReplicas:             si.NumReplicas,
-			Region:                  si.Region,
-			IPv6Egress:              si.Ipv6EgressEnabled,
-		}
-		if si.Source != nil {
-			svc.Deploy.Repo = si.Source.Repo
-			svc.Deploy.Image = si.Source.Image
-		}
+	if len(toFetch) == 0 {
+		return cfg, nil
+	}
 
-		// Map domains into LiveDomain slice.
-		for _, cd := range si.Domains.CustomDomains {
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
-			})
-		}
-		for _, sd := range si.Domains.ServiceDomains {
-			suffix := ""
-			if sd.Suffix != nil {
-				suffix = *sd.Suffix
+	// Pre-fetch environment-wide data (volumes + private networks) concurrently.
+	var volumesByService map[string][]config.LiveVolume
+	var networks []PrivateNetworksPrivateNetworksPrivateNetwork
+	{
+		g, gCtx := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			volumesByService = fetchVolumesByService(gCtx, client, projectID, environmentID)
+			return nil
+		})
+		g.Go(func() error {
+			networks = fetchPrivateNetworks(gCtx, client, environmentID)
+			return nil
+		})
+		_ = g.Wait() // both are non-fatal internally
+	}
+
+	// Fetch per-service details concurrently.
+	type svcResult struct {
+		name string
+		svc  *config.ServiceConfig
+	}
+	results := make([]svcResult, len(toFetch))
+
+	g, gCtx := errgroup.WithContext(ctx)
+	for i, ref := range toFetch {
+		g.Go(func() error {
+			svc, err := fetchServiceState(gCtx, client, projectID, environmentID, ref.id, ref.name, volumesByService, networks)
+			if err != nil {
+				return err
 			}
-			svc.Domains = append(svc.Domains, config.LiveDomain{
-				ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
-				IsService: true, Suffix: suffix,
-			})
-		}
+			results[i] = svcResult{name: ref.name, svc: svc}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
 
-		// Fetch resource limits (non-fatal — may not be available for all services).
-		limits, limitsErr := ServiceInstanceLimits(ctx, client.GQL(), environmentID, edge.Node.Id)
-		if limitsErr != nil {
-			slog.Debug("could not fetch resource limits", "service", edge.Node.Name, "error", limitsErr)
-		} else if limits.ServiceInstanceLimits != nil {
+	for _, r := range results {
+		cfg.Services[r.name] = r.svc
+	}
+	return cfg, nil
+}
+
+// fetchServiceState fetches all state for a single service. Called concurrently.
+func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork) (*config.ServiceConfig, error) {
+	svc := &config.ServiceConfig{
+		ID:        serviceID,
+		Name:      serviceName,
+		Variables: map[string]string{},
+	}
+
+	// Variables and ServiceInstance are required — fetch concurrently.
+	var vars *VariablesResponse
+	var instance *ServiceInstanceResponse
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		vars, err = Variables(gCtx, client.GQL(), projectID, environmentID, &serviceID)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		instance, err = ServiceInstance(gCtx, client.GQL(), environmentID, serviceID)
+		if err != nil {
+			return fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	for k, v := range vars.Variables {
+		svc.Variables[k] = fmt.Sprint(v)
+	}
+
+	si := instance.ServiceInstance
+	svc.Deploy = config.Deploy{
+		Builder:                 string(si.Builder),
+		BuildCommand:            si.BuildCommand,
+		DockerfilePath:          si.DockerfilePath,
+		RootDirectory:           si.RootDirectory,
+		WatchPatterns:           si.WatchPatterns,
+		PreDeployCommand:        parsePreDeployCommand(si.PreDeployCommand),
+		StartCommand:            si.StartCommand,
+		CronSchedule:            si.CronSchedule,
+		HealthcheckPath:         si.HealthcheckPath,
+		HealthcheckTimeout:      si.HealthcheckTimeout,
+		RestartPolicy:           string(si.RestartPolicyType),
+		RestartPolicyMaxRetries: intPtrNonZero(si.RestartPolicyMaxRetries),
+		DrainingSeconds:         si.DrainingSeconds,
+		OverlapSeconds:          si.OverlapSeconds,
+		SleepApplication:        si.SleepApplication,
+		NumReplicas:             si.NumReplicas,
+		Region:                  si.Region,
+		IPv6Egress:              si.Ipv6EgressEnabled,
+	}
+	if si.Source != nil {
+		svc.Deploy.Repo = si.Source.Repo
+		svc.Deploy.Image = si.Source.Image
+	}
+
+	// Map domains into LiveDomain slice.
+	for _, cd := range si.Domains.CustomDomains {
+		svc.Domains = append(svc.Domains, config.LiveDomain{
+			ID: cd.Id, Domain: cd.Domain, TargetPort: cd.TargetPort,
+		})
+	}
+	for _, sd := range si.Domains.ServiceDomains {
+		suffix := ""
+		if sd.Suffix != nil {
+			suffix = *sd.Suffix
+		}
+		svc.Domains = append(svc.Domains, config.LiveDomain{
+			ID: sd.Id, Domain: sd.Domain, TargetPort: sd.TargetPort,
+			IsService: true, Suffix: suffix,
+		})
+	}
+
+	// Non-fatal sub-resource queries — run concurrently.
+	subG, subCtx := errgroup.WithContext(ctx)
+	subG.Go(func() error {
+		limits, err := ServiceInstanceLimits(subCtx, client.GQL(), environmentID, serviceID)
+		if err != nil {
+			slog.Debug("could not fetch resource limits", "service", serviceName, "error", err)
+			return nil
+		}
+		if limits.ServiceInstanceLimits != nil {
 			if v, ok := limits.ServiceInstanceLimits["vCPUs"]; ok {
 				if f, ok := toFloat64(v); ok {
 					svc.VCPUs = &f
@@ -121,27 +211,31 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 				}
 			}
 		}
+		return nil
+	})
+	subG.Go(func() error {
+		fetchTCPProxies(subCtx, client, environmentID, serviceID, svc)
+		return nil
+	})
+	subG.Go(func() error {
+		fetchEgress(subCtx, client, environmentID, serviceID, svc)
+		return nil
+	})
+	subG.Go(func() error {
+		fetchTriggers(subCtx, client, environmentID, projectID, serviceID, svc)
+		return nil
+	})
+	subG.Go(func() error {
+		fetchNetworkEndpoint(subCtx, client, environmentID, serviceID, networks, svc)
+		return nil
+	})
+	_ = subG.Wait() // all non-fatal
 
-		// Attach pre-fetched volumes for this service.
-		svc.Volumes = volumesByService[edge.Node.Id]
+	// Attach pre-fetched volumes.
+	svc.Volumes = volumesByService[serviceID]
 
-		// Fetch TCP proxies for this service (non-fatal).
-		fetchTCPProxies(ctx, client, environmentID, edge.Node.Id, svc)
-
-		// Fetch egress gateways for this service (non-fatal).
-		fetchEgress(ctx, client, environmentID, edge.Node.Id, svc)
-
-		// Fetch deployment triggers for this service (non-fatal).
-		fetchTriggers(ctx, client, environmentID, projectID, edge.Node.Id, svc)
-
-		// Check private network endpoint for this service (non-fatal).
-		fetchNetworkEndpoint(ctx, client, environmentID, edge.Node.Id, networks, svc)
-
-		slog.Debug("fetched service state", "service", edge.Node.Name, "variables", len(svc.Variables))
-		cfg.Services[edge.Node.Name] = svc
-	}
-
-	return cfg, nil
+	slog.Debug("fetched service state", "service", serviceName, "variables", len(svc.Variables))
+	return svc, nil
 }
 
 // fetchVolumesByService fetches all volume instances for the environment and

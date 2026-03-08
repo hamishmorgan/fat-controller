@@ -20,7 +20,7 @@ func (f *fakeConfigFetcher) Resolve(_ context.Context, _, _, _ string) (string, 
 	return "proj-1", "env-1", nil
 }
 
-func (f *fakeConfigFetcher) Fetch(_ context.Context, _, _, _ string) (*config.LiveConfig, error) {
+func (f *fakeConfigFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {
 	return f.cfg, nil
 }
 

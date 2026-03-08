@@ -15,7 +15,7 @@ import (
 // configFetcher allows injection for tests.
 type configFetcher interface {
 	Resolve(ctx context.Context, workspace, project, environment string) (string, string, error)
-	Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error)
+	Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
 }
 
 type defaultConfigFetcher struct {
@@ -26,8 +26,8 @@ func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, 
 	return railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment)
 }
 
-func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID, service string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, service)
+func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
+	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, services)
 }
 
 // RunConfigGet is the testable core of `show` (formerly `config get`).
@@ -40,7 +40,10 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 	if err != nil {
 		return err
 	}
-	fetchService := service
+	var fetchServices []string
+	if service != "" {
+		fetchServices = []string{service}
+	}
 	var parsed config.Path
 	if path != "" {
 		parsed, err = config.ParsePath(path)
@@ -48,10 +51,10 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 			return err
 		}
 		if parsed.Service != "" {
-			fetchService = parsed.Service
+			fetchServices = []string{parsed.Service}
 		}
 	}
-	cfg, err := fetcher.Fetch(ctx, projID, envID, fetchService)
+	cfg, err := fetcher.Fetch(ctx, projID, envID, fetchServices)
 	if err != nil {
 		return err
 	}

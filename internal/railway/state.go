@@ -61,7 +61,7 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 			if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
 				continue
 			}
-			si := serviceInfoFromSummary(&edge.Node.ServiceSummaryFields)
+			si := serviceInfoFromSummary(&edge.Node)
 			toFetch = append(toFetch, svcRef{name: si.Name, id: si.ID, icon: si.Icon})
 		}
 	}
@@ -122,14 +122,14 @@ func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, enviro
 
 	// Service instances — keyed by serviceId.
 	for i := range resp.Environment.ServiceInstances.Edges {
-		fields := &resp.Environment.ServiceInstances.Edges[i].Node.ServiceInstanceFields
-		instancesByService[fields.ServiceId] = fields
+		node := &resp.Environment.ServiceInstances.Edges[i].Node
+		instancesByService[node.ServiceId] = node
 	}
 	slog.Debug("fetched environment service instances", "count", len(instancesByService))
 
 	// Deployment triggers — grouped by serviceId.
 	for _, edge := range resp.Environment.DeploymentTriggers.Edges {
-		t := edge.Node
+		t := &edge.Node
 		if t.ServiceId == nil {
 			continue
 		}
@@ -161,10 +161,8 @@ func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, enviro
 		})
 	}
 
-	// Private networks — unwrap from query-specific wrapper to shared fragment type.
-	for i := range resp.PrivateNetworks {
-		networks = append(networks, resp.PrivateNetworks[i].PrivateNetworkFields)
-	}
+	// Private networks — already typed as PrivateNetworkFields via flatten.
+	networks = resp.PrivateNetworks
 
 	return
 }
@@ -196,7 +194,7 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 		if err != nil {
 			return nil, fmt.Errorf("fetching deploy settings for %s: %w", serviceName, err)
 		}
-		mapServiceInstance(&instance.ServiceInstance.ServiceInstanceFields, svc)
+		mapServiceInstance(&instance.ServiceInstance, svc)
 	}
 
 	// Apply pre-fetched triggers.
@@ -299,12 +297,11 @@ func fetchTCPProxies(ctx context.Context, client *Client, environmentID, service
 		return
 	}
 	for _, p := range resp.TcpProxies {
-		f := &p.TCPProxyFields
 		svc.TCPProxies = append(svc.TCPProxies, config.LiveTCPProxy{
-			ID:              f.Id,
-			ApplicationPort: f.ApplicationPort,
-			ProxyPort:       f.ProxyPort,
-			Domain:          f.Domain,
+			ID:              p.Id,
+			ApplicationPort: p.ApplicationPort,
+			ProxyPort:       p.ProxyPort,
+			Domain:          p.Domain,
 		})
 	}
 }
@@ -317,10 +314,9 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 		return
 	}
 	for _, g := range resp.EgressGateways {
-		f := &g.EgressGatewayFields
 		svc.Egress = append(svc.Egress, config.LiveEgressGateway{
-			Region: f.Region,
-			IPv4:   f.Ipv4,
+			Region: g.Region,
+			IPv4:   g.Ipv4,
 		})
 	}
 }
@@ -334,10 +330,9 @@ func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, se
 			continue
 		}
 		if resp.PrivateNetworkEndpoint != nil {
-			f := &resp.PrivateNetworkEndpoint.PrivateNetworkEndpointFields
 			svc.Network = &config.LiveNetworkEndpoint{
-				ID:      f.PublicId,
-				DNSName: f.DnsName,
+				ID:      resp.PrivateNetworkEndpoint.PublicId,
+				DNSName: resp.PrivateNetworkEndpoint.DnsName,
 			}
 			return // one endpoint is enough to know it's enabled
 		}

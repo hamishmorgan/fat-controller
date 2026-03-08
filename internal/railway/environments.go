@@ -26,7 +26,7 @@ func ListEnvironments(ctx context.Context, client *Client, projectID string) ([]
 	}
 	envs := make([]EnvironmentInfo, len(resp.Environments.Edges))
 	for i, edge := range resp.Environments.Edges {
-		envs[i] = environmentInfoFromSummary(&edge.Node.EnvironmentSummaryFields)
+		envs[i] = environmentInfoFromSummary(&edge.Node)
 	}
 	return envs, nil
 }

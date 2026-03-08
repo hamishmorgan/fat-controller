@@ -31,7 +31,7 @@ func ListServices(ctx context.Context, client *Client, projectID string) ([]Serv
 	}
 	services := make([]ServiceInfo, len(resp.Project.Services.Edges))
 	for i, edge := range resp.Project.Services.Edges {
-		services[i] = serviceInfoFromSummary(&edge.Node.ServiceSummaryFields)
+		services[i] = serviceInfoFromSummary(&edge.Node)
 	}
 	return services, nil
 }

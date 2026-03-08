@@ -60,6 +60,7 @@ fragment VolumeInstanceFields on VolumeInstance {
   region
   serviceId
   volumeId
+  # @genqlient(flatten: true)
   volume {
     ...VolumeSummaryFields
   }
@@ -138,11 +139,11 @@ fragment ServiceInstanceFields on ServiceInstance {
   }
   # @genqlient(typename: "ServiceDomains")
   domains {
-    # @genqlient(typename: "ServiceCustomDomain")
+    # @genqlient(flatten: true)
     customDomains {
       ...CustomDomainFields
     }
-    # @genqlient(typename: "ServiceServiceDomain")
+    # @genqlient(flatten: true)
     serviceDomains {
       ...ServiceDomainFields
     }
@@ -175,7 +176,7 @@ query ProjectToken {
 query ApiToken {
   # @genqlient(typename: "TokenContext")
   apiToken {
-    # @genqlient(typename: "TokenWorkspace")
+    # @genqlient(flatten: true)
     workspaces {
       ...WorkspaceFields
     }
@@ -188,7 +189,7 @@ query Projects($workspaceId: String) {
   projects(first: 100, workspaceId: $workspaceId) {
     # @genqlient(typename: "ProjectListEdge")
     edges {
-      # @genqlient(typename: "ProjectListItem")
+      # @genqlient(flatten: true)
       node {
         ...ProjectSummaryFields
       }
@@ -210,7 +211,7 @@ query ProjectsResolution($workspaceId: String) {
         environments(first: 100) {
           # @genqlient(typename: "ResolutionEnvironmentEdge")
           edges {
-            # @genqlient(typename: "ResolutionEnvironment")
+            # @genqlient(flatten: true)
             node {
               ...EnvironmentSummaryFields
             }
@@ -220,7 +221,7 @@ query ProjectsResolution($workspaceId: String) {
         services(first: 200) {
           # @genqlient(typename: "ResolutionServiceEdge")
           edges {
-            # @genqlient(typename: "ResolutionService")
+            # @genqlient(flatten: true)
             node {
               ...ServiceSummaryFields
             }
@@ -236,7 +237,7 @@ query Environments($projectId: String!) {
   environments(projectId: $projectId, first: 100) {
     # @genqlient(typename: "EnvironmentListEdge")
     edges {
-      # @genqlient(typename: "EnvironmentListItem")
+      # @genqlient(flatten: true)
       node {
         ...EnvironmentSummaryFields
       }
@@ -251,7 +252,7 @@ query ProjectServices($projectId: String!) {
     services(first: 200) {
       # @genqlient(typename: "ServiceListEdge")
       edges {
-        # @genqlient(typename: "ServiceListItem")
+        # @genqlient(flatten: true)
         node {
           ...ServiceSummaryFields
         }
@@ -265,7 +266,7 @@ query ProjectServices($projectId: String!) {
 # ---------------------------------------------------------------------------
 
 mutation ProjectCreate($input: ProjectCreateInput!) {
-  # @genqlient(typename: "CreatedProject")
+  # @genqlient(flatten: true)
   projectCreate(input: $input) {
     ...ProjectSummaryFields
   }
@@ -276,7 +277,7 @@ mutation ProjectDelete($id: String!) {
 }
 
 mutation EnvironmentCreate($input: EnvironmentCreateInput!) {
-  # @genqlient(typename: "CreatedEnvironment")
+  # @genqlient(flatten: true)
   environmentCreate(input: $input) {
     ...EnvironmentSummaryFields
   }
@@ -287,7 +288,7 @@ mutation EnvironmentDelete($id: String!) {
 }
 
 mutation ServiceCreate($input: ServiceCreateInput!) {
-  # @genqlient(typename: "CreatedService")
+  # @genqlient(flatten: true)
   serviceCreate(input: $input) {
     ...ServiceSummaryFields
   }
@@ -298,7 +299,7 @@ mutation ServiceDelete($id: String!) {
 }
 
 mutation ServiceUpdate($id: String!, $input: ServiceUpdateInput!) {
-  # @genqlient(typename: "UpdatedService")
+  # @genqlient(flatten: true)
   serviceUpdate(id: $id, input: $input) {
     ...ServiceSummaryFields
   }
@@ -365,7 +366,7 @@ mutation ServiceInstanceLimitsUpdate(
 # ---------------------------------------------------------------------------
 
 mutation CustomDomainCreate($input: CustomDomainCreateInput!) {
-  # @genqlient(typename: "CreatedCustomDomain")
+  # @genqlient(flatten: true)
   customDomainCreate(input: $input) {
     ...CustomDomainFields
   }
@@ -376,7 +377,7 @@ mutation CustomDomainDelete($id: String!) {
 }
 
 mutation ServiceDomainCreate($input: ServiceDomainCreateInput!) {
-  # @genqlient(typename: "CreatedServiceDomain")
+  # @genqlient(flatten: true)
   serviceDomainCreate(input: $input) {
     ...ServiceDomainFields
   }
@@ -408,7 +409,7 @@ query ProjectVolumes($projectId: String!) {
 }
 
 mutation VolumeCreate($input: VolumeCreateInput!) {
-  # @genqlient(typename: "CreatedVolume")
+  # @genqlient(flatten: true)
   volumeCreate(input: $input) {
     ...VolumeSummaryFields
   }
@@ -439,7 +440,7 @@ query PrivateNetworkEndpoint(
   $privateNetworkId: String!
   $serviceId: String!
 ) {
-  # @genqlient(typename: "NetworkEndpoint")
+  # @genqlient(flatten: true)
   privateNetworkEndpoint(
     environmentId: $environmentId
     privateNetworkId: $privateNetworkId
@@ -450,7 +451,7 @@ query PrivateNetworkEndpoint(
 }
 
 mutation TcpProxyCreate($input: TCPProxyCreateInput!) {
-  # @genqlient(typename: "CreatedTCPProxy")
+  # @genqlient(flatten: true)
   tcpProxyCreate(input: $input) {
     ...TCPProxyFields
   }
@@ -461,7 +462,7 @@ mutation TcpProxyDelete($id: String!) {
 }
 
 mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
-  # @genqlient(typename: "CreatedPrivateNetwork")
+  # @genqlient(flatten: true)
   privateNetworkCreateOrGet(input: $input) {
     ...PrivateNetworkFields
   }
@@ -470,7 +471,7 @@ mutation PrivateNetworkCreateOrGet($input: PrivateNetworkCreateOrGetInput!) {
 mutation PrivateNetworkEndpointCreateOrGet(
   $input: PrivateNetworkEndpointCreateOrGetInput!
 ) {
-  # @genqlient(typename: "CreatedNetworkEndpoint")
+  # @genqlient(flatten: true)
   privateNetworkEndpointCreateOrGet(input: $input) {
     ...PrivateNetworkEndpointFields
   }
@@ -481,7 +482,7 @@ mutation PrivateNetworkEndpointDelete($id: String!) {
 }
 
 mutation EgressGatewayAssociationCreate($input: EgressGatewayCreateInput!) {
-  # @genqlient(typename: "CreatedEgressGateway")
+  # @genqlient(flatten: true)
   egressGatewayAssociationCreate(input: $input) {
     ...EgressGatewayFields
   }
@@ -527,7 +528,7 @@ query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
   deployments(input: $input, first: $first, after: $after) {
     # @genqlient(typename: "DeploymentListEdge")
     edges {
-      # @genqlient(typename: "DeploymentListItem")
+      # @genqlient(flatten: true)
       node {
         ...DeploymentSummaryFields
       }
@@ -553,7 +554,7 @@ mutation ServiceInstanceDeployV2(
 }
 
 mutation DeploymentRedeploy($id: String!, $usePreviousImageTag: Boolean) {
-  # @genqlient(typename: "RedeployedDeployment")
+  # @genqlient(flatten: true)
   deploymentRedeploy(id: $id, usePreviousImageTag: $usePreviousImageTag) {
     ...DeploymentSummaryFields
   }
@@ -597,7 +598,7 @@ query BucketS3Credentials(
   $environmentId: String!
   $projectId: String!
 ) {
-  # @genqlient(typename: "BucketCredentials")
+  # @genqlient(flatten: true)
   bucketS3Credentials(
     bucketId: $bucketId
     environmentId: $environmentId
@@ -608,14 +609,14 @@ query BucketS3Credentials(
 }
 
 mutation BucketCreate($input: BucketCreateInput!) {
-  # @genqlient(typename: "CreatedBucket")
+  # @genqlient(flatten: true)
   bucketCreate(input: $input) {
     ...BucketSummaryFields
   }
 }
 
 mutation BucketUpdate($id: String!, $input: BucketUpdateInput!) {
-  # @genqlient(typename: "UpdatedBucket")
+  # @genqlient(flatten: true)
   bucketUpdate(id: $id, input: $input) {
     ...BucketSummaryFields
   }
@@ -634,7 +635,7 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
     serviceInstances(first: 200) {
       # @genqlient(typename: "BulkServiceInstanceEdge")
       edges {
-        # @genqlient(typename: "BulkServiceInstance")
+        # @genqlient(flatten: true)
         node {
           ...ServiceInstanceFields
         }
@@ -644,7 +645,7 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
     deploymentTriggers(first: 1000) {
       # @genqlient(typename: "BulkTriggerEdge")
       edges {
-        # @genqlient(typename: "BulkTrigger")
+        # @genqlient(flatten: true)
         node {
           ...DeploymentTriggerFields
         }
@@ -654,14 +655,14 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
     volumeInstances(first: 100) {
       # @genqlient(typename: "BulkVolumeInstanceEdge")
       edges {
-        # @genqlient(typename: "BulkVolumeInstance")
+        # @genqlient(flatten: true)
         node {
           ...VolumeInstanceFields
         }
       }
     }
   }
-  # @genqlient(typename: "BulkPrivateNetwork")
+  # @genqlient(flatten: true)
   privateNetworks(environmentId: $environmentId) {
     ...PrivateNetworkFields
   }
@@ -669,7 +670,7 @@ query EnvironmentBulk($environmentId: String!, $projectId: String) {
 
 # Per-service fallback when EnvironmentBulk data is unavailable.
 query ServiceInstance($environmentId: String!, $serviceId: String!) {
-  # @genqlient(typename: "FetchedServiceInstance")
+  # @genqlient(flatten: true)
   serviceInstance(environmentId: $environmentId, serviceId: $serviceId) {
     ...ServiceInstanceFields
   }
@@ -681,14 +682,14 @@ query ServiceInstanceLimits($environmentId: String!, $serviceId: String!) {
 }
 
 query TCPProxies($environmentId: String!, $serviceId: String!) {
-  # @genqlient(typename: "TCPProxyItem")
+  # @genqlient(flatten: true)
   tcpProxies(environmentId: $environmentId, serviceId: $serviceId) {
     ...TCPProxyFields
   }
 }
 
 query EgressGateways($environmentId: String!, $serviceId: String!) {
-  # @genqlient(typename: "EgressGatewayItem")
+  # @genqlient(flatten: true)
   egressGateways(environmentId: $environmentId, serviceId: $serviceId) {
     ...EgressGatewayFields
   }
@@ -708,7 +709,7 @@ query DeploymentTriggers(
   ) {
     # @genqlient(typename: "TriggerListEdge")
     edges {
-      # @genqlient(typename: "TriggerListItem")
+      # @genqlient(flatten: true)
       node {
         ...DeploymentTriggerFields
       }
@@ -726,7 +727,7 @@ query EnvironmentVolumes($environmentId: String!, $projectId: String) {
     volumeInstances(first: 100) {
       # @genqlient(typename: "EnvironmentVolumeEdge")
       edges {
-        # @genqlient(typename: "EnvironmentVolumeItem")
+        # @genqlient(flatten: true)
         node {
           ...VolumeInstanceFields
         }
@@ -736,7 +737,7 @@ query EnvironmentVolumes($environmentId: String!, $projectId: String) {
 }
 
 query PrivateNetworks($environmentId: String!) {
-  # @genqlient(typename: "PrivateNetworkItem")
+  # @genqlient(flatten: true)
   privateNetworks(environmentId: $environmentId) {
     ...PrivateNetworkFields
   }
@@ -753,7 +754,7 @@ query DeploymentLogs(
   $endDate: DateTime
   $filter: String
 ) {
-  # @genqlient(typename: "DeploymentLogEntry")
+  # @genqlient(flatten: true)
   deploymentLogs(
     deploymentId: $deploymentId
     limit: $limit
@@ -772,7 +773,7 @@ query BuildLogs(
   $endDate: DateTime
   $filter: String
 ) {
-  # @genqlient(typename: "BuildLogEntry")
+  # @genqlient(flatten: true)
   buildLogs(
     deploymentId: $deploymentId
     limit: $limit
@@ -793,7 +794,7 @@ query EnvironmentLogs(
   $beforeLimit: Int
   $filter: String
 ) {
-  # @genqlient(typename: "EnvironmentLogEntry")
+  # @genqlient(flatten: true)
   environmentLogs(
     environmentId: $environmentId
     anchorDate: $anchorDate

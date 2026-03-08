@@ -26,7 +26,7 @@ func ListProjects(ctx context.Context, client *Client, workspaceID string) ([]Pr
 	}
 	projects := make([]ProjectInfo, len(resp.Projects.Edges))
 	for i, edge := range resp.Projects.Edges {
-		projects[i] = projectInfoFromSummary(&edge.Node.ProjectSummaryFields)
+		projects[i] = projectInfoFromSummary(&edge.Node)
 	}
 	return projects, nil
 }

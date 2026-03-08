@@ -67,9 +67,5 @@ func GetBucketCredentials(ctx context.Context, client *Client, bucketID, environ
 	if err != nil {
 		return nil, fmt.Errorf("getting bucket credentials for %q: %w", bucketID, err)
 	}
-	creds := make([]BucketCredentialFields, len(resp.BucketS3Credentials))
-	for i := range resp.BucketS3Credentials {
-		creds[i] = resp.BucketS3Credentials[i].BucketCredentialFields
-	}
-	return creds, nil
+	return resp.BucketS3Credentials, nil
 }

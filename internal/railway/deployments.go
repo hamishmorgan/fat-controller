@@ -92,7 +92,7 @@ func ListDeployments(ctx context.Context, client *Client, environmentID, service
 	}
 	infos := make([]DeploymentInfo, len(resp.Deployments.Edges))
 	for i, edge := range resp.Deployments.Edges {
-		infos[i] = deploymentInfoFromSummary(&edge.Node.DeploymentSummaryFields)
+		infos[i] = deploymentInfoFromSummary(&edge.Node)
 	}
 	return infos, resp.Deployments.PageInfo.HasNextPage, nil
 }

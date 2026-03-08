@@ -31,7 +31,7 @@ func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error
 	}
 	workspaces := make([]WorkspaceInfo, len(resp.ApiToken.Workspaces))
 	for i, ws := range resp.ApiToken.Workspaces {
-		workspaces[i] = workspaceInfoFromFields(&ws.WorkspaceFields)
+		workspaces[i] = workspaceInfoFromFields(&ws)
 	}
 	return workspaces, nil
 }
@@ -202,7 +202,7 @@ func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, projec
 	// Collect services from the matched project using the shared fragment type.
 	var services []ServiceInfo
 	for _, edge := range matchedProject.Services.Edges {
-		services = append(services, serviceInfoFromSummary(&edge.Node.ServiceSummaryFields))
+		services = append(services, serviceInfoFromSummary(&edge.Node))
 	}
 
 	return &ResolveResult{

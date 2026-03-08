@@ -19,11 +19,7 @@ func GetDeploymentLogs(ctx context.Context, client *Client, deploymentID string,
 	if err != nil {
 		return nil, fmt.Errorf("fetching deployment logs for %q: %w", deploymentID, err)
 	}
-	entries := make([]LogEntry, len(resp.DeploymentLogs))
-	for i, l := range resp.DeploymentLogs {
-		entries[i] = l.LogEntryFields
-	}
-	return entries, nil
+	return resp.DeploymentLogs, nil
 }
 
 // GetBuildLogs fetches build logs for a deployment.
@@ -34,11 +30,7 @@ func GetBuildLogs(ctx context.Context, client *Client, deploymentID string, limi
 	if err != nil {
 		return nil, fmt.Errorf("fetching build logs for %q: %w", deploymentID, err)
 	}
-	entries := make([]LogEntry, len(resp.BuildLogs))
-	for i, l := range resp.BuildLogs {
-		entries[i] = l.LogEntryFields
-	}
-	return entries, nil
+	return resp.BuildLogs, nil
 }
 
 // GetEnvironmentLogs fetches logs for a project environment.
@@ -49,9 +41,5 @@ func GetEnvironmentLogs(ctx context.Context, client *Client, environmentID strin
 	if err != nil {
 		return nil, fmt.Errorf("fetching environment logs for %q: %w", environmentID, err)
 	}
-	entries := make([]LogEntry, len(resp.EnvironmentLogs))
-	for i, l := range resp.EnvironmentLogs {
-		entries[i] = l.LogEntryFields
-	}
-	return entries, nil
+	return resp.EnvironmentLogs, nil
 }

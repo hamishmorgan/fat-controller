@@ -77,10 +77,11 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	}
 
 	fetcher := &defaultConfigFetcher{client: client}
-	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
+	resolved, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	// Fetch live state.
 	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)
@@ -103,18 +104,18 @@ func (c *AdoptCmd) Run(globals *Globals) error {
 	// respecting MergeFlags (create/update/delete).
 	adopted := app.AdoptMerge(desired, scopedLive, c.Create, c.Update, c.Delete, c.Path)
 
-	// Use the workspace/project names from the resolved context.
-	wsName := workspace
-	if desired.Workspace != nil && desired.Workspace.Name != "" {
-		wsName = desired.Workspace.Name
+	// Use the resolved names (populated by API lookup) with config/flag fallback.
+	wsName := resolved.WorkspaceName
+	if wsName == "" {
+		wsName = workspace
 	}
-	projName := project
-	if desired.Project != nil && desired.Project.Name != "" {
-		projName = desired.Project.Name
+	projName := resolved.ProjectName
+	if projName == "" {
+		projName = project
 	}
-	envName := environment
-	if desired.Name != "" {
-		envName = desired.Name
+	envName := resolved.EnvironmentName
+	if envName == "" {
+		envName = environment
 	}
 
 	// Summarize what changed.

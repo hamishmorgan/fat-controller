@@ -11,10 +11,19 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
+// ResolvedIdentity holds the IDs and human-readable names produced by resolution.
+type ResolvedIdentity struct {
+	ProjectID       string
+	EnvironmentID   string
+	WorkspaceName   string
+	ProjectName     string
+	EnvironmentName string
+}
+
 // ConfigFetcher abstracts the resolve + fetch operations so that app logic
 // does not depend on the railway package directly.
 type ConfigFetcher interface {
-	Resolve(ctx context.Context, workspace, project, environment string) (string, string, error)
+	Resolve(ctx context.Context, workspace, project, environment string) (*ResolvedIdentity, error)
 	Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
 }
 
@@ -72,10 +81,11 @@ func LoadAndFetch(ctx context.Context, flagWorkspace, flagProject, flagEnvironme
 
 	// 4. Resolve project and environment IDs.
 	slog.Debug("resolving project and environment", "project", project, "environment", environment)
-	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
+	resolved, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return nil, err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	// 5. Fetch live state.
 	slog.Debug("fetching live state", "project_id", projID, "environment_id", envID)

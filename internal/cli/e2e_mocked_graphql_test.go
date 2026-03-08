@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/apply"
 	"github.com/hamishmorgan/fat-controller/internal/auth"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
@@ -799,8 +800,18 @@ type e2eFetcher struct {
 	client *railway.Client
 }
 
-func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
-	return railway.ResolveProjectEnvironment(ctx, e.client, workspace, project, environment, nil)
+func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environment string) (*app.ResolvedIdentity, error) {
+	r, err := railway.ResolveProjectEnvironment(ctx, e.client, workspace, project, environment, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &app.ResolvedIdentity{
+		ProjectID:       r.ProjectID,
+		EnvironmentID:   r.EnvironmentID,
+		WorkspaceName:   r.WorkspaceName,
+		ProjectName:     r.ProjectName,
+		EnvironmentName: r.EnvironmentName,
+	}, nil
 }
 
 func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {

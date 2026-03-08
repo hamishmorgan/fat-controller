@@ -27,10 +27,11 @@ func (c *StatusCmd) Run(globals *Globals) error {
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment, interactivePicker)
+	resolved, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment, interactivePicker)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	fetcher := &defaultConfigFetcher{client: client}
 	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, c.Services)

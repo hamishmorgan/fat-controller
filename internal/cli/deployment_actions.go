@@ -92,10 +92,11 @@ func runDeploymentAction(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
+	resolved, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	fetcher := &defaultConfigFetcher{client: client}
 	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, serviceNames)
@@ -209,10 +210,11 @@ func runDeploymentDryRun(globals *Globals, apiFlags *ApiFlags, workspace, projec
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
+	resolved, err := railway.ResolveProjectEnvironment(ctx, client, workspace, project, environment, interactivePicker)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	fetcher := &defaultConfigFetcher{client: client}
 	targets, err := app.ResolveServiceTargets(ctx, fetcher, projID, envID, serviceNames)

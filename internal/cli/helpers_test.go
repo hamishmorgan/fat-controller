@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
@@ -28,11 +29,11 @@ type fakeFetcher struct {
 	fetchErr   error
 }
 
-func (f *fakeFetcher) Resolve(_ context.Context, _, _, _ string) (string, string, error) {
+func (f *fakeFetcher) Resolve(_ context.Context, _, _, _ string) (*app.ResolvedIdentity, error) {
 	if f.resolveErr != nil {
-		return "", "", f.resolveErr
+		return nil, f.resolveErr
 	}
-	return "proj-1", "env-1", nil
+	return &app.ResolvedIdentity{ProjectID: "proj-1", EnvironmentID: "env-1"}, nil
 }
 
 func (f *fakeFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {
@@ -49,10 +50,10 @@ type capturingFetcher struct {
 	environment string
 }
 
-func (f *capturingFetcher) Resolve(_ context.Context, _, project, environment string) (string, string, error) {
+func (f *capturingFetcher) Resolve(_ context.Context, _, project, environment string) (*app.ResolvedIdentity, error) {
 	f.project = project
 	f.environment = environment
-	return "proj-1", "env-1", nil
+	return &app.ResolvedIdentity{ProjectID: "proj-1", EnvironmentID: "env-1"}, nil
 }
 
 func (f *capturingFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
@@ -16,8 +17,8 @@ type fakeConfigFetcher struct {
 	cfg *config.LiveConfig
 }
 
-func (f *fakeConfigFetcher) Resolve(_ context.Context, _, _, _ string) (string, string, error) {
-	return "proj-1", "env-1", nil
+func (f *fakeConfigFetcher) Resolve(_ context.Context, _, _, _ string) (*app.ResolvedIdentity, error) {
+	return &app.ResolvedIdentity{ProjectID: "proj-1", EnvironmentID: "env-1"}, nil
 }
 
 func (f *fakeConfigFetcher) Fetch(_ context.Context, _, _ string, _ []string) (*config.LiveConfig, error) {

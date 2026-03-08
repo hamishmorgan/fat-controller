@@ -17,8 +17,18 @@ type defaultConfigFetcher struct {
 	client *railway.Client
 }
 
-func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
-	return railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment, interactivePicker)
+func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, environment string) (*app.ResolvedIdentity, error) {
+	r, err := railway.ResolveProjectEnvironment(ctx, d.client, workspace, project, environment, interactivePicker)
+	if err != nil {
+		return nil, err
+	}
+	return &app.ResolvedIdentity{
+		ProjectID:       r.ProjectID,
+		EnvironmentID:   r.EnvironmentID,
+		WorkspaceName:   r.WorkspaceName,
+		ProjectName:     r.ProjectName,
+		EnvironmentName: r.EnvironmentName,
+	}, nil
 }
 
 func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
@@ -31,10 +41,11 @@ func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, env
 	if out == nil {
 		out = os.Stdout
 	}
-	projID, envID, err := fetcher.Resolve(ctx, workspace, project, environment)
+	resolved, err := fetcher.Resolve(ctx, workspace, project, environment)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 	var fetchServices []string
 	if service != "" {
 		fetchServices = []string{service}

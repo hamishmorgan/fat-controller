@@ -28,14 +28,17 @@ type fakeFetcher struct {
 	live          *config.LiveConfig
 }
 
-func (f *fakeFetcher) Resolve(_ context.Context, workspace, project, environment string) (string, string, error) {
+func (f *fakeFetcher) Resolve(_ context.Context, workspace, project, environment string) (*app.ResolvedIdentity, error) {
 	f.resolveWorkspace = workspace
 	f.resolveProject = project
 	f.resolveEnvironment = environment
 	if f.resolveErr != nil {
-		return "", "", f.resolveErr
+		return nil, f.resolveErr
 	}
-	return f.projectID, f.environmentID, nil
+	return &app.ResolvedIdentity{
+		ProjectID:     f.projectID,
+		EnvironmentID: f.environmentID,
+	}, nil
 }
 
 func (f *fakeFetcher) Fetch(_ context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {

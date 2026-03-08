@@ -32,10 +32,11 @@ func (c *LogsCmd) Run(globals *Globals) error {
 		return err
 	}
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment, interactivePicker)
+	resolved, err := railway.ResolveProjectEnvironment(ctx, client, c.Workspace, c.Project, c.Environment, interactivePicker)
 	if err != nil {
 		return err
 	}
+	projID, envID := resolved.ProjectID, resolved.EnvironmentID
 
 	// --deploy is the explicit form of the default (deploy logs). If both
 	// --build and --deploy are set, --build wins since build logs are a

@@ -46,83 +46,124 @@ type PickCandidate struct {
 // uuidPattern matches Railway-style UUIDs (e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// ResolveResult holds the IDs and human-readable names produced by resolution.
+type ResolveResult struct {
+	ProjectID       string
+	EnvironmentID   string
+	WorkspaceName   string
+	ProjectName     string
+	EnvironmentName string
+}
+
 // ResolveProjectEnvironment returns project/environment IDs for the active auth.
 // For project tokens, it uses the ProjectToken query. For account tokens, it
 // resolves the provided project/environment names (or passes through IDs).
 // The picker is called when interactive selection is needed; pass nil for
 // non-interactive mode.
-func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, project, environment string, picker Picker) (string, string, error) {
+func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, project, environment string, picker Picker) (*ResolveResult, error) {
 	slog.Debug("resolving project and environment", "workspace", workspace, "project", project, "environment", environment)
 	if client == nil || client.Auth() == nil {
-		return "", "", errors.New("missing auth")
+		return nil, errors.New("missing auth")
 	}
 	if client.Auth().Source == auth.SourceEnvToken {
 		resp, err := ProjectToken(ctx, client.gql())
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
-		return resp.ProjectToken.ProjectId, resp.ProjectToken.EnvironmentId, nil
+		return &ResolveResult{
+			ProjectID:     resp.ProjectToken.ProjectId,
+			EnvironmentID: resp.ProjectToken.EnvironmentId,
+		}, nil
 	}
-	projID, err := resolveProjectID(ctx, client, workspace, project, picker)
+	projResult, err := resolveProjectID(ctx, client, workspace, project, picker)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	envID, err := resolveEnvironmentID(ctx, client, projID, environment, picker)
+	envResult, err := resolveEnvironmentID(ctx, client, projResult.id, environment, picker)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return projID, envID, nil
+	return &ResolveResult{
+		ProjectID:       projResult.id,
+		EnvironmentID:   envResult.id,
+		WorkspaceName:   projResult.workspaceName,
+		ProjectName:     projResult.name,
+		EnvironmentName: envResult.name,
+	}, nil
 }
 
-func resolveProjectID(ctx context.Context, client *Client, workspace, project string, picker Picker) (string, error) {
+type projectResult struct {
+	id            string
+	name          string
+	workspaceName string
+}
+
+func resolveProjectID(ctx context.Context, client *Client, workspace, project string, picker Picker) (projectResult, error) {
 	if project != "" && uuidPattern.MatchString(project) {
 		slog.Debug("project is UUID, skipping resolution", "project_id", project)
-		return project, nil
+		return projectResult{id: project}, nil
 	}
-	workspaceID, err := resolveWorkspaceID(ctx, client, workspace, picker)
+	wsResult, err := resolveWorkspaceID(ctx, client, workspace, picker)
 	if err != nil {
-		return "", err
+		return projectResult{}, err
 	}
-	resp, err := Projects(ctx, client.gql(), workspaceID)
+	resp, err := Projects(ctx, client.gql(), wsResult.id)
 	if err != nil {
-		return "", err
+		return projectResult{}, err
 	}
 	if project != "" {
 		for _, edge := range resp.Projects.Edges {
 			if edge.Node.Name == project {
-				return edge.Node.Id, nil
+				return projectResult{id: edge.Node.Id, name: edge.Node.Name, workspaceName: wsResult.name}, nil
 			}
 		}
-		return "", fmt.Errorf("project not found: %s", project)
+		return projectResult{}, fmt.Errorf("project not found: %s", project)
 	}
 
 	items := make([]PickCandidate, len(resp.Projects.Edges))
 	for i, edge := range resp.Projects.Edges {
 		items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
-	return pickOne("project", items, picker)
+	id, err := pickOne("project", items, picker)
+	if err != nil {
+		return projectResult{}, err
+	}
+	// Find the name for the selected ID.
+	var name string
+	for _, edge := range resp.Projects.Edges {
+		if edge.Node.Id == id {
+			name = edge.Node.Name
+			break
+		}
+	}
+	return projectResult{id: id, name: name, workspaceName: wsResult.name}, nil
 }
 
-func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, picker Picker) (*string, error) {
+type workspaceResult struct {
+	id   *string
+	name string
+}
+
+func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, picker Picker) (workspaceResult, error) {
 	if workspace != "" && uuidPattern.MatchString(workspace) {
-		return &workspace, nil
+		return workspaceResult{id: &workspace}, nil
 	}
 	resp, err := ApiToken(ctx, client.gql())
 	if err != nil {
-		return nil, err
+		return workspaceResult{}, err
 	}
 	if len(resp.ApiToken.Workspaces) == 0 {
-		return nil, errors.New("no workspaces found")
+		return workspaceResult{}, errors.New("no workspaces found")
 	}
 	if workspace != "" {
 		for _, ws := range resp.ApiToken.Workspaces {
 			if ws.Name == workspace {
 				id := ws.Id
 				slog.Debug("resolved workspace", "name", workspace, "id", id)
-				return &id, nil
+				return workspaceResult{id: &id, name: ws.Name}, nil
 			}
 		}
-		return nil, fmt.Errorf("workspace not found: %s", workspace)
+		return workspaceResult{}, fmt.Errorf("workspace not found: %s", workspace)
 	}
 
 	items := make([]PickCandidate, len(resp.ApiToken.Workspaces))
@@ -131,28 +172,40 @@ func resolveWorkspaceID(ctx context.Context, client *Client, workspace string, p
 	}
 	selected, err := pickOne("workspace", items, picker)
 	if err != nil {
-		return nil, err
+		return workspaceResult{}, err
 	}
-	return &selected, nil
+	// Find the name for the selected ID.
+	var name string
+	for _, ws := range resp.ApiToken.Workspaces {
+		if ws.Id == selected {
+			name = ws.Name
+			break
+		}
+	}
+	return workspaceResult{id: &selected, name: name}, nil
 }
 
 // ResolveWorkspaceID returns a workspace ID, resolving a name or auto-selecting.
 // Pass nil picker for non-interactive mode.
 func ResolveWorkspaceID(ctx context.Context, client *Client, workspace string) (string, error) {
-	id, err := resolveWorkspaceID(ctx, client, workspace, nil)
+	result, err := resolveWorkspaceID(ctx, client, workspace, nil)
 	if err != nil {
 		return "", err
 	}
-	if id == nil {
+	if result.id == nil {
 		return "", errors.New("workspace required")
 	}
-	return *id, nil
+	return *result.id, nil
 }
 
 // ResolveProjectID returns a project ID, resolving a name or auto-selecting.
 // Pass nil picker for non-interactive mode.
 func ResolveProjectID(ctx context.Context, client *Client, workspace, project string) (string, error) {
-	return resolveProjectID(ctx, client, workspace, project, nil)
+	result, err := resolveProjectID(ctx, client, workspace, project, nil)
+	if err != nil {
+		return "", err
+	}
+	return result.id, nil
 }
 
 // ResolveServiceID maps a service name to its ID within a project.
@@ -176,29 +229,46 @@ func ResolveServiceID(ctx context.Context, client *Client, projectID, service st
 	return "", fmt.Errorf("service not found: %s", service)
 }
 
-func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string, picker Picker) (string, error) {
+type environmentResult struct {
+	id   string
+	name string
+}
+
+func resolveEnvironmentID(ctx context.Context, client *Client, projectID, env string, picker Picker) (environmentResult, error) {
 	if env != "" && uuidPattern.MatchString(env) {
-		return env, nil
+		return environmentResult{id: env}, nil
 	}
 	resp, err := Environments(ctx, client.gql(), projectID)
 	if err != nil {
-		return "", err
+		return environmentResult{}, err
 	}
 	if env != "" {
 		for _, edge := range resp.Environments.Edges {
 			if edge.Node.Name == env {
 				slog.Debug("resolved environment", "name", env, "id", edge.Node.Id)
-				return edge.Node.Id, nil
+				return environmentResult{id: edge.Node.Id, name: edge.Node.Name}, nil
 			}
 		}
-		return "", fmt.Errorf("environment not found: %s", env)
+		return environmentResult{}, fmt.Errorf("environment not found: %s", env)
 	}
 
 	items := make([]PickCandidate, len(resp.Environments.Edges))
 	for i, edge := range resp.Environments.Edges {
 		items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
 	}
-	return pickOne("environment", items, picker)
+	id, err := pickOne("environment", items, picker)
+	if err != nil {
+		return environmentResult{}, err
+	}
+	// Find the name for the selected ID.
+	var name string
+	for _, edge := range resp.Environments.Edges {
+		if edge.Node.Id == id {
+			name = edge.Node.Name
+			break
+		}
+	}
+	return environmentResult{id: id, name: name}, nil
 }
 
 // pickOne selects from candidates:

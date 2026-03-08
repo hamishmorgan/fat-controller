@@ -32,12 +32,12 @@ func TestResolveProjectEnvironment_ProjectToken(t *testing.T) {
 		HeaderValue: "project-token",
 		Source:      auth.SourceEnvToken,
 	}, nil, nil)
-	proj, env, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "", "", nil)
+	result, err := railway.ResolveProjectEnvironment(context.Background(), client, "", "", "", nil)
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
-	if proj != "proj-1" || env != "env-1" {
-		t.Fatalf("got %s/%s", proj, env)
+	if result.ProjectID != "proj-1" || result.EnvironmentID != "env-1" {
+		t.Fatalf("got %s/%s", result.ProjectID, result.EnvironmentID)
 	}
 }
 
@@ -93,15 +93,24 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	projID, envID, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
+	result, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
 	if err != nil {
 		t.Fatalf("ResolveProjectEnvironment() error: %v", err)
 	}
-	if projID != "proj-1" {
-		t.Errorf("projID = %q, want proj-1", projID)
+	if result.ProjectID != "proj-1" {
+		t.Errorf("projID = %q, want proj-1", result.ProjectID)
 	}
-	if envID != "env-1" {
-		t.Errorf("envID = %q, want env-1", envID)
+	if result.EnvironmentID != "env-1" {
+		t.Errorf("envID = %q, want env-1", result.EnvironmentID)
+	}
+	if result.WorkspaceName != "workspace" {
+		t.Errorf("WorkspaceName = %q, want workspace", result.WorkspaceName)
+	}
+	if result.ProjectName != "my-app" {
+		t.Errorf("ProjectName = %q, want my-app", result.ProjectName)
+	}
+	if result.EnvironmentName != "production" {
+		t.Errorf("EnvironmentName = %q, want production", result.EnvironmentName)
 	}
 }
 
@@ -148,7 +157,7 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 		HeaderValue: "Bearer test",
 	}, nil, nil)
 
-	_, _, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
+	_, err := railway.ResolveProjectEnvironment(ctx, client, "", "", "", nil)
 	if err == nil {
 		t.Fatal("expected error for ambiguous project")
 	}

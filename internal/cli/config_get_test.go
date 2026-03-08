@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/cli"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
@@ -134,7 +135,7 @@ type serviceCaptureFetcher struct {
 	captured *string
 }
 
-func (s *serviceCaptureFetcher) Resolve(ctx context.Context, workspace, project, environment string) (string, string, error) {
+func (s *serviceCaptureFetcher) Resolve(ctx context.Context, workspace, project, environment string) (*app.ResolvedIdentity, error) {
 	return s.inner.Resolve(ctx, workspace, project, environment)
 }
 

@@ -370,7 +370,11 @@ func joinComma(ss []string) string {
 // resolveProjectEnv resolves workspace/project/environment names to IDs.
 func resolveProjectEnv(ctx context.Context, client *railway.Client, workspace, project, environment string) (string, string, error) {
 	fetcher := &defaultConfigFetcher{client: client}
-	return fetcher.Resolve(ctx, workspace, project, environment)
+	resolved, err := fetcher.Resolve(ctx, workspace, project, environment)
+	if err != nil {
+		return "", "", err
+	}
+	return resolved.ProjectID, resolved.EnvironmentID, nil
 }
 
 // resolveServiceID resolves a service name to its ID within a project.

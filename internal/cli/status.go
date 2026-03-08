@@ -45,7 +45,7 @@ func (c *StatusCmd) Run(globals *Globals) error {
 	})
 
 	// Fetch live config for sub-resource info (domains, volumes, etc.).
-	live, liveErr := railway.FetchLiveConfig(ctx, client, projID, envID, nil)
+	live, liveErr := railway.FetchLiveConfig(ctx, client, projID, envID, nil, nil)
 	if liveErr != nil {
 		// Non-fatal: we can still show deployment status without sub-resource info.
 		live = nil

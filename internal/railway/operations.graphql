@@ -28,6 +28,37 @@ query Projects($workspaceId: String) {
   }
 }
 
+# Combined project resolution query: fetches projects with their environments
+# and services in a single round-trip, replacing separate Projects + Environments
+# + ProjectServices queries (3 HTTP requests → 1) during ResolveProjectEnvironment.
+query ProjectsResolution($workspaceId: String) {
+  projects(first: 100, workspaceId: $workspaceId) {
+    edges {
+      node {
+        id
+        name
+        environments(first: 100) {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+        services(first: 200) {
+          edges {
+            node {
+              id
+              name
+              icon
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 query Environments($projectId: String!) {
   environments(projectId: $projectId, first: 100) {
     edges {
@@ -441,10 +472,12 @@ query EnvironmentLogs(
   }
 }
 
-# Batched environment-wide service instance query (replaces N per-service ServiceInstance queries).
-# Returns all service instances for the environment in one round-trip; group by serviceId client-side.
-query EnvironmentServiceInstances($environmentId: String!) {
-  environment(id: $environmentId) {
+# Single environment-wide bulk query that fetches service instances, deployment
+# triggers, volume instances, and private networks in one round-trip.
+# Replaces the previous separate EnvironmentServiceInstances, AllDeploymentTriggers,
+# EnvironmentVolumes, and PrivateNetworks queries (4 HTTP requests → 1).
+query EnvironmentBulk($environmentId: String!, $projectId: String) {
+  environment(id: $environmentId, projectId: $projectId) {
     serviceInstances(first: 200) {
       edges {
         node {
@@ -487,13 +520,6 @@ query EnvironmentServiceInstances($environmentId: String!) {
         }
       }
     }
-  }
-}
-
-# Batched environment-wide deployment triggers query (replaces N per-service DeploymentTriggers queries).
-# Returns all triggers for the environment; group by serviceId client-side.
-query AllDeploymentTriggers($environmentId: String!) {
-  environment(id: $environmentId) {
     deploymentTriggers(first: 1000) {
       edges {
         node {
@@ -506,6 +532,26 @@ query AllDeploymentTriggers($environmentId: String!) {
         }
       }
     }
+    volumeInstances(first: 100) {
+      edges {
+        node {
+          id
+          mountPath
+          region
+          serviceId
+          volumeId
+          volume {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+  privateNetworks(environmentId: $environmentId) {
+    publicId
+    dnsName
+    name
   }
 }
 
@@ -548,6 +594,11 @@ query DeploymentTriggers(
     }
   }
 }
+
+# NOTE: EnvironmentVolumes and PrivateNetworks were merged into the
+# EnvironmentBulk query above. The standalone queries are no longer used
+# by FetchLiveConfig but are kept for other callers (list commands, etc.)
+# if needed in the future.
 
 query EnvironmentVolumes($environmentId: String!, $projectId: String) {
   environment(id: $environmentId, projectId: $projectId) {

@@ -6,10 +6,11 @@ import (
 	"log/slog"
 )
 
-// ServiceInfo holds the name and ID of a Railway service.
+// ServiceInfo holds the name, ID, and icon of a Railway service.
 type ServiceInfo struct {
 	ID   string `json:"id" toml:"id"`
 	Name string `json:"name" toml:"name"`
+	Icon string `json:"icon,omitempty" toml:"icon,omitempty"`
 }
 
 // ListServices returns the name/ID pairs for all services in a project.

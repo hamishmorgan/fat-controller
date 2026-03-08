@@ -53,6 +53,10 @@ type ResolveResult struct {
 	WorkspaceName   string
 	ProjectName     string
 	EnvironmentName string
+	// Services is populated when resolution fetches the service list in the
+	// same query (via ProjectsResolution). Nil when not available (e.g.
+	// project-token auth or UUID-based resolution).
+	Services []ServiceInfo
 }
 
 // ResolveProjectEnvironment returns project/environment IDs for the active auth.
@@ -75,20 +79,141 @@ func ResolveProjectEnvironment(ctx context.Context, client *Client, workspace, p
 			EnvironmentID: resp.ProjectToken.EnvironmentId,
 		}, nil
 	}
-	projResult, err := resolveProjectID(ctx, client, workspace, project, picker)
+
+	// Fast path: if both project and environment are UUIDs, skip all resolution queries.
+	if project != "" && uuidPattern.MatchString(project) && environment != "" && uuidPattern.MatchString(environment) {
+		return &ResolveResult{
+			ProjectID:     project,
+			EnvironmentID: environment,
+		}, nil
+	}
+
+	// Use ProjectsResolution to fetch projects with their environments and
+	// services in a single query (replaces separate Projects + Environments
+	// + ProjectServices calls).
+	result, err := resolveWithBulkQuery(ctx, client, workspace, project, environment, picker)
 	if err != nil {
 		return nil, err
 	}
-	envResult, err := resolveEnvironmentID(ctx, client, projResult.id, environment, picker)
+	return result, nil
+}
+
+// resolveWithBulkQuery uses the ProjectsResolution query (projects + environments +
+// services in one HTTP request) to resolve project, environment, and services.
+func resolveWithBulkQuery(ctx context.Context, client *Client, workspace, project, environment string, picker Picker) (*ResolveResult, error) {
+	wsResult, err := resolveWorkspaceID(ctx, client, workspace, picker)
 	if err != nil {
 		return nil, err
 	}
+
+	resp, err := ProjectsResolution(ctx, client.gql(), wsResult.id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve project from the results.
+	type projNode = ProjectsResolutionProjectsQueryProjectsConnectionEdgesQueryProjectsConnectionEdgeNodeProject
+	var matchedProject *projNode
+
+	if project != "" && uuidPattern.MatchString(project) {
+		for i, edge := range resp.Projects.Edges {
+			if edge.Node.Id == project {
+				matchedProject = &resp.Projects.Edges[i].Node
+				break
+			}
+		}
+		if matchedProject == nil {
+			return nil, fmt.Errorf("project not found: %s", project)
+		}
+	} else if project != "" {
+		for i, edge := range resp.Projects.Edges {
+			if edge.Node.Name == project {
+				matchedProject = &resp.Projects.Edges[i].Node
+				break
+			}
+		}
+		if matchedProject == nil {
+			return nil, fmt.Errorf("project not found: %s", project)
+		}
+	} else {
+		items := make([]PickCandidate, len(resp.Projects.Edges))
+		for i, edge := range resp.Projects.Edges {
+			items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
+		}
+		id, err := pickOne("project", items, picker)
+		if err != nil {
+			return nil, err
+		}
+		for i, edge := range resp.Projects.Edges {
+			if edge.Node.Id == id {
+				matchedProject = &resp.Projects.Edges[i].Node
+				break
+			}
+		}
+	}
+
+	// Resolve environment from the matched project's environments.
+	var envID, envName string
+	if environment != "" && uuidPattern.MatchString(environment) {
+		envID = environment
+		for _, edge := range matchedProject.Environments.Edges {
+			if edge.Node.Id == environment {
+				envName = edge.Node.Name
+				break
+			}
+		}
+	} else if environment != "" {
+		for _, edge := range matchedProject.Environments.Edges {
+			if edge.Node.Name == environment {
+				envID = edge.Node.Id
+				envName = edge.Node.Name
+				break
+			}
+		}
+		if envID == "" {
+			return nil, fmt.Errorf("environment not found: %s", environment)
+		}
+	} else {
+		items := make([]PickCandidate, len(matchedProject.Environments.Edges))
+		for i, edge := range matchedProject.Environments.Edges {
+			items[i] = PickCandidate{Name: edge.Node.Name, ID: edge.Node.Id}
+		}
+		id, err := pickOne("environment", items, picker)
+		if err != nil {
+			return nil, err
+		}
+		envID = id
+		for _, edge := range matchedProject.Environments.Edges {
+			if edge.Node.Id == id {
+				envName = edge.Node.Name
+				break
+			}
+		}
+	}
+
+	slog.Debug("resolved environment", "name", envName, "id", envID)
+
+	// Collect services from the matched project.
+	var services []ServiceInfo
+	for _, edge := range matchedProject.Services.Edges {
+		icon := ""
+		if edge.Node.Icon != nil {
+			icon = *edge.Node.Icon
+		}
+		services = append(services, ServiceInfo{
+			ID:   edge.Node.Id,
+			Name: edge.Node.Name,
+			Icon: icon,
+		})
+	}
+
 	return &ResolveResult{
-		ProjectID:       projResult.id,
-		EnvironmentID:   envResult.id,
-		WorkspaceName:   projResult.workspaceName,
-		ProjectName:     projResult.name,
-		EnvironmentName: envResult.name,
+		ProjectID:       matchedProject.Id,
+		EnvironmentID:   envID,
+		WorkspaceName:   wsResult.name,
+		ProjectName:     matchedProject.Name,
+		EnvironmentName: envName,
+		Services:        services,
 	}, nil
 }
 

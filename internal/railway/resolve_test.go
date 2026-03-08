@@ -45,10 +45,13 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 	ctx := context.Background()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		var body struct{ Query string }
+		var body struct {
+			Query         string `json:"query"`
+			OperationName string `json:"operationName"`
+		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		switch {
-		case strings.Contains(body.Query, "apiToken"):
+		case body.OperationName == "ApiToken" || strings.Contains(body.Query, "apiToken"):
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"apiToken": map[string]any{
@@ -59,22 +62,25 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 					},
 				},
 			})
-		case strings.Contains(body.Query, "projects("):
+		case body.OperationName == "ProjectsResolution":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"projects": map[string]any{
 						"edges": []map[string]any{{
-							"node": map[string]any{"id": "proj-1", "name": "my-app"},
-						}},
-					},
-				},
-			})
-		case strings.Contains(body.Query, "environments("):
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{
-					"environments": map[string]any{
-						"edges": []map[string]any{{
-							"node": map[string]any{"id": "env-1", "name": "production"},
+							"node": map[string]any{
+								"id":   "proj-1",
+								"name": "my-app",
+								"environments": map[string]any{
+									"edges": []map[string]any{{
+										"node": map[string]any{"id": "env-1", "name": "production"},
+									}},
+								},
+								"services": map[string]any{
+									"edges": []map[string]any{{
+										"node": map[string]any{"id": "svc-1", "name": "api", "icon": nil},
+									}},
+								},
+							},
 						}},
 					},
 				},
@@ -112,16 +118,22 @@ func TestResolveProjectEnvironment_AutoSelectsSingleProject(t *testing.T) {
 	if result.EnvironmentName != "production" {
 		t.Errorf("EnvironmentName = %q, want production", result.EnvironmentName)
 	}
+	if len(result.Services) != 1 || result.Services[0].Name != "api" {
+		t.Errorf("Services = %v, want [{api}]", result.Services)
+	}
 }
 
 func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T) {
 	ctx := context.Background()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		var body struct{ Query string }
+		var body struct {
+			Query         string `json:"query"`
+			OperationName string `json:"operationName"`
+		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		switch {
-		case strings.Contains(body.Query, "apiToken"):
+		case body.OperationName == "ApiToken" || strings.Contains(body.Query, "apiToken"):
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"apiToken": map[string]any{
@@ -132,13 +144,21 @@ func TestResolveProjectEnvironment_ErrorsOnAmbiguousNonInteractive(t *testing.T)
 					},
 				},
 			})
-		case strings.Contains(body.Query, "projects("):
+		case body.OperationName == "ProjectsResolution":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"projects": map[string]any{
 						"edges": []map[string]any{
-							{"node": map[string]any{"id": "proj-1", "name": "app-1"}},
-							{"node": map[string]any{"id": "proj-2", "name": "app-2"}},
+							{"node": map[string]any{
+								"id": "proj-1", "name": "app-1",
+								"environments": map[string]any{"edges": []map[string]any{}},
+								"services":     map[string]any{"edges": []map[string]any{}},
+							}},
+							{"node": map[string]any{
+								"id": "proj-2", "name": "app-2",
+								"environments": map[string]any{"edges": []map[string]any{}},
+								"services":     map[string]any{"edges": []map[string]any{}},
+							}},
 						},
 					},
 				},

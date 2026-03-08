@@ -235,10 +235,11 @@ func (m *mockGraphQLServer) handle(w http.ResponseWriter, r *http.Request) {
 		m.handleEgressGateways(w)
 	case "DeploymentTriggers":
 		m.handleDeploymentTriggers(w)
-	case "EnvironmentServiceInstances":
-		m.handleEnvironmentServiceInstances(w)
-	case "AllDeploymentTriggers":
-		m.handleAllDeploymentTriggers(w)
+	case "EnvironmentBulk":
+		// Replaces the former EnvironmentServiceInstances and AllDeploymentTriggers operations.
+		m.handleEnvironmentBulk(w)
+	case "ProjectsResolution":
+		m.handleProjectsResolution(w)
 	case "PrivateNetworkEndpoint":
 		m.handlePrivateNetworkEndpoint(w)
 	case "Deployments":
@@ -273,6 +274,32 @@ func (m *mockGraphQLServer) handleProjects(w http.ResponseWriter) {
 			"projects": map[string]any{
 				"edges": []map[string]any{{
 					"node": map[string]any{"id": fixtureProjectID, "name": fixtureProjectName},
+				}},
+			},
+		},
+	})
+}
+
+func (m *mockGraphQLServer) handleProjectsResolution(w http.ResponseWriter) {
+	respondJSON(m.t, w, map[string]any{
+		"data": map[string]any{
+			"projects": map[string]any{
+				"edges": []map[string]any{{
+					"node": map[string]any{
+						"id":   fixtureProjectID,
+						"name": fixtureProjectName,
+						"environments": map[string]any{
+							"edges": []map[string]any{{
+								"node": map[string]any{"id": fixtureEnvironmentID, "name": fixtureEnvironment},
+							}},
+						},
+						"services": map[string]any{
+							"edges": []map[string]any{
+								{"node": map[string]any{"id": fixtureServiceAPIID, "name": fixtureServiceAPI, "icon": nil}},
+								{"node": map[string]any{"id": fixtureServiceWorkID, "name": fixtureServiceWork, "icon": nil}},
+							},
+						},
+					},
 				}},
 			},
 		},
@@ -494,8 +521,8 @@ func (m *mockGraphQLServer) handleDeploymentTriggers(w http.ResponseWriter) {
 	})
 }
 
-func (m *mockGraphQLServer) handleEnvironmentServiceInstances(w http.ResponseWriter) {
-	// Return one service instance node per fixture service with minimal settings.
+func (m *mockGraphQLServer) handleEnvironmentBulk(w http.ResponseWriter) {
+	// Combined response for EnvironmentBulk: serviceInstances + deploymentTriggers + volumeInstances + privateNetworks.
 	makeInstance := func(serviceID string) map[string]any {
 		return map[string]any{
 			"serviceId":               serviceID,
@@ -533,19 +560,14 @@ func (m *mockGraphQLServer) handleEnvironmentServiceInstances(w http.ResponseWri
 						map[string]any{"node": makeInstance(fixtureServiceWorkID)},
 					},
 				},
-			},
-		},
-	})
-}
-
-func (m *mockGraphQLServer) handleAllDeploymentTriggers(w http.ResponseWriter) {
-	respondJSON(m.t, w, map[string]any{
-		"data": map[string]any{
-			"environment": map[string]any{
 				"deploymentTriggers": map[string]any{
 					"edges": []any{},
 				},
+				"volumeInstances": map[string]any{
+					"edges": []any{},
+				},
 			},
+			"privateNetworks": []any{},
 		},
 	})
 }
@@ -875,7 +897,7 @@ func (e *e2eFetcher) Resolve(ctx context.Context, workspace, project, environmen
 }
 
 func (e *e2eFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services)
+	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services, nil)
 }
 
 // e2eInitResolver implements initResolver for e2e tests, delegating to the
@@ -925,7 +947,7 @@ func (e *e2eInitResolver) FetchServiceList(ctx context.Context, projectID string
 }
 
 func (e *e2eInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services)
+	return railway.FetchLiveConfig(ctx, e.client, projectID, environmentID, services, nil)
 }
 
 // dedent strips the common leading whitespace from all non-empty lines

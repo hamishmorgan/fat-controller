@@ -77,7 +77,7 @@ func (r *railwayInitResolver) FetchServiceList(ctx context.Context, projectID st
 }
 
 func (r *railwayInitResolver) FetchLiveState(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, services)
+	return railway.FetchLiveConfig(ctx, r.client, projectID, environmentID, services, nil)
 }
 
 // withSpinner wraps an action in a loading spinner when interactive mode is

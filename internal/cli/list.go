@@ -145,7 +145,7 @@ func (c *ListCmd) runListDomains(globals *Globals) error {
 	if c.Service != "" {
 		svcFilter = []string{c.Service}
 	}
-	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, svcFilter)
+	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, svcFilter, nil)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (c *ListCmd) runListVolumes(globals *Globals) error {
 	if c.Service != "" {
 		volFilter = []string{c.Service}
 	}
-	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, volFilter)
+	live, err := railway.FetchLiveConfig(ctx, client, projectID, envID, volFilter, nil)
 	if err != nil {
 		return err
 	}

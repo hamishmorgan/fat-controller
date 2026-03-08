@@ -15,6 +15,9 @@ import (
 
 type defaultConfigFetcher struct {
 	client *railway.Client
+	// cachedServices stores services fetched during Resolve (from
+	// ProjectsResolution), so Fetch can skip a separate ProjectServices call.
+	cachedServices []railway.ServiceInfo
 }
 
 func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, environment string) (*app.ResolvedIdentity, error) {
@@ -22,17 +25,25 @@ func (d *defaultConfigFetcher) Resolve(ctx context.Context, workspace, project, 
 	if err != nil {
 		return nil, err
 	}
-	return &app.ResolvedIdentity{
+	identity := &app.ResolvedIdentity{
 		ProjectID:       r.ProjectID,
 		EnvironmentID:   r.EnvironmentID,
 		WorkspaceName:   r.WorkspaceName,
 		ProjectName:     r.ProjectName,
 		EnvironmentName: r.EnvironmentName,
-	}, nil
+	}
+	for _, svc := range r.Services {
+		identity.Services = append(identity.Services, app.ServiceRef{
+			ID: svc.ID, Name: svc.Name, Icon: svc.Icon,
+		})
+	}
+	// Cache services for use in Fetch (avoids separate ProjectServices query).
+	d.cachedServices = r.Services
+	return identity, nil
 }
 
 func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error) {
-	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, services)
+	return railway.FetchLiveConfig(ctx, d.client, projectID, environmentID, services, d.cachedServices)
 }
 
 // RunConfigGet is the testable core of `show` (formerly `config get`).

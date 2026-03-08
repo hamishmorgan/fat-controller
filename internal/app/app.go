@@ -11,6 +11,14 @@ import (
 	"github.com/hamishmorgan/fat-controller/internal/config"
 )
 
+// ServiceRef holds the name, ID, and icon of a Railway service.
+// Pre-fetched during resolution to avoid a separate ProjectServices query.
+type ServiceRef struct {
+	ID   string
+	Name string
+	Icon string
+}
+
 // ResolvedIdentity holds the IDs and human-readable names produced by resolution.
 type ResolvedIdentity struct {
 	ProjectID       string
@@ -18,6 +26,9 @@ type ResolvedIdentity struct {
 	WorkspaceName   string
 	ProjectName     string
 	EnvironmentName string
+	// Services is populated when resolution fetches the service list
+	// in the same query (e.g. ProjectsResolution). Nil when not available.
+	Services []ServiceRef
 }
 
 // ConfigFetcher abstracts the resolve + fetch operations so that app logic

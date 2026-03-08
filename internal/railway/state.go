@@ -12,14 +12,16 @@ import (
 )
 
 // serviceInstanceNode is a type alias to shorten references to the generated
-// batched service-instance node type.
-type serviceInstanceNode = EnvironmentServiceInstancesEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
+// batched service-instance node type from the EnvironmentBulk query.
+type serviceInstanceNode = EnvironmentBulkEnvironmentServiceInstancesEnvironmentServiceInstancesConnectionEdgesEnvironmentServiceInstancesConnectionEdgeNodeServiceInstance
 
 // FetchLiveConfig loads shared + per-service variables and settings.
 // serviceFilter limits which services are fetched — empty means all.
+// prefetchedServices, when non-nil, provides service name/ID/icon data from a
+// prior resolution query, skipping the separate ProjectServices API call.
 // Per-service queries run concurrently via errgroup.
-func FetchLiveConfig(ctx context.Context, client *Client, projectID, environmentID string, serviceFilter []string) (*config.LiveConfig, error) {
-	slog.Debug("fetching live config", "project_id", projectID, "environment_id", environmentID, "service_filter", serviceFilter)
+func FetchLiveConfig(ctx context.Context, client *Client, projectID, environmentID string, serviceFilter []string, prefetchedServices []ServiceInfo) (*config.LiveConfig, error) {
+	slog.Debug("fetching live config", "project_id", projectID, "environment_id", environmentID, "service_filter", serviceFilter, "prefetched", len(prefetchedServices) > 0)
 	cfg := &config.LiveConfig{
 		ProjectID:     projectID,
 		EnvironmentID: environmentID,
@@ -41,54 +43,42 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	}
 	slog.Debug("fetched shared variables", "count", len(cfg.Variables))
 
-	services, err := ProjectServices(ctx, client.gql(), projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Collect the services to fetch based on the filter.
+	// Collect the services to fetch, using pre-fetched data if available,
+	// otherwise querying ProjectServices.
 	type svcRef struct{ name, id, icon string }
 	var toFetch []svcRef
-	for _, edge := range services.Project.Services.Edges {
-		if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
-			continue
+
+	if len(prefetchedServices) > 0 {
+		slog.Debug("using pre-fetched services list", "count", len(prefetchedServices))
+		for _, svc := range prefetchedServices {
+			if len(filterSet) > 0 && !filterSet[svc.Name] {
+				continue
+			}
+			toFetch = append(toFetch, svcRef{name: svc.Name, id: svc.ID, icon: svc.Icon})
 		}
-		icon := ""
-		if edge.Node.Icon != nil {
-			icon = *edge.Node.Icon
+	} else {
+		services, err := ProjectServices(ctx, client.gql(), projectID)
+		if err != nil {
+			return nil, err
 		}
-		toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id, icon: icon})
+		for _, edge := range services.Project.Services.Edges {
+			if len(filterSet) > 0 && !filterSet[edge.Node.Name] {
+				continue
+			}
+			icon := ""
+			if edge.Node.Icon != nil {
+				icon = *edge.Node.Icon
+			}
+			toFetch = append(toFetch, svcRef{name: edge.Node.Name, id: edge.Node.Id, icon: icon})
+		}
 	}
 
 	if len(toFetch) == 0 {
 		return cfg, nil
 	}
 
-	// Pre-fetch environment-wide data concurrently (volumes, networks, service instances, triggers).
-	var volumesByService map[string][]config.LiveVolume
-	var networks []PrivateNetworksPrivateNetworksPrivateNetwork
-	var instancesByService map[string]*serviceInstanceNode
-	var triggersByService map[string][]config.LiveTrigger
-	{
-		g, gCtx := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			volumesByService = fetchVolumesByService(gCtx, client, projectID, environmentID)
-			return nil
-		})
-		g.Go(func() error {
-			networks = fetchPrivateNetworks(gCtx, client, environmentID)
-			return nil
-		})
-		g.Go(func() error {
-			instancesByService = fetchAllServiceInstances(gCtx, client, environmentID)
-			return nil
-		})
-		g.Go(func() error {
-			triggersByService = fetchAllDeploymentTriggers(gCtx, client, environmentID)
-			return nil
-		})
-		_ = g.Wait() // all are non-fatal internally
-	}
+	// Pre-fetch all environment-wide data in a single bulk query (4 requests → 1).
+	instancesByService, triggersByService, volumesByService, networks := fetchEnvironmentBulk(ctx, client, projectID, environmentID)
 
 	// Fetch per-service details concurrently.
 	type svcResult struct {
@@ -118,8 +108,74 @@ func FetchLiveConfig(ctx context.Context, client *Client, projectID, environment
 	return cfg, nil
 }
 
+// fetchEnvironmentBulk fetches all environment-wide data in a single query:
+// service instances, deployment triggers, volume instances, and private networks.
+// Non-fatal: returns empty/nil maps on error.
+func fetchEnvironmentBulk(ctx context.Context, client *Client, projectID, environmentID string) (
+	instancesByService map[string]*serviceInstanceNode,
+	triggersByService map[string][]config.LiveTrigger,
+	volumesByService map[string][]config.LiveVolume,
+	networks []EnvironmentBulkPrivateNetworksPrivateNetwork,
+) {
+	instancesByService = make(map[string]*serviceInstanceNode)
+	triggersByService = make(map[string][]config.LiveTrigger)
+	volumesByService = make(map[string][]config.LiveVolume)
+
+	resp, err := EnvironmentBulk(ctx, client.gql(), environmentID, &projectID)
+	if err != nil {
+		slog.Debug("could not fetch environment bulk data (will fall back to per-service queries)", "error", err)
+		return
+	}
+
+	// Service instances — keyed by serviceId.
+	for i := range resp.Environment.ServiceInstances.Edges {
+		node := &resp.Environment.ServiceInstances.Edges[i].Node
+		instancesByService[node.ServiceId] = node
+	}
+	slog.Debug("fetched environment service instances", "count", len(instancesByService))
+
+	// Deployment triggers — grouped by serviceId.
+	for _, edge := range resp.Environment.DeploymentTriggers.Edges {
+		t := edge.Node
+		if t.ServiceId == nil {
+			continue
+		}
+		triggersByService[*t.ServiceId] = append(triggersByService[*t.ServiceId], config.LiveTrigger{
+			ID:         t.Id,
+			Branch:     t.Branch,
+			Repository: t.Repository,
+			Provider:   t.Provider,
+		})
+	}
+	slog.Debug("fetched environment deployment triggers", "count", len(triggersByService))
+
+	// Volume instances — grouped by serviceId.
+	for _, edge := range resp.Environment.VolumeInstances.Edges {
+		vi := edge.Node
+		if vi.ServiceId == nil {
+			continue
+		}
+		region := ""
+		if vi.Region != nil {
+			region = *vi.Region
+		}
+		volumesByService[*vi.ServiceId] = append(volumesByService[*vi.ServiceId], config.LiveVolume{
+			ID:        vi.Id,
+			VolumeID:  vi.VolumeId,
+			Name:      vi.Volume.Name,
+			MountPath: vi.MountPath,
+			Region:    region,
+		})
+	}
+
+	// Private networks.
+	networks = resp.PrivateNetworks
+
+	return
+}
+
 // fetchServiceState fetches all state for a single service. Called concurrently.
-func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []PrivateNetworksPrivateNetworksPrivateNetwork, instancesByService map[string]*serviceInstanceNode, triggersByService map[string][]config.LiveTrigger) (*config.ServiceConfig, error) {
+func fetchServiceState(ctx context.Context, client *Client, projectID, environmentID, serviceID, serviceName, icon string, volumesByService map[string][]config.LiveVolume, networks []EnvironmentBulkPrivateNetworksPrivateNetwork, instancesByService map[string]*serviceInstanceNode, triggersByService map[string][]config.LiveTrigger) (*config.ServiceConfig, error) {
 	svc := &config.ServiceConfig{
 		ID:        serviceID,
 		Name:      serviceName,
@@ -275,87 +331,6 @@ func fetchServiceState(ctx context.Context, client *Client, projectID, environme
 	return svc, nil
 }
 
-// fetchAllServiceInstances fetches all service instances for an environment in
-// a single query and returns a map keyed by serviceId. Non-fatal: returns empty map on error.
-func fetchAllServiceInstances(ctx context.Context, client *Client, environmentID string) map[string]*serviceInstanceNode {
-	result := make(map[string]*serviceInstanceNode)
-	resp, err := EnvironmentServiceInstances(ctx, client.gql(), environmentID)
-	if err != nil {
-		slog.Debug("could not fetch environment service instances (will fall back to per-service)", "error", err)
-		return result
-	}
-	for i := range resp.Environment.ServiceInstances.Edges {
-		node := &resp.Environment.ServiceInstances.Edges[i].Node
-		result[node.ServiceId] = node
-	}
-	slog.Debug("fetched environment service instances", "count", len(result))
-	return result
-}
-
-// fetchAllDeploymentTriggers fetches all deployment triggers for an environment
-// in a single query and returns a map keyed by serviceId. Non-fatal: returns empty map on error.
-func fetchAllDeploymentTriggers(ctx context.Context, client *Client, environmentID string) map[string][]config.LiveTrigger {
-	result := make(map[string][]config.LiveTrigger)
-	resp, err := AllDeploymentTriggers(ctx, client.gql(), environmentID)
-	if err != nil {
-		slog.Debug("could not fetch environment deployment triggers (will fall back to per-service)", "error", err)
-		return result
-	}
-	for _, edge := range resp.Environment.DeploymentTriggers.Edges {
-		t := edge.Node
-		if t.ServiceId == nil {
-			continue
-		}
-		result[*t.ServiceId] = append(result[*t.ServiceId], config.LiveTrigger{
-			ID:         t.Id,
-			Branch:     t.Branch,
-			Repository: t.Repository,
-			Provider:   t.Provider,
-		})
-	}
-	slog.Debug("fetched environment deployment triggers", "count", len(result))
-	return result
-}
-
-// fetchVolumesByService fetches all volume instances for the environment and
-// groups them by serviceId. Non-fatal: returns empty map on error.
-func fetchVolumesByService(ctx context.Context, client *Client, projectID, environmentID string) map[string][]config.LiveVolume {
-	result := map[string][]config.LiveVolume{}
-	resp, err := EnvironmentVolumes(ctx, client.gql(), environmentID, &projectID)
-	if err != nil {
-		slog.Debug("could not fetch volumes", "error", err)
-		return result
-	}
-	for _, edge := range resp.Environment.VolumeInstances.Edges {
-		vi := edge.Node
-		if vi.ServiceId == nil {
-			continue
-		}
-		region := ""
-		if vi.Region != nil {
-			region = *vi.Region
-		}
-		result[*vi.ServiceId] = append(result[*vi.ServiceId], config.LiveVolume{
-			ID:        vi.Id,
-			VolumeID:  vi.VolumeId,
-			Name:      vi.Volume.Name,
-			MountPath: vi.MountPath,
-			Region:    region,
-		})
-	}
-	return result
-}
-
-// fetchPrivateNetworks returns the list of private networks for the environment.
-func fetchPrivateNetworks(ctx context.Context, client *Client, environmentID string) []PrivateNetworksPrivateNetworksPrivateNetwork {
-	resp, err := PrivateNetworks(ctx, client.gql(), environmentID)
-	if err != nil {
-		slog.Debug("could not fetch private networks", "error", err)
-		return nil
-	}
-	return resp.PrivateNetworks
-}
-
 // fetchTCPProxies populates TCP proxies on the service config. Non-fatal.
 func fetchTCPProxies(ctx context.Context, client *Client, environmentID, serviceID string, svc *config.ServiceConfig) {
 	resp, err := TCPProxies(ctx, client.gql(), environmentID, serviceID)
@@ -389,7 +364,7 @@ func fetchEgress(ctx context.Context, client *Client, environmentID, serviceID s
 }
 
 // fetchNetworkEndpoint checks if a service has a private network endpoint. Non-fatal.
-func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, serviceID string, networks []PrivateNetworksPrivateNetworksPrivateNetwork, svc *config.ServiceConfig) {
+func fetchNetworkEndpoint(ctx context.Context, client *Client, environmentID, serviceID string, networks []EnvironmentBulkPrivateNetworksPrivateNetwork, svc *config.ServiceConfig) {
 	for _, net := range networks {
 		resp, err := PrivateNetworkEndpoint(ctx, client.gql(), environmentID, net.PublicId, serviceID)
 		if err != nil {

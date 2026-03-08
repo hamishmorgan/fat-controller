@@ -17,6 +17,12 @@ type WorkspaceInfo struct {
 	Name string `json:"name" toml:"name"`
 }
 
+// workspaceInfoFromFields converts a generated WorkspaceFields fragment
+// into the public WorkspaceInfo type.
+func workspaceInfoFromFields(w *WorkspaceFields) WorkspaceInfo {
+	return WorkspaceInfo{ID: w.Id, Name: w.Name}
+}
+
 // ListWorkspaces returns the name/ID pairs for all workspaces the token has access to.
 func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error) {
 	resp, err := ApiToken(ctx, client.gql())
@@ -25,7 +31,7 @@ func ListWorkspaces(ctx context.Context, client *Client) ([]WorkspaceInfo, error
 	}
 	workspaces := make([]WorkspaceInfo, len(resp.ApiToken.Workspaces))
 	for i, ws := range resp.ApiToken.Workspaces {
-		workspaces[i] = WorkspaceInfo{Name: ws.Name, ID: ws.Id}
+		workspaces[i] = workspaceInfoFromFields(&ws.WorkspaceFields)
 	}
 	return workspaces, nil
 }

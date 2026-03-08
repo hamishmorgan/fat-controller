@@ -67,6 +67,17 @@ type DeploymentInfo struct {
 	StaticUrl *string
 }
 
+// deploymentInfoFromSummary converts a generated DeploymentSummaryFields
+// fragment into the public DeploymentInfo type.
+func deploymentInfoFromSummary(d *DeploymentSummaryFields) DeploymentInfo {
+	return DeploymentInfo{
+		ID:        d.Id,
+		Status:    string(d.Status),
+		CreatedAt: d.CreatedAt,
+		StaticUrl: d.StaticUrl,
+	}
+}
+
 // ListDeployments lists deployments for a service with pagination.
 // Pass nil for after to start from the beginning.
 func ListDeployments(ctx context.Context, client *Client, environmentID, serviceID string, limit int, after *string) ([]DeploymentInfo, bool, error) {
@@ -81,12 +92,7 @@ func ListDeployments(ctx context.Context, client *Client, environmentID, service
 	}
 	infos := make([]DeploymentInfo, len(resp.Deployments.Edges))
 	for i, edge := range resp.Deployments.Edges {
-		infos[i] = DeploymentInfo{
-			ID:        edge.Node.Id,
-			Status:    string(edge.Node.Status),
-			CreatedAt: edge.Node.CreatedAt,
-			StaticUrl: edge.Node.StaticUrl,
-		}
+		infos[i] = deploymentInfoFromSummary(&edge.Node.DeploymentSummaryFields)
 	}
 	return infos, resp.Deployments.PageInfo.HasNextPage, nil
 }

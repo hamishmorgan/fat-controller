@@ -26,6 +26,23 @@ fragment BucketSummaryFields on Bucket {
   name
 }
 
+fragment VolumeSummaryFields on Volume {
+  id
+  name
+}
+
+fragment WorkspaceFields on ApiTokenWorkspace {
+  id
+  name
+}
+
+fragment DeploymentSummaryFields on Deployment {
+  id
+  status
+  createdAt
+  staticUrl
+}
+
 # -- Sub-resource fields ---------------------------------------------------
 
 fragment DeploymentTriggerFields on DeploymentTrigger {
@@ -44,8 +61,7 @@ fragment VolumeInstanceFields on VolumeInstance {
   serviceId
   volumeId
   volume {
-    id
-    name
+    ...VolumeSummaryFields
   }
 }
 
@@ -71,6 +87,19 @@ fragment PrivateNetworkEndpointFields on PrivateNetworkEndpoint {
   publicId
   dnsName
   serviceInstanceId
+}
+
+fragment CustomDomainFields on CustomDomain {
+  id
+  domain
+  targetPort
+}
+
+fragment ServiceDomainFields on ServiceDomain {
+  id
+  domain
+  targetPort
+  suffix
 }
 
 fragment LogEntryFields on Log {
@@ -108,15 +137,10 @@ fragment ServiceInstanceFields on ServiceInstance {
   }
   domains {
     customDomains {
-      id
-      domain
-      targetPort
+      ...CustomDomainFields
     }
     serviceDomains {
-      id
-      domain
-      targetPort
-      suffix
+      ...ServiceDomainFields
     }
   }
 }
@@ -146,8 +170,7 @@ query ProjectToken {
 query ApiToken {
   apiToken {
     workspaces {
-      id
-      name
+      ...WorkspaceFields
     }
   }
 }
@@ -312,8 +335,7 @@ mutation ServiceInstanceLimitsUpdate(
 
 mutation CustomDomainCreate($input: CustomDomainCreateInput!) {
   customDomainCreate(input: $input) {
-    id
-    domain
+    ...CustomDomainFields
   }
 }
 
@@ -323,8 +345,7 @@ mutation CustomDomainDelete($id: String!) {
 
 mutation ServiceDomainCreate($input: ServiceDomainCreateInput!) {
   serviceDomainCreate(input: $input) {
-    id
-    domain
+    ...ServiceDomainFields
   }
 }
 
@@ -341,8 +362,7 @@ query ProjectVolumes($projectId: String!) {
     volumes(first: 200) {
       edges {
         node {
-          id
-          name
+          ...VolumeSummaryFields
           projectId
         }
       }
@@ -352,8 +372,7 @@ query ProjectVolumes($projectId: String!) {
 
 mutation VolumeCreate($input: VolumeCreateInput!) {
   volumeCreate(input: $input) {
-    id
-    name
+    ...VolumeSummaryFields
   }
 }
 
@@ -462,10 +481,7 @@ query Deployments($input: DeploymentListInput!, $first: Int, $after: String) {
   deployments(input: $input, first: $first, after: $after) {
     edges {
       node {
-        id
-        status
-        createdAt
-        staticUrl
+        ...DeploymentSummaryFields
       }
     }
     pageInfo {
@@ -489,8 +505,7 @@ mutation ServiceInstanceDeployV2(
 
 mutation DeploymentRedeploy($id: String!, $usePreviousImageTag: Boolean) {
   deploymentRedeploy(id: $id, usePreviousImageTag: $usePreviousImageTag) {
-    id
-    status
+    ...DeploymentSummaryFields
   }
 }
 

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/diff"
 )
@@ -20,7 +21,7 @@ type DiffOpts struct {
 
 // RunConfigDiff is the testable core of `config diff`.
 // Legacy: always includes creates, updates, and deletes.
-func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, showSecrets bool, fetcher app.ConfigFetcher, out io.Writer) error {
 	return RunConfigDiffWithOpts(ctx, globals, workspace, project, environment, configDir, configFile, service, DiffOpts{
 		ShowSecrets: showSecrets,
 		DiffOptions: diff.Options{Create: true, Update: true, Delete: true},
@@ -28,12 +29,12 @@ func RunConfigDiff(ctx context.Context, globals *Globals, workspace, project, en
 }
 
 // RunConfigDiffWithOpts is the full-featured diff entrypoint.
-func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts DiffOpts, fetcher configFetcher, out io.Writer) error {
+func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts DiffOpts, fetcher app.ConfigFetcher, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
-	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
+	pair, err := app.LoadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func RunConfigDiffWithOpts(ctx context.Context, globals *Globals, workspace, pro
 	// Scope desired config by path if specified.
 	desired := pair.Desired
 	if opts.Path != "" {
-		desired = scopeDesiredByPath(desired, opts.Path)
+		desired = app.ScopeDesiredByPath(desired, opts.Path)
 	}
 
 	// Compute diff.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/apply"
 	"github.com/hamishmorgan/fat-controller/internal/diff"
 	"github.com/hamishmorgan/fat-controller/internal/prompt"
@@ -25,8 +26,8 @@ type ApplyOpts struct {
 }
 
 // RunConfigApply is the testable core of `config apply`.
-func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts ApplyOpts, fetcher configFetcher, applier apply.Applier, out io.Writer) error {
-	pair, err := loadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
+func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, environment, configDir string, configFile string, service string, opts ApplyOpts, fetcher app.ConfigFetcher, applier apply.Applier, out io.Writer) error {
+	pair, err := app.LoadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
 	if err != nil {
 		return err
 	}
@@ -37,18 +38,18 @@ func RunConfigApply(ctx context.Context, globals *Globals, workspace, project, e
 
 // runConfigApplyWithPair contains the apply logic once configs are loaded and fetched.
 // diffOpts defaults to create+update+delete if nil-like (all false).
-func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *configPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, applier apply.Applier, out io.Writer) error {
+func runConfigApplyWithPair(ctx context.Context, globals *Globals, pair *app.ConfigPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, applier apply.Applier, out io.Writer) error {
 	return runConfigApplyWithPairAndOpts(ctx, globals, pair, dryRun, yes, showSecrets, skipDeploys, failFast, diff.Options{Create: true, Update: true, Delete: true}, "", applier, out)
 }
 
-func runConfigApplyWithPairAndOpts(ctx context.Context, globals *Globals, pair *configPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, diffOpts diff.Options, path string, applier apply.Applier, out io.Writer) error {
+func runConfigApplyWithPairAndOpts(ctx context.Context, globals *Globals, pair *app.ConfigPair, dryRun, yes, showSecrets, skipDeploys, failFast bool, diffOpts diff.Options, path string, applier apply.Applier, out io.Writer) error {
 	if out == nil {
 		out = os.Stdout
 	}
 
 	desired := pair.Desired
 	if path != "" {
-		desired = scopeDesiredByPath(desired, path)
+		desired = app.ScopeDesiredByPath(desired, path)
 	}
 	live := pair.Live
 

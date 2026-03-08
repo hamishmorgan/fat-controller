@@ -436,3 +436,21 @@ func joinServiceNames(cfg *config.LiveConfig) string {
 	sort.Strings(names)
 	return strings.Join(names, ", ")
 }
+
+// splitDotPath splits a dot-separated path into parts.
+// TODO: Remove when adopt merge logic moves to app package (Task 2).
+func splitDotPath(path string) []string {
+	if path == "" {
+		return nil
+	}
+	var parts []string
+	start := 0
+	for i, c := range path {
+		if c == '.' {
+			parts = append(parts, path[start:i])
+			start = i + 1
+		}
+	}
+	parts = append(parts, path[start:])
+	return parts
+}

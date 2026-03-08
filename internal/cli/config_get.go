@@ -8,15 +8,10 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/hamishmorgan/fat-controller/internal/app"
 	"github.com/hamishmorgan/fat-controller/internal/config"
 	"github.com/hamishmorgan/fat-controller/internal/railway"
 )
-
-// configFetcher allows injection for tests.
-type configFetcher interface {
-	Resolve(ctx context.Context, workspace, project, environment string) (string, string, error)
-	Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
-}
 
 type defaultConfigFetcher struct {
 	client *railway.Client
@@ -31,7 +26,7 @@ func (d *defaultConfigFetcher) Fetch(ctx context.Context, projectID, environment
 }
 
 // RunConfigGet is the testable core of `show` (formerly `config get`).
-func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, environment, path string, full bool, service string, showSecrets bool, fetcher configFetcher, out io.Writer) error {
+func RunConfigGet(ctx context.Context, globals *Globals, workspace, project, environment, path string, full bool, service string, showSecrets bool, fetcher app.ConfigFetcher, out io.Writer) error {
 	slog.Debug("starting config get", "path", path)
 	if out == nil {
 		out = os.Stdout

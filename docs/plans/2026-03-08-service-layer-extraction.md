@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Extract application logic from `internal/cli/` into a new `internal/app/` service layer, creating a clean boundary between interface adapters (CLI, prompt) and domain orchestration (load → resolve → diff → apply).
+**Goal:** Extract application logic from `internal/cli/` into a new `internal/app/` service layer, creating a clean boundary between interface adapters (CLI, prompt) and domain orchestration (load, resolve, diff, apply).
 
-**Architecture:** The CLI layer currently owns business logic that doesn't belong to it — `loadAndFetch`, `RunConfigApply`, `RunConfigDiff`, adopt merge logic, service target resolution, etc. These "testable core" functions import only `config`, `diff`, `apply`, and abstract interfaces — not Kong, prompt, or terminal concerns. We extract them into `internal/app/`, which becomes the middle layer: CLI calls app, app calls ports (railway via interfaces, config via direct import). The CLI layer shrinks to command structs, `.Run()` methods, flag parsing, and output formatting. The `apply` and `diff` packages stay where they are — they're already correctly layered as domain logic that `app` orchestrates.
+**Architecture:** The CLI layer currently owns business logic that doesn't belong to it. Functions like `loadAndFetch`, `adoptMerge`, `resolveServiceTargets`, `lookupKey`, and `scopeDesiredByPath` depend only on `config`, `diff`, and abstract interfaces — not Kong, prompt, or terminal concerns. We extract them into `internal/app/`, which becomes the middle layer: CLI calls app, app calls ports (railway via interfaces, config via direct import). The `apply` and `diff` packages stay where they are — they're already correctly positioned as domain logic that `app` orchestrates.
 
 **Tech Stack:** Go, existing `config`/`diff`/`apply` packages. No new dependencies.
 
@@ -14,205 +14,139 @@
 
 ### Package name: `app`
 
-Not `service` (conflicts with Railway service concept), not `core` (vague), not `engine` (overloaded). `app` is the Go convention for application-level orchestration (see stdlib `net/http` patterns, Go project layout guides). Short, clear, already the term used in hexagonal architecture.
+Not `service` (conflicts with Railway's service concept), not `core` (vague), not `engine` (overloaded). `app` is short, clear, and the conventional Go name for application-level orchestration.
 
 ### What moves to `app`
 
-Functions that orchestrate business logic without depending on CLI/terminal concerns:
+Only functions that are pure domain orchestration with no CLI/terminal dependency:
 
-1. **Config pipeline** — `loadAndFetch`, `configPair`, `configFetcher` interface, `scopeDesiredByPath`, `splitDotPath`
-2. **Diff orchestration** — the compute-and-return-result logic from `RunConfigDiff` (not the formatting)
-3. **Apply orchestration** — the load-diff-apply logic from `RunConfigApply` (not the confirmation prompt or formatting)
-4. **Validate orchestration** — the load-and-validate logic from `RunConfigValidate` (not the output formatting)
-5. **Show/get orchestration** — `lookupKey`, `filterSection`, the resolve-fetch-lookup logic
-6. **Adopt merge logic** — `adoptMerge`, `scopeLiveByPath`, conversion helpers
-7. **Service target resolution** — `resolveServiceTargets`, `serviceTarget`
-8. **Deploy/action orchestration** — the iterate-services-call-action pattern
-9. **Pure utilities** — `parseTimeArg`, `parseRelativeDuration`, `databaseImage`, `ensureGitignoreHasLine`, `renderEnvFile`
+1. **Config pipeline** — `loadAndFetch` (depends only on `config` + `ConfigFetcher` interface + `slog`), `scopeDesiredByPath`, `splitDotPath`
+2. **Adopt merge logic** — `adoptMerge`, `scopeLiveByPath`, `desiredServiceToLive`, `desiredDeployToLive`, `findDesiredService`, `joinServiceNames`
+3. **Service target resolution** — `resolveServiceTargets`, `serviceTarget` (currently couples to `railway.Client`; will take `ConfigFetcher` instead)
+4. **Show/get helpers** — `lookupKey`, `filterSection`
+5. **Shared init helpers** — `renderEnvFile`, `ensureGitignoreHasLine` (used by both `config_init.go` and `adopt.go`)
+6. **Types** — `configPair` (renamed `ConfigPair`), `configFetcher` interface (renamed `ConfigFetcher`)
 
 ### What stays in `cli`
 
-1. **Kong command structs** and their `.Run()` methods
-2. **Flag mixin structs** (`ApiFlags`, `MergeFlags`, `PromptFlags`, `ConfigFileFlags`, etc.)
-3. **`newClient`** — creates railway.Client from flags + auth store
-4. **`interactivePicker`** — bridges railway.Picker to prompt.PickItem
-5. **`defaultConfigFetcher`** — the adapter that implements `app.ConfigFetcher` using railway + interactivePicker
-6. **Output formatting** — all the structured output types (`DiffOutput`, `StatusOutput`, etc.), `writeStructured`, `isStructuredOutput`, `renderDiffStructured`, the `switch globals.Output` blocks
-7. **Help rendering** — `help.go`, `completion.go`
-8. **User interaction** — confirmation prompts, spinners, init flow pickers
+1. **Kong command structs** and `.Run()` methods
+2. **Flag mixin structs** (`ApiFlags`, `MergeFlags`, `PromptFlags`, `ConfigFileFlags`)
+3. **Adapter glue** — `newClient`, `interactivePicker`, `defaultConfigFetcher`
+4. **All `Run*` functions** — `RunConfigGet`, `RunConfigDiff`, `RunConfigApply`, `RunDeploy`, `RunStatus`, etc. These interleave orchestration with output formatting (`if isStructuredOutput { ... } else { ... }`) and are not cleanly separable without returning structured result types. Untangling them is a follow-up.
+5. **Output formatting** — structured output types, `writeStructured`, `isStructuredOutput`, `renderDiffStructured`
+6. **User interaction** — `emitWarnings` (decides to suppress based on `quiet int`), confirmation prompts, spinners, init flow pickers
+7. **Help/completion** — `help.go`, `completion.go`
+8. **Single-caller pure utilities** — `parseTimeArg`/`parseRelativeDuration` (only `logs.go`), `databaseImage` (only `new.go`). Not worth extracting.
 
-### The key boundary
+### What does NOT move
 
-`app` functions accept `io.Writer` for output and callback functions for interaction (confirmation, picking). They return domain types (`*diff.Result`, `*apply.Result`, `*config.LiveConfig`). The CLI layer wraps these with formatting and interaction adapters.
-
-However: we do this **incrementally**. Many `Run*` functions currently interleave orchestration with format branching (`if isStructuredOutput { ... } else { ... }`). Rather than untangling every one in this plan, we focus on extracting the pieces that have clear boundaries today, and leave the `Run*` functions as thin wrappers that call `app.*` then format the result.
+- **`Run*` functions.** Every one of them references `Globals` (for output format) and calls formatting helpers. Separating them would require introducing result types for each command. That's a valid follow-up but too much churn for this plan.
+- **`emitWarnings`.** It takes `quiet int` (from `globals.Quiet`) and decides whether to log to `slog.Warn`. The validation computation is trivially one call (`config.ValidateWithOptions`); extracting just that into app gains nothing. CLI can call `config.ValidateWithOptions` directly on the `ConfigPair` it gets back from `app.LoadAndFetch`.
+- **`initResolver` interface.** It has a fundamentally different shape from `ConfigFetcher` — step-by-step methods returning `[]prompt.Item` for interactive wizard flows. They should not share an interface.
 
 ### Dependency graph after extraction
 
 ```text
 cmd/fat-controller
   └── cli (Kong structs, .Run() methods, formatting, prompts)
-        ├── app (orchestration: load, resolve, diff, apply, validate, adopt)
+        ├── app (orchestration: load, resolve, scope, merge)
         │     ├── config (schema, parsing, merge, interpolation, validation)
         │     ├── diff (change computation)
         │     └── apply (mutation execution, via Applier interface)
         ├── prompt (interactive UI: pickers, confirmations, spinners)
-        ├── railway (GraphQL API adapter, via app interfaces + direct calls)
+        ├── railway (GraphQL API adapter)
         └── auth (token management)
 ```
 
-`app` imports: `config`, `diff`, `apply`, `context`, `io`, stdlib.
-`app` does NOT import: `cli`, `prompt`, `railway`, `auth`, `Kong`.
+`app` imports: `config`, `diff`, `context`, stdlib (`fmt`, `log/slog`, `sort`, `strings`, `os`, `path/filepath`).
+`app` does NOT import: `cli`, `prompt`, `railway`, `auth`, `apply`, Kong.
 
-The `railway` dependency is injected via the `ConfigFetcher` interface (already exists as `configFetcher` in `cli`).
+Note: `app` does not import `apply`. The `apply.Apply(...)` call stays in CLI's `runConfigApplyWithPairAndOpts` — it's a single clean call that takes domain types already prepared by `app.LoadAndFetch` + `diff.ComputeWithOptions`. Moving it to `app` would require `app` to accept an `apply.Applier`, which adds coupling for no testability gain.
 
 ---
 
-## Task Dependency Order
+## Tasks
 
-Tasks 1-4 are independent setup. Tasks 5-10 each move a logical group. Tasks 11-12 are cleanup.
+Each task is independently committable. Tasks 1-2 are the foundation. Tasks 3-6 are independent moves that depend only on Task 1. Task 7 is cleanup. Task 8 is docs.
 
-### Task 1: Create `internal/app/` package with core types
+### Task 1: Create `internal/app/` with core types and config pipeline
 
 **Files:**
 
 - Create: `internal/app/app.go`
+- Delete: `internal/cli/config_common.go` (contents move to app)
+- Modify: `internal/cli/config_get.go` (remove `configFetcher` interface definition, import from app)
+- Modify: `internal/cli/config_diff.go` (use `*app.ConfigPair`)
+- Modify: `internal/cli/config_apply.go` (use `*app.ConfigPair`)
+- Modify: `internal/cli/apply_cmd.go` (call `app.LoadAndFetch` directly)
 
-**What:** Define the package and the shared types that multiple functions will use. These are extracted from `internal/cli/config_common.go` and `internal/cli/config_get.go`.
+**What:** Create the package with `ConfigFetcher`, `ConfigPair`, `LoadAndFetch`, `ScopeDesiredByPath`, and `splitDotPath`.
 
-```go
-// Package app provides application-level orchestration for fat-controller.
-// It sits between interface adapters (CLI, API) and domain logic (config,
-// diff, apply), owning the load → resolve → diff → apply pipeline.
-package app
+`configPair` has only 3 consuming sites (`config_common.go`, `config_apply.go:40,44`), so delete the local type and use `*app.ConfigPair` everywhere. This is cleaner than a wrapper.
 
-import (
-    "context"
+`configFetcher` is defined in `config_get.go:16-19` and used by `config_get.go`, `config_common.go`, `config_diff.go`, `config_apply.go`. Replace all uses with `app.ConfigFetcher`. The `defaultConfigFetcher` struct stays in CLI — it's the adapter that implements `app.ConfigFetcher` using `railway` + `interactivePicker`.
 
-    "github.com/hamishmorgan/fat-controller/internal/config"
-)
+`emitWarnings` stays in CLI. It currently takes `*configPair` — update it to take `*app.ConfigPair`. Its signature is `func emitWarnings(pair *app.ConfigPair, quiet int, configDir string)`.
 
-// ConfigFetcher abstracts project/environment resolution and live state fetching.
-// The CLI layer provides an implementation that delegates to the railway package
-// with interactive picking support.
-type ConfigFetcher interface {
-    Resolve(ctx context.Context, workspace, project, environment string) (string, string, error)
-    Fetch(ctx context.Context, projectID, environmentID string, services []string) (*config.LiveConfig, error)
-}
+The `loadAndFetch` body moves verbatim to `app.LoadAndFetch`. The CLI file `config_common.go` shrinks to just `emitWarnings` (or `emitWarnings` moves to wherever it's called from — it's used by `config_diff.go:42`, `config_apply.go:34`, and `apply_cmd.go:45`).
 
-// ConfigPair bundles the desired and live config together with resolved IDs,
-// produced by the shared load → interpolate → resolve → fetch → filter pipeline.
-type ConfigPair struct {
-    Desired       *config.DesiredConfig
-    Live          *config.LiveConfig
-    ProjectID     string
-    EnvironmentID string
-}
-```
-
-**Verification:**
-
-- `go build ./internal/app/`
-
-**Commit:** `add internal/app package with core ConfigFetcher and ConfigPair types`
-
----
-
-### Task 2: Move config pipeline to `app`
-
-**Files:**
-
-- Modify: `internal/app/app.go` (add functions)
-- Modify: `internal/cli/config_common.go` (delegate to app)
-
-**What:** Move `loadAndFetch`, `scopeDesiredByPath`, `splitDotPath` to `app`. The CLI's `loadAndFetch` becomes a thin wrapper (or direct call). `configPair` → `app.ConfigPair`.
-
-The functions move almost verbatim. The only change is exporting names and changing the package.
-
-In `internal/app/app.go`, add:
-
-```go
-// LoadAndFetch runs the shared pipeline:
-//  1. Load config files (cascade or single --config-file)
-//  2. Interpolate ${VAR} references (env files → process env)
-//  3. Fall back to config-file project/environment when flags are empty
-//  4. Resolve project and environment IDs
-//  5. Fetch live state
-//  6. Filter desired config by service if set
-func LoadAndFetch(ctx context.Context, workspace, project, environment, configDir, configFile, service string, fetcher ConfigFetcher) (*ConfigPair, error) {
-    // ... (body from cli/config_common.go loadAndFetch, unchanged)
-}
-
-// ScopeDesiredByPath narrows a DesiredConfig to only include the service or
-// section specified by path.
-func ScopeDesiredByPath(cfg *config.DesiredConfig, path string) *config.DesiredConfig {
-    // ... (body from cli/config_common.go scopeDesiredByPath, unchanged)
-}
-```
-
-In `internal/cli/config_common.go`, replace the function bodies with calls to `app`:
-
-```go
-func loadAndFetch(...) (*configPair, error) {
-    pair, err := app.LoadAndFetch(ctx, ...)
-    if err != nil {
-        return nil, err
-    }
-    return &configPair{
-        Desired:       pair.Desired,
-        Live:          pair.Live,
-        ProjectID:     pair.ProjectID,
-        EnvironmentID: pair.EnvironmentID,
-    }, nil
-}
-```
-
-Or better: change callers of `configPair` to use `*app.ConfigPair` directly and delete the local type. This is cleaner but touches more files. Decide based on how many callers there are.
-
-**Important:** `emitWarnings` stays in CLI — it logs to slog (stderr), which is a presentation concern.
+**Current `ApplyCmd.Run()` calls `loadAndFetch` directly** (not through `RunConfigApply`), then passes the pair to `runConfigApplyWithPairAndOpts`. After this change, it calls `app.LoadAndFetch` directly.
 
 **Verification:**
 
 - `go build ./...`
 - `go test -race -count=1 ./...`
 
-**Commit:** `move config pipeline (loadAndFetch, scopeDesiredByPath) to app package`
+**Commit:** `extract app package with config pipeline and core types`
 
 ---
 
-### Task 3: Move adopt merge logic to `app`
+### Task 2: Move adopt merge logic to `app`
 
 **Files:**
 
 - Create: `internal/app/adopt.go`
-- Modify: `internal/cli/adopt.go` (call app functions)
-- Move: `internal/cli/adopt_test.go` tests that test pure merge logic
+- Create: `internal/app/adopt_test.go`
+- Modify: `internal/cli/adopt.go` (call `app.AdoptMerge`, `app.ScopeLiveByPath`, etc.)
+- Delete: `internal/cli/adopt_test.go` (tests move to app)
 
-**What:** Move `adoptMerge`, `scopeLiveByPath`, `desiredServiceToLive`, `desiredDeployToLive`, `findDesiredService` to `app/adopt.go`. These are pure functions on config types — no CLI dependency.
+**What:** Move these pure functions from `cli/adopt.go` to `app/adopt.go`:
 
-The `adopt_test.go` tests for these functions are internal tests (`package cli`). They need to become `package app_test` or `package app` tests in the new location.
+- `adoptMerge` → `app.AdoptMerge` (lines 244-351)
+- `scopeLiveByPath` → `app.ScopeLiveByPath` (lines 204-234)
+- `desiredServiceToLive` → `app.DesiredServiceToLive` (lines 355-389)
+- `desiredDeployToLive` → `app.DesiredDeployToLive` (lines 392-418)
+- `findDesiredService` → `app.FindDesiredService` (lines 421-428)
+- `joinServiceNames` → `app.JoinServiceNames` (lines 431-438)
 
-`AdoptCmd.Run()` stays in CLI — it handles prompting, file writing, and output. It calls `app.AdoptMerge(...)` instead of the local function.
+All are pure functions on `config` types. They import only `config`, `sort`, `strings` (stdlib).
+
+`adopt_test.go` is `package cli` (internal tests calling unexported functions). The tests move to `internal/app/adopt_test.go` as `package app_test`, calling the now-exported functions. All 11 tests: `TestAdoptMerge_*` (7), `TestScopeLiveByPath` (1), `TestDesiredServiceToLive` (2), `TestDesiredServiceToLive_NilLive` (1).
+
+`AdoptCmd.Run()` stays in CLI — it handles prompting, file I/O, and output.
 
 **Verification:**
 
 - `go build ./...`
 - `go test -race -count=1 ./...`
 
-**Commit:** `move adopt merge logic to app package`
+**Commit:** `move adopt merge logic and tests to app package`
 
 ---
 
-### Task 4: Move service target resolution to `app`
+### Task 3: Move service target resolution to `app`
 
 **Files:**
 
 - Create: `internal/app/targets.go`
-- Modify: `internal/cli/deploy.go` (call app function)
+- Modify: `internal/cli/deploy.go` (call `app.ResolveServiceTargets`)
+- Modify: `internal/cli/deployment_actions.go` (same)
+- Modify: `internal/cli/logs.go` (same)
+- Modify: `internal/cli/status.go` (same)
 
-**What:** Move `serviceTarget` and `resolveServiceTargets` to `app`. This function depends on `railway.FetchLiveConfig` — but it's called through the `configFetcher.Fetch` interface indirectly (it uses `railway.FetchLiveConfig` directly today).
+**What:** Move `serviceTarget` and `resolveServiceTargets` to `app/targets.go`.
 
-To avoid `app` importing `railway`, change `resolveServiceTargets` to accept a `Fetcher`-like function:
+`resolveServiceTargets` currently takes `*railway.Client` and calls `railway.FetchLiveConfig` directly (line 110 of `deploy.go`). Change it to take `app.ConfigFetcher` instead:
 
 ```go
 // ServiceTarget holds a resolved service name and ID.
@@ -221,15 +155,23 @@ type ServiceTarget struct {
     ID   string
 }
 
-// ResolveServiceTargets resolves service arguments to name+ID pairs.
-// If no service names are given, returns all services.
+// ResolveServiceTargets maps service name arguments to name+ID pairs.
+// If no names are given, returns all services in the project.
 func ResolveServiceTargets(ctx context.Context, fetcher ConfigFetcher, projectID, envID string, serviceNames []string) ([]ServiceTarget, error) {
     live, err := fetcher.Fetch(ctx, projectID, envID, nil)
-    // ...
+    if err != nil {
+        return nil, fmt.Errorf("fetching services: %w", err)
+    }
+    // ... (rest of body unchanged, but uses ServiceTarget instead of serviceTarget)
 }
 ```
 
-CLI callers update from `resolveServiceTargets(ctx, client, ...)` to `app.ResolveServiceTargets(ctx, fetcher, ...)`.
+There are 4 callers, all in CLI: `deploy.go:36`, `deployment_actions.go:99`, `logs.go:58`, `status.go:34`. Each currently constructs a `*railway.Client`, so they need to wrap it in a `defaultConfigFetcher` (or pass one they already have). Check each callsite:
+
+- `deploy.go` (`DeployCmd.Run`): has `client` — wrap in `&defaultConfigFetcher{client: client}`
+- `deployment_actions.go` (`runDeploymentAction`): has `client` — same
+- `logs.go` (`LogsCmd.Run`): has `client` — same
+- `status.go` (`StatusCmd.Run`): has `client` — same
 
 **Verification:**
 
@@ -240,206 +182,115 @@ CLI callers update from `resolveServiceTargets(ctx, client, ...)` to `app.Resolv
 
 ---
 
-### Task 5: Move show/get logic to `app`
+### Task 4: Move show/get helpers to `app`
 
 **Files:**
 
 - Create: `internal/app/show.go`
-- Modify: `internal/cli/config_get.go` (thin down)
+- Modify: `internal/cli/config_get.go`
 
-**What:** Move `lookupKey`, `filterSection` to `app/show.go`. These are pure functions on config types. The `RunConfigGet` function stays in CLI (it handles output formatting).
-
-**Verification:**
-
-- `go build ./...`
-- `go test -race -count=1 ./...`
-
-**Commit:** `move show/get lookup logic to app package`
-
----
-
-### Task 6: Move validate orchestration to `app`
-
-**Files:**
-
-- Create: `internal/app/validate.go`
-- Modify: `internal/cli/config_validate.go` (thin down)
-
-**What:** Extract the load-and-validate core from `RunConfigValidate` into `app.Validate`:
+**What:** Move `lookupKey` and `filterSection` to `app/show.go`. Both are pure functions on `config.LiveConfig` and `config.Path`. No CLI imports.
 
 ```go
-// Validate loads config and returns validation warnings.
-func Validate(configDir, configFile string) (*config.DesiredConfig, []config.Warning, error) {
-    result, err := config.LoadCascade(config.LoadOptions{
-        WorkDir:    configDir,
-        ConfigFile: configFile,
-    })
-    if err != nil {
-        return nil, nil, err
-    }
-    warnings := config.ValidateWithOptions(result.Config, config.ValidateOptions{EnvFileVars: result.EnvVars})
-    warnings = append(warnings, config.ValidateFiles(configDir)...)
-    return result.Config, warnings, nil
-}
+// LookupKey retrieves a single value from the config for a fully-qualified path.
+func LookupKey(cfg config.LiveConfig, p config.Path) (string, bool) { ... }
+
+// FilterSection returns a copy of cfg containing only the requested section.
+func FilterSection(cfg config.LiveConfig, p config.Path) config.LiveConfig { ... }
 ```
 
-CLI's `RunConfigValidate` becomes: call `app.Validate`, then format the warnings.
+`RunConfigGet` stays in CLI — it handles masking, output formatting, and the `globals.Output` check.
 
 **Verification:**
 
 - `go build ./...`
 - `go test -race -count=1 ./...`
 
-**Commit:** `move validate orchestration to app package`
+**Commit:** `move show/get helpers to app package`
 
 ---
 
-### Task 7: Move diff orchestration to `app`
+### Task 5: Move shared init/adopt helpers to `app`
 
 **Files:**
 
-- Create: `internal/app/diff.go`
-- Modify: `internal/cli/config_diff.go` (thin down)
+- Create: `internal/app/inithelpers.go`
+- Modify: `internal/cli/config_init.go` (call app functions)
+- Modify: `internal/cli/adopt.go` (call app functions)
 
-**What:** Extract the load-scope-compute core from `RunConfigDiffWithOpts`:
+**What:** Move `renderEnvFile` and `ensureGitignoreHasLine` to app. Both are used by two callers (`config_init.go` and `adopt.go`), so they're genuinely shared, not single-caller utilities.
 
-```go
-// Diff loads config, fetches live state, and computes the diff.
-func Diff(ctx context.Context, workspace, project, environment, configDir, configFile, service, path string, diffOpts diff.Options, fetcher ConfigFetcher) (*ConfigPair, *diff.Result, error) {
-    pair, err := LoadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
-    if err != nil {
-        return nil, nil, err
-    }
-    desired := pair.Desired
-    if path != "" {
-        desired = ScopeDesiredByPath(desired, path)
-    }
-    result := diff.ComputeWithOptions(desired, pair.Live, diffOpts)
-    return pair, result, nil
-}
-```
-
-CLI's `RunConfigDiffWithOpts` becomes: call `app.Diff`, emit warnings, format result.
+- `renderEnvFile` depends on `config.CollectSecrets` + stdlib (`sort`, `strings`, `fmt`). → `app.RenderEnvFile`
+- `ensureGitignoreHasLine` depends only on stdlib (`os`, `path/filepath`, `strings`). → `app.EnsureGitignoreHasLine`
 
 **Verification:**
 
 - `go build ./...`
 - `go test -race -count=1 ./...`
 
-**Commit:** `move diff orchestration to app package`
+**Commit:** `move shared init/adopt helpers to app package`
 
 ---
 
-### Task 8: Move apply orchestration to `app`
+### Task 6: Add `LoadAndFetch` unit tests
 
 **Files:**
 
-- Create: `internal/app/apply.go` (NOT the same as `internal/apply/` — this is orchestration, not the Applier interface)
-- Modify: `internal/cli/config_apply.go` (thin down)
+- Create: `internal/app/app_test.go`
 
-**What:** Extract the load-diff-apply core. The tricky part: `runConfigApplyWithPairAndOpts` currently calls `prompt.Confirm` for the confirmation step. That interaction stays in CLI. The app function computes the diff and returns it; the CLI decides whether to confirm and then calls `apply.Apply`.
+**What:** `loadAndFetch` currently has zero direct unit tests — it's only exercised indirectly through `RunConfigDiff` and `RunConfigApply` tests. Now that it lives in `app` as an exported function, add direct tests:
 
-```go
-// ComputeApplyPlan loads config, fetches live state, and computes
-// what apply would do. Returns the pair, diff result, and the desired
-// config (possibly scoped by path). The caller decides whether to
-// confirm and execute.
-func ComputeApplyPlan(ctx context.Context, workspace, project, environment, configDir, configFile, service, path string, diffOpts diff.Options, fetcher ConfigFetcher) (*ConfigPair, *diff.Result, *config.DesiredConfig, error) {
-    pair, err := LoadAndFetch(ctx, workspace, project, environment, configDir, configFile, service, fetcher)
-    if err != nil {
-        return nil, nil, nil, err
-    }
-    desired := pair.Desired
-    if path != "" {
-        desired = ScopeDesiredByPath(desired, path)
-    }
-    result := diff.ComputeWithOptions(desired, pair.Live, diffOpts)
-    return pair, result, desired, nil
-}
-```
+1. Test basic load + resolve + fetch pipeline with a fake `ConfigFetcher`
+2. Test that config-file project/environment names are used as fallback for resolution
+3. Test that `--service` filter narrows the desired config
+4. Test error propagation from `LoadCascade`, `Interpolate`, `Resolve`, `Fetch`
 
-The actual `apply.Apply(ctx, desired, live, applier, opts)` call remains in CLI — it's already a clean domain call. The app layer just prepares the inputs.
+These tests create temp directories with TOML config files and use a `fakeConfigFetcher` that returns canned responses. The existing test helpers in `cli/*_test.go` (like `fakeConfigFetcher` and `capturingFetcher`) show the pattern.
+
+Also add tests for `ScopeDesiredByPath` (currently untested directly).
+
+**Verification:**
+
+- `go test -race -count=1 ./internal/app/`
+
+**Commit:** `add unit tests for app.LoadAndFetch and ScopeDesiredByPath`
+
+---
+
+### Task 7: Clean up `cli` package
+
+**Files:**
+
+- Modify: `internal/cli/config_common.go` (may be empty or just `emitWarnings`)
+- Modify: `internal/cli/config_get.go` (remove dead interface/type definitions)
+- Audit: all `internal/cli/*.go` for stale imports of moved symbols
+
+**What:** After Tasks 1-6, review `config_common.go`. If it only contains `emitWarnings`, consider whether it should stay there or move inline to callers (it's called from 3 places: `config_diff.go:42`, `config_apply.go:34`, `apply_cmd.go:45`). If kept, the file name `config_common.go` is misleading since the "common" pipeline logic moved — rename to `warnings.go` or move `emitWarnings` to wherever makes sense.
+
+Remove any orphaned imports. Run `go vet ./...` to catch issues.
 
 **Verification:**
 
 - `go build ./...`
+- `go vet ./...`
 - `go test -race -count=1 ./...`
 
-**Commit:** `move apply plan computation to app package`
+**Commit:** `clean up cli package after app extraction`
 
 ---
 
-### Task 9: Move pure utilities to `app`
-
-**Files:**
-
-- Create: `internal/app/time.go` (or just add to `app.go`)
-- Modify: CLI callers
-
-**What:** Move `parseTimeArg`, `parseRelativeDuration`, `databaseImage`, `renderEnvFile`, `ensureGitignoreHasLine` to app. These are pure functions with no CLI dependency.
-
-Note: `databaseImage` and `ensureGitignoreHasLine` might be better staying in CLI since they're only used by init/new commands and are trivially small. Use judgment — if they'd be the only callers, leave them. Don't move things just for the principle.
-
-**Verification:**
-
-- `go build ./...`
-- `go test -race -count=1 ./...`
-
-**Commit:** `move pure utilities to app package`
-
----
-
-### Task 10: Move warning emission to `app`
-
-**Files:**
-
-- Modify: `internal/app/app.go`
-- Modify: `internal/cli/config_common.go`
-
-**What:** `emitWarnings` currently runs validation and logs to slog. The validation part (computing warnings) belongs in app. The slog emission is borderline — slog is a stdlib logger, not a CLI concern per se. But the `quiet` flag check is a presentation concern.
-
-Option A: Move `emitWarnings` as-is to app (it uses slog, which is fine for a service layer).
-Option B: Have app return warnings, CLI decides whether to log them.
-
-Go with Option B — it's cleaner. `app.Diff` and `app.ComputeApplyPlan` can optionally return warnings alongside the result. CLI decides to log or suppress.
-
-This may already be handled by Tasks 7-8 if those functions return the `ConfigPair` (which has the Desired config for validation). CLI can call `config.ValidateWithOptions` itself on the returned pair.
-
-**Verdict:** This task may be unnecessary if Tasks 7-8 are designed correctly. Evaluate after implementing those.
-
----
-
-### Task 11: Move tests
-
-**Files:**
-
-- Create: `internal/app/*_test.go`
-- Modify: `internal/cli/*_test.go` (remove moved tests)
-
-**What:** Tests that test pure app logic (adopt merge, scope functions, time parsing, etc.) move to `internal/app/`. Tests that test CLI output formatting stay in `internal/cli/`.
-
-The e2e tests stay in CLI — they test the full stack through `Run*` functions.
-
-**Verification:**
-
-- `go test -race -count=1 ./...`
-
-**Commit:** `move app-logic tests to app package`
-
----
-
-### Task 12: Update ARCHITECTURE.md
+### Task 8: Document package layout in ARCHITECTURE.md
 
 **Files:**
 
 - Modify: `docs/ARCHITECTURE.md`
 
-**What:** Add a "Package Layout" section describing the layer hierarchy:
+**What:** Add a "Package Layout" section near the top describing the layer hierarchy and dependency rules:
 
 ```text
 internal/
-  app/        — application orchestration (load, resolve, diff, apply pipelines)
-  apply/      — mutation execution (Applier interface + Railway implementation)
+  app/        — application orchestration (load, resolve, scope, merge, target resolution)
+  apply/      — mutation execution (Applier interface + Railway adapter)
   auth/       — token management, OAuth flow
   cli/        — CLI wiring (Kong commands, output formatting, prompts)
   config/     — config schema, parsing, merge, interpolation, validation
@@ -451,18 +302,25 @@ internal/
   version/    — build version info
 ```
 
-Describe the dependency rules: `app` imports `config`, `diff`, `apply` but not `cli`, `prompt`, `railway`. `cli` imports everything. `railway` imports `config` and `auth` but not `cli` or `prompt`.
+Dependency rules:
 
-**Commit:** `document package layout and layer boundaries in ARCHITECTURE.md`
+- `app` depends on `config` and `diff`. Does not import `cli`, `prompt`, `railway`, `auth`, or `apply`.
+- `cli` depends on everything (it's the outermost layer).
+- `railway` depends on `config` and `auth`. Does not import `cli` or `prompt`.
+- `apply` depends on `config` and `diff`. Does not import `cli`, `railway`, or `prompt`. Railway coupling is via the `Applier` interface.
+
+**Commit:** `document package layout and dependency rules in ARCHITECTURE.md`
 
 ---
 
 ## What This Plan Does NOT Do
 
-1. **Fully separate output formatting from orchestration in every `Run*` function.** Many `Run*` functions have `if isStructuredOutput { json } else { text }` blocks interleaved with logic. Splitting those requires returning structured result types from app and building formatters in CLI — a worthwhile follow-up but too much churn for this plan.
+1. **Extract `Run*` functions from CLI.** Every `Run*` function (`RunConfigGet`, `RunConfigDiff`, `RunConfigApply`, `RunDeploy`, `RunStatus`, etc.) interleaves orchestration with `if isStructuredOutput { json } else { text }` format branching. Separating them requires returning structured result types from app — a valid follow-up, but mechanical and high-churn.
 
-2. **Create interfaces for everything.** `app` calls `config.LoadCascade` and `diff.ComputeWithOptions` directly — these are stable domain functions, not swappable adapters. Only the `ConfigFetcher` interface exists at the boundary where we actually need injection (railway vs. test mock).
+2. **Create interfaces for `config.LoadCascade` or `diff.ComputeWithOptions`.** These are stable domain functions, not swappable adapters. `app` calls them directly.
 
-3. **Move the `apply` or `diff` packages.** They're already correctly layered. `apply.Apply` is called by CLI today; after this plan it'll still be called by CLI (with inputs prepared by `app`). The `apply` package is domain logic, not orchestration.
+3. **Move `apply` or `diff` packages.** Already correctly layered.
 
-4. **Move `prompt`-dependent code to `app`.** Anything that imports `prompt` (confirmation dialogs, pickers, spinners) stays in CLI. The `app` layer is non-interactive.
+4. **Unify `initResolver` and `ConfigFetcher`.** They have fundamentally different shapes: `ConfigFetcher.Resolve` is a single combined call; `initResolver` has step-by-step methods (`FetchWorkspaces`, `FetchProjects`, `FetchEnvironments`) returning `[]prompt.Item` for interactive wizard flows. At most `FetchLiveState`/`Fetch` overlap, but unifying them isn't worth the abstraction.
+
+5. **Move single-caller pure utilities.** `parseTimeArg`/`parseRelativeDuration` (only `logs.go`), `databaseImage` (only `new.go`) stay in CLI. Not worth the package hop.

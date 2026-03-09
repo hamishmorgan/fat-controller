@@ -15,7 +15,7 @@ require (
 	github.com/jotaen/kong-completion v0.0.12
 	github.com/muesli/termenv v0.16.0
 	github.com/zalando/go-keyring v0.2.6
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 )
 
 require (

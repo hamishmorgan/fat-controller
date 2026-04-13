@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/charmbracelet/x/term v0.2.2
-	github.com/jotaen/kong-completion v0.0.12
+	github.com/jotaen/kong-completion v0.0.13
 	github.com/muesli/termenv v0.16.0
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/sync v0.19.0

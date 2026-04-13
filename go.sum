@@ -101,8 +101,8 @@ github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+l
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
-github.com/jotaen/kong-completion v0.0.12 h1:a9jmSaWgkdAUMQT583UxLIJrO9tfdSmYqcIxrBByjPc=
-github.com/jotaen/kong-completion v0.0.12/go.mod h1:dyIG20e3qq128SUBtF8jzI7YtkfzjWMlgbqkAJd6xHQ=
+github.com/jotaen/kong-completion v0.0.13 h1:fbbqijMmrCgx8sz6bZz+B5p5yJSEAdwJZALsUZ+Ql3s=
+github.com/jotaen/kong-completion v0.0.13/go.mod h1:dyIG20e3qq128SUBtF8jzI7YtkfzjWMlgbqkAJd6xHQ=
 github.com/lucasb-eyer/go-colorful v1.3.0 h1:2/yBRLdWBZKrf7gB40FoiKfAWYQ0lqNcbuQwVHXptag=
 github.com/lucasb-eyer/go-colorful v1.3.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
